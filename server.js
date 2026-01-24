@@ -4,7 +4,7 @@ const path = require('path');
 const QRCode = require('qrcode');
 const fs = require('fs');
 const { initDB, query, queryOne, run, scalar } = require('./database');
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenAI } = require('@google/generative-ai');
 const { execSync } = require('child_process');
 require('dotenv').config();
 
