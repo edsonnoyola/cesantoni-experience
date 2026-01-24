@@ -1,1378 +1,715 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de QRs por Tienda | Cesantoni Experience</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #0a0a0a;
-            color: #fff;
-            min-height: 100vh;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
-            border-bottom: 1px solid #c9a45c;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .logo { height: 45px; }
-
-        .header h1 {
-            font-size: 1.5rem;
-            color: #c9a45c;
-        }
-
-        .header p {
-            font-size: 0.875rem;
-            color: #888;
-        }
-
-        .back-btn {
-            background: #222;
-            color: #fff;
-            border: 1px solid #444;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            text-decoration: none;
-        }
-
-        .back-btn:hover {
-            border-color: #c9a45c;
-        }
-
-        .container {
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        /* Wizard Steps */
-        .wizard-steps {
-            display: flex;
-            justify-content: center;
-            gap: 0;
-            margin-bottom: 2rem;
-        }
-
-        .step {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 1rem 2rem;
-            background: #1a1a1a;
-            border: 1px solid #333;
-            color: #666;
-            position: relative;
-        }
-
-        .step:first-child { border-radius: 8px 0 0 8px; }
-        .step:last-child { border-radius: 0 8px 8px 0; }
-
-        .step.active {
-            background: linear-gradient(135deg, #c9a45c 0%, #a8893d 100%);
-            color: #000;
-            border-color: #c9a45c;
-        }
-
-        .step.completed {
-            background: #1a3d1a;
-            border-color: #22c55e;
-            color: #22c55e;
-        }
-
-        .step-number {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: #333;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-        }
-
-        .step.active .step-number {
-            background: #000;
-            color: #c9a45c;
-        }
-
-        .step.completed .step-number {
-            background: #22c55e;
-            color: #000;
-        }
-
-        /* Main Content Grid */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-        }
-
-        .panel {
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 16px;
-            overflow: hidden;
-        }
-
-        .panel-header {
-            background: #222;
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid #333;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .panel-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .panel-badge {
-            background: #c9a45c;
-            color: #000;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .panel-body {
-            padding: 1.5rem;
-            max-height: 500px;
-            overflow-y: auto;
-        }
-
-        /* Filters */
-        .filters {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 0.75rem;
-            margin-bottom: 1rem;
-        }
-
-        .filter-group {
-            min-width: 0;
-        }
-
-        .filter-label {
-            font-size: 0.75rem;
-            color: #888;
-            margin-bottom: 0.25rem;
-            display: block;
-        }
-
-        select, input[type="text"] {
-            width: 100%;
-            padding: 0.625rem 1rem;
-            background: #0f0f0f;
-            border: 1px solid #333;
-            border-radius: 8px;
-            color: #fff;
-            font-size: 0.875rem;
-        }
-
-        select:focus, input:focus {
-            outline: none;
-            border-color: #c9a45c;
-        }
-
-        /* Product Cards */
-        .product-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 1rem;
-        }
-
-        .product-card {
-            background: #0f0f0f;
-            border: 2px solid #333;
-            border-radius: 12px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
-        }
-
-        .product-card:hover {
-            border-color: #666;
-            transform: translateY(-2px);
-        }
-
-        .product-card.selected {
-            border-color: #c9a45c;
-            background: #1a1a0a;
-        }
-
-        .product-card.ready {
-            border-color: #22c55e;
-        }
-
-        .product-card img {
-            width: 100%;
-            height: 100px;
-            object-fit: cover;
-        }
-
-        .product-card-body {
-            padding: 0.75rem;
-        }
-
-        .product-card h4 {
-            font-size: 0.8rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .product-status {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .status-badge {
-            font-size: 0.65rem;
-            padding: 0.2rem 0.4rem;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            gap: 0.2rem;
-        }
-
-        .status-badge.ready {
-            background: #14532d;
-            color: #4ade80;
-        }
-
-        .status-badge.pending {
-            background: #422006;
-            color: #fb923c;
-        }
-
-        .status-badge.missing {
-            background: #450a0a;
-            color: #f87171;
-        }
-
-        .product-card-actions {
-            display: flex;
-            gap: 0.25rem;
-            margin-top: 0.5rem;
-        }
-
-        .card-action-btn {
-            flex: 1;
-            padding: 0.4rem;
-            font-size: 0.65rem;
-            background: #222;
-            border: 1px solid #444;
-            border-radius: 4px;
-            color: #fff;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.25rem;
-        }
-
-        .card-action-btn:hover {
-            background: #333;
-        }
-
-        .card-action-btn.gen-video {
-            background: #3b0764;
-            border-color: #7c3aed;
-        }
-
-        .card-action-btn.gen-video:hover {
-            background: #4c1d95;
-        }
-
-        /* Store List */
-        .store-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .store-item {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.75rem 1rem;
-            background: #0f0f0f;
-            border: 1px solid #333;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .store-item:hover {
-            border-color: #666;
-        }
-
-        .store-item.selected {
-            border-color: #22c55e;
-            background: #0a1a0a;
-        }
-
-        .store-checkbox {
-            width: 20px;
-            height: 20px;
-            border: 2px solid #444;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .store-item.selected .store-checkbox {
-            background: #22c55e;
-            border-color: #22c55e;
-        }
-
-        .store-info {
-            flex: 1;
-        }
-
-        .store-name {
-            font-weight: 500;
-            font-size: 0.875rem;
-        }
-
-        .store-location {
-            font-size: 0.75rem;
-            color: #888;
-        }
-
-        .store-whatsapp {
-            font-size: 0.75rem;
-            color: #22c55e;
-        }
-
-        /* Select All */
-        .select-all {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.75rem;
-            background: #222;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-        }
-
-        .select-all label {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            cursor: pointer;
-        }
-
-        .select-all input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-        }
-
-        /* Summary Panel */
-        .summary-panel {
-            grid-column: 1 / -1;
-            background: linear-gradient(135deg, #1a1a0a 0%, #141410 100%);
-            border: 2px solid #c9a45c;
-        }
-
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .summary-stat {
-            text-align: center;
-        }
-
-        .summary-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #c9a45c;
-        }
-
-        .summary-label {
-            font-size: 0.875rem;
-            color: #888;
-        }
-
-        /* Action Buttons */
-        .actions {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 1rem 2rem;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 1rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.2s;
-            border: none;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #c9a45c 0%, #a8893d 100%);
-            color: #000;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(201, 164, 92, 0.4);
-        }
-
-        .btn-primary:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-secondary {
-            background: #222;
-            color: #fff;
-            border: 1px solid #444;
-        }
-
-        .btn-secondary:hover {
-            background: #333;
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-            color: #fff;
-        }
-
-        /* Preview Modal */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.9);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-        }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
-        .modal {
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 16px;
-            max-width: 900px;
-            width: 100%;
-            max-height: 90vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .modal-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid #333;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            color: #888;
-            font-size: 2rem;
-            cursor: pointer;
-            line-height: 1;
-        }
-
-        .modal-body {
-            padding: 1.5rem;
-            overflow-y: auto;
-            flex: 1;
-        }
-
-        .modal-footer {
-            padding: 1.5rem;
-            border-top: 1px solid #333;
-            display: flex;
-            justify-content: flex-end;
-            gap: 1rem;
-        }
-
-        /* QR Preview Grid */
-        .qr-preview-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .qr-preview-card {
-            background: #fff;
-            border-radius: 12px;
-            padding: 1rem;
-            text-align: center;
-            color: #000;
-        }
-
-        .qr-preview-card canvas {
-            width: 150px !important;
-            height: 150px !important;
-            margin-bottom: 0.75rem;
-        }
-
-        .qr-store-name {
-            font-weight: 600;
-            font-size: 0.875rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .qr-product-name {
-            font-size: 0.75rem;
-            color: #666;
-        }
-
-        /* Progress */
-        .progress-container {
-            display: none;
-            padding: 2rem;
-            text-align: center;
-        }
-
-        .progress-container.active {
-            display: block;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background: #333;
-            border-radius: 4px;
-            overflow: hidden;
-            margin: 1rem 0;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #c9a45c, #22c55e);
-            width: 0%;
-            transition: width 0.3s;
-        }
-
-        .progress-text {
-            font-size: 0.875rem;
-            color: #888;
-        }
-
-        /* Toast */
-        .toast {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            background: #1a1a1a;
-            border: 1px solid #22c55e;
-            border-radius: 12px;
-            padding: 1rem 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            transform: translateY(150%);
-            transition: transform 0.3s;
-            z-index: 2000;
-        }
-
-        .toast.show {
-            transform: translateY(0);
-        }
-
-        /* Empty state */
-        .empty-state {
-            text-align: center;
-            padding: 3rem;
-            color: #666;
-        }
-
-        .empty-state-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-
-        @media (max-width: 1024px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .summary-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generador QR - Cesantoni</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a; 
+      color: #fff; 
+      min-height: 100vh;
+    }
+    .header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      padding: 20px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #333;
+    }
+    .header h1 { font-size: 24px; }
+    .header a { color: #c9a227; text-decoration: none; }
+    
+    .container { 
+      display: grid; 
+      grid-template-columns: 1fr 1fr 320px; 
+      gap: 20px; 
+      padding: 20px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+    
+    .panel {
+      background: #1a1a1a;
+      border-radius: 12px;
+      border: 1px solid #333;
+      overflow: hidden;
+    }
+    .panel-header {
+      background: #222;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #333;
+    }
+    .panel-header h2 { font-size: 16px; display: flex; align-items: center; gap: 8px; }
+    .badge { 
+      background: #c9a227; 
+      color: #000; 
+      padding: 4px 12px; 
+      border-radius: 20px; 
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .panel-body { padding: 15px; max-height: 70vh; overflow-y: auto; }
+    
+    /* Búsqueda y filtros */
+    .search-box {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+    .search-box input, .search-box select {
+      padding: 10px 15px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: #0a0a0a;
+      color: #fff;
+      font-size: 14px;
+    }
+    .search-box input { flex: 1; min-width: 150px; }
+    .search-box select { min-width: 120px; }
+    
+    /* Select all */
+    .select-all {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 15px;
+      background: #222;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .select-all label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .selected-count { color: #c9a227; font-weight: bold; }
+    
+    /* Product grid */
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+    }
+    .product-card {
+      background: #222;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      border: 2px solid transparent;
+    }
+    .product-card:hover { border-color: #444; }
+    .product-card.selected { border-color: #c9a227; background: #2a2a1a; }
+    .product-card img {
+      width: 100%;
+      height: 80px;
+      object-fit: cover;
+    }
+    .product-card .name {
+      padding: 8px;
+      font-size: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .product-card .check {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 22px;
+      height: 22px;
+      background: #c9a227;
+      border-radius: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #000;
+    }
+    .product-card.selected .check { display: flex; }
+    .product-card .video-badge {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      background: #1a472a;
+      color: #4ade80;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 9px;
+    }
+    
+    /* Store list */
+    .store-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 15px;
+      background: #222;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+    }
+    .store-item:hover { border-color: #444; }
+    .store-item.selected { border-color: #c9a227; background: #2a2a1a; }
+    .store-item .checkbox {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #555;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .store-item.selected .checkbox {
+      background: #c9a227;
+      border-color: #c9a227;
+    }
+    .store-item.selected .checkbox::after {
+      content: '✓';
+      color: #000;
+      font-size: 12px;
+    }
+    .store-info { flex: 1; min-width: 0; }
+    .store-info h4 { font-size: 14px; margin-bottom: 3px; }
+    .store-info p { font-size: 12px; color: #888; }
+    .store-info .whatsapp { color: #25D366; font-size: 12px; }
+    
+    /* Summary panel */
+    .summary-section { margin-bottom: 20px; }
+    .summary-section h3 { font-size: 13px; color: #888; margin-bottom: 10px; }
+    .summary-stat {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #333;
+      font-size: 14px;
+    }
+    .summary-stat .value { font-weight: bold; color: #c9a227; }
+    
+    .total-qrs {
+      background: linear-gradient(135deg, #c9a227 0%, #d4af37 100%);
+      color: #000;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      margin: 20px 0;
+    }
+    .total-qrs .number { font-size: 42px; font-weight: bold; }
+    .total-qrs .label { font-size: 14px; }
+    .total-qrs .formula { font-size: 11px; opacity: 0.8; margin-top: 5px; }
+    
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 8px;
+      border: none;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-primary { background: #c9a227; color: #000; }
+    .btn-secondary { background: #333; color: #fff; }
+    
+    /* Progress */
+    .progress-bar {
+      height: 8px;
+      background: #333;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+      display: none;
+    }
+    .progress-bar.active { display: block; }
+    .progress-bar .fill {
+      height: 100%;
+      background: #c9a227;
+      width: 0%;
+      transition: width 0.3s;
+    }
+    
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #1a472a;
+      color: #4ade80;
+      padding: 15px 25px;
+      border-radius: 8px;
+      display: none;
+      z-index: 1000;
+    }
+    .toast.show { display: block; }
+
+    /* Chips */
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      max-height: 60px;
+      overflow-y: auto;
+    }
+    .chip {
+      background: #333;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+    }
+  </style>
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-left">
-            <img src="/images/logo-cesantoni.png" alt="Cesantoni" class="logo" onerror="this.style.display='none'">
-            <div>
-                <h1>🎯 Generador de QRs por Tienda</h1>
-                <p>Crea QRs únicos para cada tienda • Cada QR = 1 landing personalizado</p>
-            </div>
-        </div>
-        <a href="/" class="back-btn">← Dashboard</a>
-    </header>
-
-    <div class="container">
-        <!-- Wizard Steps -->
-        <div class="wizard-steps">
-            <div class="step active" id="step1">
-                <span class="step-number">1</span>
-                <span>Seleccionar Producto</span>
-            </div>
-            <div class="step" id="step2">
-                <span class="step-number">2</span>
-                <span>Seleccionar Tiendas</span>
-            </div>
-            <div class="step" id="step3">
-                <span class="step-number">3</span>
-                <span>Generar QRs</span>
-            </div>
-        </div>
-
-        <!-- Main Grid -->
-        <div class="main-grid">
-            <!-- Panel Productos -->
-            <div class="panel">
-                <div class="panel-header">
-                    <span class="panel-title">📦 Productos</span>
-                    <span class="panel-badge" id="productCount">105</span>
-                </div>
-                <div class="panel-body">
-                    <!-- Stats de estado -->
-                    <div class="product-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;margin-bottom:1rem;text-align:center;">
-                        <div style="background:#14532d;padding:0.5rem;border-radius:8px;">
-                            <div style="font-size:1.25rem;font-weight:700;color:#4ade80;" id="statsReady">0</div>
-                            <div style="font-size:0.7rem;color:#86efac;">Listos</div>
-                        </div>
-                        <div style="background:#422006;padding:0.5rem;border-radius:8px;">
-                            <div style="font-size:1.25rem;font-weight:700;color:#fb923c;" id="statsNoVideo">0</div>
-                            <div style="font-size:0.7rem;color:#fdba74;">Sin Video</div>
-                        </div>
-                        <div style="background:#1e3a5f;padding:0.5rem;border-radius:8px;">
-                            <div style="font-size:1.25rem;font-weight:700;color:#60a5fa;" id="statsTotal">105</div>
-                            <div style="font-size:0.7rem;color:#93c5fd;">Total</div>
-                        </div>
-                    </div>
-                    
-                    <div class="filters">
-                        <div class="filter-group">
-                            <label class="filter-label">Buscar</label>
-                            <input type="text" id="productSearch" placeholder="Nombre o SKU...">
-                        </div>
-                        <div class="filter-group">
-                            <label class="filter-label">Estado</label>
-                            <select id="statusFilter">
-                                <option value="">Todos</option>
-                                <option value="ready">✅ Con video</option>
-                                <option value="pending">❌ Sin video</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="product-grid" id="productGrid">
-                        <!-- Se llena dinámicamente -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Panel Tiendas -->
-            <div class="panel">
-                <div class="panel-header">
-                    <span class="panel-title">🏪 Tiendas</span>
-                    <span class="panel-badge" id="storeCount">407</span>
-                </div>
-                <div class="panel-body">
-                    <div class="filters">
-                        <div class="filter-group">
-                            <label class="filter-label">Distribuidor</label>
-                            <select id="distributorFilter">
-                                <option value="">Todos</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label class="filter-label">Estado</label>
-                            <select id="stateFilter">
-                                <option value="">Todos</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label class="filter-label">Ciudad</label>
-                            <select id="cityFilter">
-                                <option value="">Todas</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="select-all">
-                        <label>
-                            <input type="checkbox" id="selectAllStores" onchange="toggleAllStores()">
-                            Seleccionar todas las tiendas filtradas
-                        </label>
-                        <span id="selectedStoresCount">0 seleccionadas</span>
-                    </div>
-                    <div class="store-list" id="storeList">
-                        <!-- Se llena dinámicamente -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Summary Panel -->
-            <div class="panel summary-panel">
-                <div class="panel-header">
-                    <span class="panel-title">📊 Resumen de Generación</span>
-                </div>
-                <div class="panel-body">
-                    <div class="summary-grid">
-                        <div class="summary-stat">
-                            <div class="summary-value" id="summaryProduct">-</div>
-                            <div class="summary-label">Producto Seleccionado</div>
-                        </div>
-                        <div class="summary-stat">
-                            <div class="summary-value" id="summaryStores">0</div>
-                            <div class="summary-label">Tiendas Seleccionadas</div>
-                        </div>
-                        <div class="summary-stat">
-                            <div class="summary-value" id="summaryQRs">0</div>
-                            <div class="summary-label">QRs a Generar</div>
-                        </div>
-                        <div class="summary-stat">
-                            <div class="summary-value" id="summaryPages">0</div>
-                            <div class="summary-label">Páginas PDF</div>
-                        </div>
-                    </div>
-
-                    <div class="actions">
-                        <button class="btn btn-secondary" onclick="previewQRs()" id="btnPreview" disabled>
-                            👁️ Vista Previa
-                        </button>
-                        <button class="btn btn-primary" onclick="generatePDF()" id="btnGenerate" disabled>
-                            📄 Generar PDF con QRs
-                        </button>
-                        <button class="btn btn-success" onclick="downloadCSV()" id="btnCSV" disabled>
-                            📊 Exportar URLs (CSV)
-                        </button>
-                    </div>
-
-                    <!-- Progress -->
-                    <div class="progress-container" id="progressContainer">
-                        <div class="progress-bar">
-                            <div class="progress-fill" id="progressFill"></div>
-                        </div>
-                        <div class="progress-text" id="progressText">Generando QRs...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <div class="header">
+    <h1>📦 Generador de QR por Tienda</h1>
+    <div>
+      <a href="/">← Dashboard</a> | 
+      <a href="/productos-edit.html">Editar Productos</a>
     </div>
-
-    <!-- Preview Modal -->
-    <div class="modal-overlay" id="previewModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">👁️ Vista Previa de QRs</h3>
-                <button class="modal-close" onclick="closePreview()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="qr-preview-grid" id="qrPreviewGrid">
-                    <!-- QRs preview -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closePreview()">Cerrar</button>
-                <button class="btn btn-primary" onclick="generatePDF()">📄 Generar PDF</button>
-            </div>
+  </div>
+  
+  <div class="container">
+    <!-- Panel 1: Productos -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2>📦 Productos</h2>
+        <span class="badge" id="totalProducts">0</span>
+      </div>
+      <div class="panel-body">
+        <div class="search-box">
+          <input type="text" id="searchProduct" placeholder="🔍 Buscar producto...">
+          <select id="filterVideo">
+            <option value="">Todos</option>
+            <option value="with">✅ Con video</option>
+            <option value="without">❌ Sin video</option>
+          </select>
         </div>
+        <div class="select-all">
+          <label>
+            <input type="checkbox" id="selectAllProducts" style="width:18px;height:18px;cursor:pointer;">
+            <span>Seleccionar todos</span>
+          </label>
+          <span class="selected-count"><span id="selectedProductsCount">0</span> seleccionados</span>
+        </div>
+        <div class="products-grid" id="productsGrid"></div>
+      </div>
     </div>
-
-    <!-- Toast -->
-    <div class="toast" id="toast">
-        <span>✅</span>
-        <span id="toastMessage">Operación exitosa</span>
+    
+    <!-- Panel 2: Tiendas -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2>🏪 Tiendas</h2>
+        <span class="badge" id="totalStores">0</span>
+      </div>
+      <div class="panel-body">
+        <div class="search-box">
+          <select id="filterDistributor">
+            <option value="">Todos</option>
+          </select>
+          <select id="filterState">
+            <option value="">Todos</option>
+          </select>
+          <select id="filterCity">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="select-all">
+          <label>
+            <input type="checkbox" id="selectAllStores" style="width:18px;height:18px;cursor:pointer;">
+            <span>Seleccionar todas las filtradas</span>
+          </label>
+          <span class="selected-count"><span id="selectedStoresCount">0</span> seleccionadas</span>
+        </div>
+        <div id="storesList"></div>
+      </div>
     </div>
-
-    <script>
-        // Data
-        let products = [];
-        let stores = [];
-        let distributors = [];
-        let selectedProduct = null;
-        let selectedStores = new Set();
-        let filteredStores = [];
-
-        const BASE_URL = window.location.origin;
-
-        // Init
-        document.addEventListener('DOMContentLoaded', async () => {
-            await loadData();
-            setupFilters();
-        });
-
-        // Load all data
-        async function loadData() {
-            try {
-                [products, stores, distributors] = await Promise.all([
-                    fetch('/api/products').then(r => r.json()),
-                    fetch('/api/stores').then(r => r.json()),
-                    fetch('/api/distributors').then(r => r.json())
-                ]);
-
-                document.getElementById('productCount').textContent = products.length;
-                document.getElementById('storeCount').textContent = stores.length;
-
-                renderProducts();
-                renderStores();
-                populateFilters();
-            } catch (err) {
-                console.error('Error loading data:', err);
-                showToast('Error cargando datos');
-            }
-        }
-
-        // Populate filter dropdowns
-        function populateFilters() {
-            // Distributors
-            const distSelect = document.getElementById('distributorFilter');
-            distributors.forEach(d => {
-                distSelect.innerHTML += `<option value="${d.id}">${d.name}</option>`;
-            });
-
-            // States
-            const states = [...new Set(stores.map(s => s.state).filter(Boolean))].sort();
-            const stateSelect = document.getElementById('stateFilter');
-            states.forEach(state => {
-                stateSelect.innerHTML += `<option value="${state}">${state}</option>`;
-            });
-            
-            // Update product stats
-            updateGlobalStats();
-        }
+    
+    <!-- Panel 3: Resumen -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2>📊 Resumen</h2>
+      </div>
+      <div class="panel-body">
+        <div class="summary-section">
+          <h3>Productos seleccionados</h3>
+          <div class="chips" id="productChips"></div>
+          <div class="summary-stat">
+            <span>Total</span>
+            <span class="value" id="sumProducts">0</span>
+          </div>
+        </div>
         
-        function updateGlobalStats() {
-            const withVideo = products.filter(p => p.video_url).length;
-            const withoutVideo = products.length - withVideo;
-            
-            document.getElementById('statsReady').textContent = withVideo;
-            document.getElementById('statsNoVideo').textContent = withoutVideo;
-            document.getElementById('statsTotal').textContent = products.length;
-        }
-
-        // Setup filter listeners
-        function setupFilters() {
-            document.getElementById('productSearch').addEventListener('input', renderProducts);
-            document.getElementById('statusFilter').addEventListener('change', renderProducts);
-            document.getElementById('distributorFilter').addEventListener('change', () => {
-                updateCityFilter();
-                renderStores();
-            });
-            document.getElementById('stateFilter').addEventListener('change', () => {
-                updateCityFilter();
-                renderStores();
-            });
-            document.getElementById('cityFilter').addEventListener('change', renderStores);
-        }
-
-        // Render products
-        function renderProducts() {
-            const search = document.getElementById('productSearch').value.toLowerCase();
-            const statusFilter = document.getElementById('statusFilter').value;
-
-            let filtered = products.filter(p => {
-                const matchSearch = !search || 
-                    p.name.toLowerCase().includes(search) || 
-                    p.sku.toLowerCase().includes(search);
-                
-                const hasVideo = p.video_url && p.video_url.length > 0;
-                const matchStatus = !statusFilter || 
-                    (statusFilter === 'ready' && hasVideo) ||
-                    (statusFilter === 'pending' && !hasVideo);
-                    
-                return matchSearch && matchStatus;
-            });
-
-            const grid = document.getElementById('productGrid');
-            grid.innerHTML = filtered.map(p => {
-                const hasVideo = p.video_url && p.video_url.length > 0;
-                const hasImage = p.image_url && p.image_url.length > 0;
-                const isReady = hasVideo && hasImage;
-                
-                return `
-                <div class="product-card ${selectedProduct?.id === p.id ? 'selected' : ''} ${isReady ? 'ready' : ''}" 
-                     onclick="selectProduct(${p.id})">
-                    <img src="${p.image_url || 'https://via.placeholder.com/180x100?text=' + encodeURIComponent(p.name)}" 
-                         alt="${p.name}"
-                         onerror="this.src='https://via.placeholder.com/180x100?text=Sin+img'">
-                    <div class="product-card-body">
-                        <h4>${p.name}</h4>
-                        <div class="product-status">
-                            ${hasVideo 
-                                ? '<span class="status-badge ready">🎬 Video</span>' 
-                                : '<span class="status-badge missing">❌ Sin video</span>'}
-                            ${hasImage 
-                                ? '<span class="status-badge ready">✓ Imagen</span>' 
-                                : '<span class="status-badge missing">❌ Sin imagen</span>'}
-                        </div>
-                        <div class="product-card-actions">
-                            <button class="card-action-btn" onclick="event.stopPropagation(); previewLanding('${p.sku}')" title="Ver landing">
-                                👁️
-                            </button>
-                            ${!hasVideo ? `
-                                <button class="card-action-btn gen-video" onclick="event.stopPropagation(); generateVideoForProduct(${p.id}, '${p.name.replace(/'/g, "\\'")}', '${p.image_url || ''}')" title="Generar video con IA">
-                                    🎬 +Video
-                                </button>
-                            ` : `
-                                <button class="card-action-btn" onclick="event.stopPropagation(); playVideo('${p.video_url}')" title="Ver video">
-                                    ▶️
-                                </button>
-                            `}
-                        </div>
-                    </div>
-                </div>
-            `}).join('');
-            
-            // Update stats
-            updateProductStats(filtered);
-        }
+        <div class="summary-section">
+          <h3>Tiendas seleccionadas</h3>
+          <div class="chips" id="storeChips"></div>
+          <div class="summary-stat">
+            <span>Total</span>
+            <span class="value" id="sumStores">0</span>
+          </div>
+        </div>
         
-        function updateProductStats(filtered) {
-            const withVideo = filtered.filter(p => p.video_url).length;
-            const total = filtered.length;
-            document.getElementById('productCount').textContent = total;
-        }
+        <div class="total-qrs">
+          <div class="number" id="totalQRs">0</div>
+          <div class="label">QRs a generar</div>
+          <div class="formula" id="formula">0 productos × 0 tiendas</div>
+        </div>
         
-        // Preview landing
-        function previewLanding(sku) {
-            window.open(`/p/${sku}?store=cesantoni-fresnillo`, '_blank');
-        }
+        <div class="progress-bar" id="progressBar">
+          <div class="fill" id="progressFill"></div>
+        </div>
+        <div id="progressText" style="text-align:center;font-size:12px;color:#888;margin-bottom:10px;"></div>
         
-        // Play video
-        function playVideo(url) {
-            window.open(url, '_blank');
-        }
-        
-        // Generate video for product
-        async function generateVideoForProduct(id, name, imageUrl) {
-            if (!confirm(`¿Generar video con IA para "${name}"?\n\nEsto tarda ~60 segundos.`)) return;
-            
-            showToast('🎬 Generando video con Veo 3.1...');
-            
-            try {
-                const res = await fetch('/api/video/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        product_id: id,
-                        product_name: name,
-                        image_url: imageUrl
-                    })
-                });
-                
-                if (res.ok) {
-                    showToast('⏳ Video en proceso... Actualiza en 60 seg');
-                    // Poll for completion
-                    setTimeout(() => {
-                        loadData();
-                        showToast('🔄 Recargando productos...');
-                    }, 70000);
-                }
-            } catch (err) {
-                showToast('❌ Error generando video');
-            }
-        }
+        <button class="btn btn-primary" id="btnGeneratePDF" disabled>
+          📄 Generar PDF con QRs
+        </button>
+        <button class="btn btn-secondary" id="btnExportCSV" disabled>
+          📊 Exportar CSV
+        </button>
+        <button class="btn btn-secondary" id="btnPreview" disabled>
+          👁️ Vista Previa
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="toast" id="toast"></div>
 
-        // Update city filter based on state
-        function updateCityFilter() {
-            const state = document.getElementById('stateFilter').value;
-            const distributorId = document.getElementById('distributorFilter').value;
-            const citySelect = document.getElementById('cityFilter');
-            
-            // Filter stores by current state/distributor
-            let filteredForCities = stores.filter(s => {
-                const matchDist = !distributorId || s.distributor_id == distributorId;
-                const matchState = !state || s.state === state;
-                return matchDist && matchState;
-            });
-            
-            // Get unique cities
-            const cities = [...new Set(filteredForCities.map(s => s.city).filter(Boolean))].sort();
-            
-            citySelect.innerHTML = '<option value="">Todas</option>';
-            cities.forEach(city => {
-                citySelect.innerHTML += `<option value="${city}">${city}</option>`;
-            });
-        }
+<script>
+const BASE_URL = window.location.origin;
+let products = [];
+let stores = [];
+let selectedProducts = new Set();
+let selectedStores = new Set();
 
-        // Render stores
-        function renderStores() {
-            const distributorId = document.getElementById('distributorFilter').value;
-            const state = document.getElementById('stateFilter').value;
-            const city = document.getElementById('cityFilter').value;
+async function loadData() {
+  try {
+    const [prodRes, storeRes] = await Promise.all([
+      fetch('/api/products'),
+      fetch('/api/stores')
+    ]);
+    products = await prodRes.json();
+    stores = await storeRes.json();
+    
+    document.getElementById('totalProducts').textContent = products.length;
+    document.getElementById('totalStores').textContent = stores.length;
+    
+    populateFilters();
+    renderProducts();
+    renderStores();
+  } catch (err) {
+    showToast('Error cargando datos');
+  }
+}
 
-            filteredStores = stores.filter(s => {
-                const matchDist = !distributorId || s.distributor_id == distributorId;
-                const matchState = !state || s.state === state;
-                const matchCity = !city || s.city === city;
-                return matchDist && matchState && matchCity;
-            });
+function populateFilters() {
+  const distributors = [...new Set(stores.map(s => s.distributor).filter(Boolean))].sort();
+  const states = [...new Set(stores.map(s => s.state).filter(Boolean))].sort();
+  
+  document.getElementById('filterDistributor').innerHTML = '<option value="">Todos</option>' + 
+    distributors.map(d => `<option value="${d}">${d}</option>`).join('');
+  
+  document.getElementById('filterState').innerHTML = '<option value="">Todos</option>' + 
+    states.map(s => `<option value="${s}">${s}</option>`).join('');
+}
 
-            // Update count
-            document.getElementById('storeCount').textContent = filteredStores.length;
+function updateCityFilter() {
+  const state = document.getElementById('filterState').value;
+  const distributor = document.getElementById('filterDistributor').value;
+  
+  let filtered = stores;
+  if (distributor) filtered = filtered.filter(s => s.distributor === distributor);
+  if (state) filtered = filtered.filter(s => s.state === state);
+  
+  const cities = [...new Set(filtered.map(s => s.city).filter(Boolean))].sort();
+  document.getElementById('filterCity').innerHTML = '<option value="">Todas</option>' + 
+    cities.map(c => `<option value="${c}">${c}</option>`).join('');
+}
 
-            const list = document.getElementById('storeList');
-            
-            if (filteredStores.length === 0) {
-                list.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">🏪</div>
-                        <p>No hay tiendas con estos filtros</p>
-                    </div>
-                `;
-                return;
-            }
+function getFilteredProducts() {
+  const search = document.getElementById('searchProduct').value.toLowerCase();
+  const filter = document.getElementById('filterVideo').value;
+  
+  return products.filter(p => {
+    const matchSearch = p.name.toLowerCase().includes(search) || 
+                       (p.sku && p.sku.toLowerCase().includes(search));
+    const matchFilter = filter === '' || 
+                       (filter === 'with' && p.video_url) ||
+                       (filter === 'without' && !p.video_url);
+    return matchSearch && matchFilter;
+  });
+}
 
-            list.innerHTML = filteredStores.map(s => `
-                <div class="store-item ${selectedStores.has(s.id) ? 'selected' : ''}" 
-                     onclick="toggleStore(${s.id})">
-                    <div class="store-checkbox">
-                        ${selectedStores.has(s.id) ? '✓' : ''}
-                    </div>
-                    <div class="store-info">
-                        <div class="store-name">${s.name}</div>
-                        <div class="store-location">📍 ${s.city}, ${s.state}</div>
-                        ${s.whatsapp ? `<div class="store-whatsapp">📱 ${s.whatsapp}</div>` : ''}
-                    </div>
-                </div>
-            `).join('');
+function getFilteredStores() {
+  const distributor = document.getElementById('filterDistributor').value;
+  const state = document.getElementById('filterState').value;
+  const city = document.getElementById('filterCity').value;
+  
+  let filtered = stores;
+  if (distributor) filtered = filtered.filter(s => s.distributor === distributor);
+  if (state) filtered = filtered.filter(s => s.state === state);
+  if (city) filtered = filtered.filter(s => s.city === city);
+  return filtered;
+}
 
-            updateSelectedCount();
-        }
+function renderProducts() {
+  const filtered = getFilteredProducts();
+  const grid = document.getElementById('productsGrid');
+  
+  grid.innerHTML = filtered.map(p => `
+    <div class="product-card ${selectedProducts.has(p.id) ? 'selected' : ''}" onclick="toggleProduct(${p.id})">
+      ${p.video_url ? '<span class="video-badge">▶</span>' : ''}
+      <div class="check">✓</div>
+      <img src="${p.image_url || '/placeholder.jpg'}" alt="${p.name}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%2280%22><rect fill=%22%23333%22 width=%22100%22 height=%2280%22/></svg>'">
+      <div class="name">${p.name}</div>
+    </div>
+  `).join('');
+  
+  // Update select all checkbox state
+  const allSelected = filtered.length > 0 && filtered.every(p => selectedProducts.has(p.id));
+  document.getElementById('selectAllProducts').checked = allSelected;
+}
 
-        // Select product
-        function selectProduct(id) {
-            selectedProduct = products.find(p => p.id === id);
-            renderProducts();
-            updateSummary();
-            updateSteps();
-        }
+function renderStores() {
+  const filtered = getFilteredStores();
+  const list = document.getElementById('storesList');
+  
+  list.innerHTML = filtered.map(s => `
+    <div class="store-item ${selectedStores.has(s.id) ? 'selected' : ''}" onclick="toggleStore(${s.id})">
+      <div class="checkbox"></div>
+      <div class="store-info">
+        <h4>${s.name}</h4>
+        <p>📍 ${s.city || ''}, ${s.state || ''}</p>
+        ${s.whatsapp ? `<span class="whatsapp">📱 ${s.whatsapp}</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+  
+  // Update select all checkbox state
+  const allSelected = filtered.length > 0 && filtered.every(s => selectedStores.has(s.id));
+  document.getElementById('selectAllStores').checked = allSelected;
+}
 
-        // Toggle store selection
-        function toggleStore(id) {
-            if (selectedStores.has(id)) {
-                selectedStores.delete(id);
-            } else {
-                selectedStores.add(id);
-            }
-            renderStores();
-            updateSummary();
-            updateSteps();
-        }
+function toggleProduct(id) {
+  if (selectedProducts.has(id)) {
+    selectedProducts.delete(id);
+  } else {
+    selectedProducts.add(id);
+  }
+  renderProducts();
+  updateSummary();
+}
 
-        // Toggle all stores
-        function toggleAllStores() {
-            const checked = document.getElementById('selectAllStores').checked;
-            if (checked) {
-                filteredStores.forEach(s => selectedStores.add(s.id));
-            } else {
-                filteredStores.forEach(s => selectedStores.delete(s.id));
-            }
-            renderStores();
-            updateSummary();
-            updateSteps();
-        }
+function toggleStore(id) {
+  if (selectedStores.has(id)) {
+    selectedStores.delete(id);
+  } else {
+    selectedStores.add(id);
+  }
+  renderStores();
+  updateSummary();
+}
 
-        // Update selected count
-        function updateSelectedCount() {
-            document.getElementById('selectedStoresCount').textContent = 
-                `${selectedStores.size} seleccionadas`;
-        }
+function updateSummary() {
+  const prodCount = selectedProducts.size;
+  const storeCount = selectedStores.size;
+  const totalQRs = prodCount * storeCount;
+  
+  document.getElementById('selectedProductsCount').textContent = prodCount;
+  document.getElementById('selectedStoresCount').textContent = storeCount;
+  document.getElementById('sumProducts').textContent = prodCount;
+  document.getElementById('sumStores').textContent = storeCount;
+  document.getElementById('totalQRs').textContent = totalQRs.toLocaleString();
+  document.getElementById('formula').textContent = `${prodCount} productos × ${storeCount} tiendas`;
+  
+  // Chips de productos
+  const selectedProds = products.filter(p => selectedProducts.has(p.id));
+  document.getElementById('productChips').innerHTML = selectedProds.slice(0, 8).map(p => 
+    `<span class="chip">${p.name}</span>`
+  ).join('') + (selectedProds.length > 8 ? `<span class="chip">+${selectedProds.length - 8}</span>` : '');
+  
+  // Chips de tiendas
+  const selectedStrs = stores.filter(s => selectedStores.has(s.id));
+  document.getElementById('storeChips').innerHTML = selectedStrs.slice(0, 5).map(s => 
+    `<span class="chip">${s.name.substring(0, 15)}</span>`
+  ).join('') + (selectedStrs.length > 5 ? `<span class="chip">+${selectedStrs.length - 5}</span>` : '');
+  
+  // Habilitar botones
+  const hasSelection = prodCount > 0 && storeCount > 0;
+  document.getElementById('btnGeneratePDF').disabled = !hasSelection;
+  document.getElementById('btnExportCSV').disabled = !hasSelection;
+  document.getElementById('btnPreview').disabled = !hasSelection;
+}
 
-        // Update summary
-        function updateSummary() {
-            const productName = selectedProduct?.name || '-';
-            const storeCount = selectedStores.size;
-            const qrCount = selectedProduct && storeCount > 0 ? storeCount : 0;
-            const pageCount = Math.ceil(qrCount / 6); // 6 QRs por página
+// Select all products
+document.getElementById('selectAllProducts').addEventListener('change', function() {
+  const filtered = getFilteredProducts();
+  if (this.checked) {
+    filtered.forEach(p => selectedProducts.add(p.id));
+  } else {
+    filtered.forEach(p => selectedProducts.delete(p.id));
+  }
+  renderProducts();
+  updateSummary();
+});
 
-            document.getElementById('summaryProduct').textContent = 
-                productName.length > 15 ? productName.substring(0, 15) + '...' : productName;
-            document.getElementById('summaryStores').textContent = storeCount;
-            document.getElementById('summaryQRs').textContent = qrCount;
-            document.getElementById('summaryPages').textContent = pageCount;
+// Select all stores
+document.getElementById('selectAllStores').addEventListener('change', function() {
+  const filtered = getFilteredStores();
+  if (this.checked) {
+    filtered.forEach(s => selectedStores.add(s.id));
+  } else {
+    filtered.forEach(s => selectedStores.delete(s.id));
+  }
+  renderStores();
+  updateSummary();
+});
 
-            // Enable/disable buttons
-            const canGenerate = selectedProduct && storeCount > 0;
-            document.getElementById('btnPreview').disabled = !canGenerate;
-            document.getElementById('btnGenerate').disabled = !canGenerate;
-            document.getElementById('btnCSV').disabled = !canGenerate;
-        }
+// Filters
+document.getElementById('searchProduct').addEventListener('input', renderProducts);
+document.getElementById('filterVideo').addEventListener('change', renderProducts);
+document.getElementById('filterDistributor').addEventListener('change', () => { updateCityFilter(); renderStores(); });
+document.getElementById('filterState').addEventListener('change', () => { updateCityFilter(); renderStores(); });
+document.getElementById('filterCity').addEventListener('change', renderStores);
 
-        // Update wizard steps
-        function updateSteps() {
-            const step1 = document.getElementById('step1');
-            const step2 = document.getElementById('step2');
-            const step3 = document.getElementById('step3');
+// Generate PDF
+document.getElementById('btnGeneratePDF').addEventListener('click', async function() {
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p', 'mm', 'letter');
+  
+  const selectedProds = products.filter(p => selectedProducts.has(p.id));
+  const selectedStrs = stores.filter(s => selectedStores.has(s.id));
+  const total = selectedProds.length * selectedStrs.length;
+  
+  if (total > 1000) {
+    if (!confirm(`Vas a generar ${total.toLocaleString()} QRs. Esto puede tardar unos minutos. ¿Continuar?`)) return;
+  }
+  
+  const progressBar = document.getElementById('progressBar');
+  const progressFill = document.getElementById('progressFill');
+  const progressText = document.getElementById('progressText');
+  progressBar.classList.add('active');
+  this.disabled = true;
+  
+  let qrCount = 0;
+  let pageQRs = 0;
+  const qrsPerPage = 6;
+  const qrSize = 55;
+  const margin = 20;
+  const colWidth = 85;
+  const rowHeight = 85;
+  
+  for (const product of selectedProds) {
+    for (const store of selectedStrs) {
+      if (pageQRs === qrsPerPage) {
+        pdf.addPage();
+        pageQRs = 0;
+      }
+      
+      const col = pageQRs % 2;
+      const row = Math.floor(pageQRs / 2);
+      const x = margin + col * colWidth;
+      const y = margin + row * rowHeight;
+      
+      const url = `${BASE_URL}/p/${product.sku}?store=${store.slug || store.id}`;
+      const qrDiv = document.createElement('div');
+      document.body.appendChild(qrDiv);
+      
+      await new Promise(resolve => {
+        new QRCode(qrDiv, { text: url, width: 180, height: 180 });
+        setTimeout(resolve, 30);
+      });
+      
+      const qrCanvas = qrDiv.querySelector('canvas');
+      const qrDataUrl = qrCanvas.toDataURL('image/png');
+      document.body.removeChild(qrDiv);
+      
+      pdf.addImage(qrDataUrl, 'PNG', x, y, qrSize, qrSize);
+      pdf.setFontSize(9);
+      pdf.setFont(undefined, 'bold');
+      pdf.text(product.name.substring(0, 28), x, y + qrSize + 5);
+      pdf.setFont(undefined, 'normal');
+      pdf.setFontSize(7);
+      pdf.text(store.name.substring(0, 32), x, y + qrSize + 10);
+      pdf.text(`${store.city || ''}, ${store.state || ''}`.substring(0, 32), x, y + qrSize + 14);
+      
+      pageQRs++;
+      qrCount++;
+      
+      const percent = Math.round((qrCount / total) * 100);
+      progressFill.style.width = percent + '%';
+      progressText.textContent = `Generando ${qrCount.toLocaleString()} de ${total.toLocaleString()} QRs...`;
+      
+      if (qrCount % 20 === 0) await new Promise(r => setTimeout(r, 10));
+    }
+  }
+  
+  pdf.save(`QRs_${selectedProds.length}productos_${selectedStrs.length}tiendas.pdf`);
+  
+  progressBar.classList.remove('active');
+  progressText.textContent = '';
+  this.disabled = false;
+  showToast(`✅ PDF generado: ${total.toLocaleString()} QRs`);
+});
 
-            step1.className = selectedProduct ? 'step completed' : 'step active';
-            step2.className = selectedStores.size > 0 ? 'step completed' : (selectedProduct ? 'step active' : 'step');
-            step3.className = selectedProduct && selectedStores.size > 0 ? 'step active' : 'step';
-        }
+// Export CSV
+document.getElementById('btnExportCSV').addEventListener('click', function() {
+  const selectedProds = products.filter(p => selectedProducts.has(p.id));
+  const selectedStrs = stores.filter(s => selectedStores.has(s.id));
+  
+  let csv = 'Producto,SKU,Tienda,Ciudad,Estado,WhatsApp,URL\n';
+  
+  for (const product of selectedProds) {
+    for (const store of selectedStrs) {
+      const url = `${BASE_URL}/p/${product.sku}?store=${store.slug || store.id}`;
+      csv += `"${product.name}","${product.sku}","${store.name}","${store.city || ''}","${store.state || ''}","${store.whatsapp || ''}","${url}"\n`;
+    }
+  }
+  
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `QRs_${selectedProds.length}productos_${selectedStrs.length}tiendas.csv`;
+  a.click();
+  
+  showToast('✅ CSV exportado');
+});
 
-        // Preview QRs
-        async function previewQRs() {
-            console.log('previewQRs called', selectedProduct, selectedStores.size);
-            if (!selectedProduct || selectedStores.size === 0) {
-                alert('Selecciona un producto y al menos una tienda');
-                return;
-            }
+// Preview
+document.getElementById('btnPreview').addEventListener('click', function() {
+  const selectedProds = products.filter(p => selectedProducts.has(p.id));
+  const selectedStrs = stores.filter(s => selectedStores.has(s.id));
+  
+  if (selectedProds.length && selectedStrs.length) {
+    const url = `${BASE_URL}/p/${selectedProds[0].sku}?store=${selectedStrs[0].slug || selectedStrs[0].id}`;
+    window.open(url, '_blank');
+  }
+});
 
-            try {
-                const grid = document.getElementById('qrPreviewGrid');
-                grid.innerHTML = '<p style="color:#888">Generando previews...</p>';
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
 
-                const selectedStoresList = stores.filter(s => selectedStores.has(s.id)).slice(0, 12);
-                grid.innerHTML = '';
-
-                for (const store of selectedStoresList) {
-                    const url = `${BASE_URL}/p/${selectedProduct.sku}?store=${store.slug}`;
-                    
-                    const card = document.createElement('div');
-                    card.className = 'qr-preview-card';
-                    
-                    const canvas = document.createElement('canvas');
-                    card.appendChild(canvas);
-                    
-                    const storeName = document.createElement('div');
-                    storeName.className = 'qr-store-name';
-                    storeName.textContent = store.name;
-                    card.appendChild(storeName);
-                    
-                    const productName = document.createElement('div');
-                    productName.className = 'qr-product-name';
-                    productName.textContent = selectedProduct.name;
-                    card.appendChild(productName);
-                    
-                    grid.appendChild(card);
-                    
-                    // Generar QR
-                    if (typeof QRCode !== 'undefined') {
-                        await QRCode.toCanvas(canvas, url, {
-                            width: 150,
-                            margin: 1,
-                            color: { dark: '#000000', light: '#ffffff' }
-                        });
-                    } else {
-                        canvas.style.background = '#ddd';
-                        canvas.width = 150;
-                        canvas.height = 150;
-                        const ctx = canvas.getContext('2d');
-                        ctx.fillStyle = '#666';
-                        ctx.font = '12px Arial';
-                        ctx.fillText('QR: ' + store.slug, 10, 75);
-                    }
-                }
-
-                if (selectedStores.size > 12) {
-                    const more = document.createElement('div');
-                    more.className = 'qr-preview-card';
-                    more.innerHTML = `<div style="padding: 3rem; color: #666;">+${selectedStores.size - 12} más...</div>`;
-                    grid.appendChild(more);
-                }
-
-                document.getElementById('previewModal').classList.add('active');
-            } catch (err) {
-                console.error('Error en previewQRs:', err);
-                alert('Error generando preview: ' + err.message);
-            }
-        }
-
-        function closePreview() {
-            document.getElementById('previewModal').classList.remove('active');
-        }
-
-        // Generate PDF
-        async function generatePDF() {
-            console.log('generatePDF called', selectedProduct, selectedStores.size);
-            if (!selectedProduct || selectedStores.size === 0) {
-                alert('Selecciona un producto y al menos una tienda');
-                return;
-            }
-
-            try {
-                // Verificar librería jsPDF
-                if (typeof window.jspdf === 'undefined') {
-                    alert('Error: Librería jsPDF no cargada. Recarga la página.');
-                    return;
-                }
-
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF('p', 'mm', 'letter');
-            
-            const selectedStoresList = stores.filter(s => selectedStores.has(s.id));
-            const qrsPerPage = 6;
-            const qrSize = 45;
-            const margin = 15;
-            const colWidth = 90;
-            const rowHeight = 75;
-
-            // Show progress
-            const progress = document.getElementById('progressContainer');
-            const progressFill = document.getElementById('progressFill');
-            const progressText = document.getElementById('progressText');
-            progress.classList.add('active');
-
-            let currentQR = 0;
-            const totalQRs = selectedStoresList.length;
-
-            for (let i = 0; i < selectedStoresList.length; i++) {
-                const store = selectedStoresList[i];
-                const pageIndex = Math.floor(i / qrsPerPage);
-                const positionOnPage = i % qrsPerPage;
-
-                if (positionOnPage === 0 && i > 0) {
-                    doc.addPage();
-                }
-
-                const col = positionOnPage % 2;
-                const row = Math.floor(positionOnPage / 2);
-                const x = margin + (col * colWidth);
-                const y = margin + (row * rowHeight);
-
-                // Generate QR
-                const url = `${BASE_URL}/p/${selectedProduct.sku}?store=${store.slug}`;
-                const canvas = document.createElement('canvas');
-                
-                if (typeof QRCode === 'undefined') {
-                    throw new Error('Librería QRCode no cargada');
-                }
-                
-                await QRCode.toCanvas(canvas, url, { width: 200, margin: 1 });
-                const qrDataUrl = canvas.toDataURL('image/png');
-
-                // Add QR to PDF
-                doc.addImage(qrDataUrl, 'PNG', x, y, qrSize, qrSize);
-                
-                // Add text
-                doc.setFontSize(9);
-                doc.setFont('helvetica', 'bold');
-                doc.text(store.name.substring(0, 25), x, y + qrSize + 5);
-                
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(7);
-                doc.text(`${store.city}, ${store.state}`, x, y + qrSize + 9);
-                doc.text(selectedProduct.name, x, y + qrSize + 13);
-
-                // Update progress
-                currentQR++;
-                const percent = Math.round((currentQR / totalQRs) * 100);
-                progressFill.style.width = percent + '%';
-                progressText.textContent = `Generando QR ${currentQR} de ${totalQRs}...`;
-
-                // Small delay to prevent blocking
-                if (i % 10 === 0) {
-                    await new Promise(r => setTimeout(r, 10));
-                }
-            }
-
-            // Add header to first page
-            doc.setPage(1);
-            
-            // Save
-            const filename = `QRs_${selectedProduct.name.replace(/\s+/g, '_')}_${selectedStoresList.length}_tiendas.pdf`;
-            doc.save(filename);
-
-            progress.classList.remove('active');
-            showToast(`✅ PDF generado: ${totalQRs} QRs`);
-            closePreview();
-            
-            } catch (err) {
-                console.error('Error en generatePDF:', err);
-                document.getElementById('progressContainer').classList.remove('active');
-                alert('Error generando PDF: ' + err.message);
-            }
-        }
-
-        // Download CSV
-        function downloadCSV() {
-            if (!selectedProduct || selectedStores.size === 0) return;
-
-            const selectedStoresList = stores.filter(s => selectedStores.has(s.id));
-            
-            let csv = 'Tienda,Ciudad,Estado,WhatsApp,URL Landing,SKU Producto,Producto\n';
-            
-            selectedStoresList.forEach(store => {
-                const url = `${BASE_URL}/p/${selectedProduct.sku}?store=${store.slug}`;
-                csv += `"${store.name}","${store.city}","${store.state}","${store.whatsapp || ''}","${url}","${selectedProduct.sku}","${selectedProduct.name}"\n`;
-            });
-
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `URLs_${selectedProduct.name.replace(/\s+/g, '_')}_${selectedStoresList.length}_tiendas.csv`;
-            a.click();
-
-            showToast(`✅ CSV exportado: ${selectedStoresList.length} URLs`);
-        }
-
-        // Toast
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toastMessage').textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3000);
-        }
-    </script>
+loadData();
+</script>
 </body>
 </html>
