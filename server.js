@@ -4,7 +4,6 @@ const path = require('path');
 const QRCode = require('qrcode');
 const fs = require('fs');
 const { initDB, query, queryOne, run, scalar } = require('./database');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { execSync } = require('child_process');
 require('dotenv').config();
 
@@ -23,8 +22,8 @@ app.use(express.static(path.join(__dirname, 'public')));
   if (!fs.existsSync(fullPath)) fs.mkdirSync(fullPath, { recursive: true });
 });
 
-// Veo 3.1 config
-const veoClient = process.env.GOOGLE_API_KEY ? new GoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY }) : null;
+// Veo 3.1 config - usando API directa
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 const LOGO_PATH = path.join(__dirname, 'public', 'logo-cesantoni.png');
 const FFMPEG = '/opt/homebrew/bin/ffmpeg';
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -113,6 +112,34 @@ app.put('/api/products/:id', (req, res) => {
     run(`UPDATE products SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, values);
     
     res.json({ message: 'Producto actualizado' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Borrar video de un producto
+app.delete('/api/products/:id/video', (req, res) => {
+  try {
+    const productId = parseInt(req.params.id);
+    const product = queryOne('SELECT * FROM products WHERE id = ?', [productId]);
+    
+    if (!product) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+    
+    // Borrar archivo si existe
+    if (product.video_url) {
+      const videoPath = path.join(__dirname, 'public', product.video_url);
+      if (fs.existsSync(videoPath)) {
+        fs.unlinkSync(videoPath);
+        console.log('🗑️ Video eliminado:', videoPath);
+      }
+    }
+    
+    // Actualizar DB
+    run('UPDATE products SET video_url = NULL WHERE id = ?', [productId]);
+    
+    res.json({ message: 'Video eliminado' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -526,7 +553,7 @@ app.get('/api/promotions/for-product/:sku', (req, res) => {
 // =====================================================
 
 app.post('/api/video/generate', async (req, res) => {
-  if (!veoClient) {
+  if (!GOOGLE_API_KEY) {
     return res.status(500).json({ error: 'GOOGLE_API_KEY no configurado' });
   }
   
@@ -560,47 +587,94 @@ app.post('/api/video/generate', async (req, res) => {
       }
     }
 
-    const prompt = `Cinematic interior video showcasing ${product_name || 'premium ceramic'} floor tiles. Camera slowly glides through an elegant modern living room. The floor prominently features beautiful ceramic tile flooring throughout the entire space. Warm golden natural light streams through large windows. Slow dolly camera movement. Luxurious contemporary furniture. No people. No text overlays. The ceramic tile floor is the hero of the shot, filling most of the frame. Premium real estate video style.`;
-
-    let generateConfig = { aspectRatio: '16:9' };
-    
-    // Si tenemos imagen, usarla como referencia de asset
-    if (imageBase64) {
-      console.log('🎯 Usando imagen del producto como referencia visual...');
-      try {
-        generateConfig.referenceImages = [{
-          referenceImage: {
-            bytesBase64Encoded: imageBase64,
-            mimeType: imageMimeType
-          },
-          referenceType: 'REFERENCE_TYPE_STYLE'
-        }];
-      } catch (e) {
-        console.log('⚠️ Error con referencia de imagen, continuando sin ella');
-        delete generateConfig.referenceImages;
-      }
-    }
+    const prompt = `Animate this floor image. Keep the EXACT same tile pattern and color. Slow camera pan revealing more of the same floor. Do not change or replace the tiles. Maintain the original texture throughout. Soft natural light. Gentle ambient room sounds.`;
 
     let result;
     try {
-      result = await veoClient.models.generateVideos({
-        model: 'veo-3.1-generate-preview',
-        prompt: prompt,
-        config: generateConfig
+      // Image-to-video con API REST directa
+      // Veo usa predictLongRunning, no generateVideos
+      const requestBody = {
+        instances: [{
+          prompt: prompt
+        }],
+        parameters: {
+          aspectRatio: "16:9",
+          sampleCount: 1
+        }
+      };
+      
+      if (imageBase64) {
+        console.log('🎯 Usando imagen como primer frame del video');
+        console.log('📊 Tamaño imagen:', Math.round(imageBase64.length / 1024), 'KB');
+        requestBody.instances[0].image = {
+          bytesBase64Encoded: imageBase64,
+          mimeType: imageMimeType
+        };
+      }
+      
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:predictLongRunning?key=${GOOGLE_API_KEY}`;
+      console.log('🚀 Enviando request a Veo API...');
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
       });
+      
+      const responseText = await response.text();
+      console.log('📡 Status:', response.status);
+      
+      if (!responseText) {
+        throw new Error('Respuesta vacía del API');
+      }
+      
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseErr) {
+        console.log('❌ Respuesta no es JSON:', responseText.substring(0, 500));
+        throw new Error('Respuesta inválida del API');
+      }
+      
+      if (result.error) {
+        console.log('❌ Error API:', result.error.message);
+        throw new Error(result.error.message);
+      }
     } catch (apiErr) {
       // Si falla con imagen, intentar sin ella
-      if (generateConfig.referenceImages) {
-        console.log('⚠️ Reintentando sin imagen de referencia...');
-        delete generateConfig.referenceImages;
-        result = await veoClient.models.generateVideos({
-          model: 'veo-3.1-generate-preview',
-          prompt: prompt,
-          config: generateConfig
+      if (imageBase64) {
+        console.log('⚠️ Reintentando sin imagen...', apiErr.message);
+        const requestBody = {
+          instances: [{ prompt: prompt }],
+          parameters: { aspectRatio: "16:9", sampleCount: 1 }
+        };
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:predictLongRunning?key=${GOOGLE_API_KEY}`;
+        
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
         });
+        
+        const responseText = await response.text();
+        console.log('📡 Retry status:', response.status);
+        
+        if (!responseText) {
+          throw new Error('Respuesta vacía en retry');
+        }
+        
+        result = JSON.parse(responseText);
+        
+        if (result.error) {
+          throw new Error(result.error.message);
+        }
       } else {
         throw apiErr;
       }
+    }
+
+    if (!result || !result.name) {
+      console.log('❌ No se recibió operación válida:', JSON.stringify(result).substring(0, 200));
+      throw new Error('No se recibió ID de operación');
     }
 
     console.log('✅ Operación:', result.name);
@@ -608,12 +682,20 @@ app.post('/api/video/generate', async (req, res) => {
     let videoUri = null;
     for (let i = 0; i < 30; i++) {
       await sleep(10000);
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/${result.name}?key=${process.env.GOOGLE_API_KEY}`);
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/${result.name}?key=${GOOGLE_API_KEY}`);
       const op = await response.json();
       
       if (op.done) {
-        videoUri = op.response.generateVideoResponse.generatedSamples[0].video.uri;
-        console.log('✅ Video generado:', videoUri);
+        // Intentar diferentes estructuras de respuesta
+        videoUri = op.response?.generateVideoResponse?.generatedSamples?.[0]?.video?.uri ||
+                   op.response?.videos?.[0]?.gcsUri ||
+                   op.response?.generatedVideos?.[0]?.video?.uri;
+        
+        if (videoUri) {
+          console.log('✅ Video generado:', videoUri);
+        } else {
+          console.log('⚠️ Respuesta completa:', JSON.stringify(op.response).substring(0, 500));
+        }
         break;
       }
       console.log(`🔍 Verificando... (${i+1}/30)`);
@@ -625,15 +707,47 @@ app.post('/api/video/generate', async (req, res) => {
     }
 
     const tempPath = path.join(__dirname, 'public', 'videos', `temp_${videoId}.mp4`);
+    const tempWithMusic = path.join(__dirname, 'public', 'videos', `temp_music_${videoId}.mp4`);
     const finalPath = path.join(__dirname, 'public', 'videos', `${slug}.mp4`);
 
     console.log('📥 Descargando video...');
-    execSync(`curl -L -o "${tempPath}" "${videoUri}&key=${process.env.GOOGLE_API_KEY}"`);
+    execSync(`curl -L -o "${tempPath}" "${videoUri}&key=${GOOGLE_API_KEY}"`);
 
-    console.log('🎨 Agregando logo...');
-    execSync(`${FFMPEG} -i "${tempPath}" -i "${LOGO_PATH}" -filter_complex "[1:v]scale=250:-1[logo];[0:v][logo]overlay=W-w-20:H-h-20" -c:a copy "${finalPath}" -y`);
+    // Seleccionar música aleatoria
+    const musicDir = path.join(__dirname, 'public', 'music');
+    let musicPath = null;
+    if (fs.existsSync(musicDir)) {
+      const tracks = fs.readdirSync(musicDir).filter(f => f.endsWith('.mp3'));
+      if (tracks.length > 0) {
+        const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
+        musicPath = path.join(musicDir, randomTrack);
+        console.log('🎵 Usando música:', randomTrack);
+      }
+    }
 
-    fs.unlinkSync(tempPath);
+    console.log('🎨 Procesando video (logo + música)...');
+    try {
+      if (musicPath && fs.existsSync(musicPath)) {
+        // Video + Logo + Música
+        // Primero agregar música (mezclar con audio original más bajo)
+        execSync(`${FFMPEG} -i "${tempPath}" -i "${musicPath}" -filter_complex "[0:a]volume=0.3[a1];[1:a]volume=0.7[a2];[a1][a2]amix=inputs=2:duration=shortest[aout]" -map 0:v -map "[aout]" -c:v copy -shortest "${tempWithMusic}" -y`);
+        
+        // Luego agregar logo
+        execSync(`${FFMPEG} -i "${tempWithMusic}" -i "${LOGO_PATH}" -filter_complex "[1:v]scale=200:-1[logo];[0:v][logo]overlay=W-w-20:H-h-20" -c:a copy "${finalPath}" -y`);
+        
+        fs.unlinkSync(tempWithMusic);
+      } else {
+        // Solo logo, sin música
+        execSync(`${FFMPEG} -i "${tempPath}" -i "${LOGO_PATH}" -filter_complex "[1:v]scale=200:-1[logo];[0:v][logo]overlay=W-w-20:H-h-20" -c:a copy "${finalPath}" -y`);
+      }
+      fs.unlinkSync(tempPath);
+    } catch (ffmpegErr) {
+      console.log('⚠️ FFmpeg error:', ffmpegErr.message);
+      // Fallback: usar video sin procesar
+      if (fs.existsSync(tempPath)) {
+        fs.renameSync(tempPath, finalPath);
+      }
+    }
 
     if (product_id) {
       run('UPDATE products SET video_url = ? WHERE id = ?', [`/videos/${slug}.mp4`, product_id]);
