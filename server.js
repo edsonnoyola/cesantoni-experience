@@ -4,7 +4,7 @@ const path = require('path');
 const QRCode = require('qrcode');
 const fs = require('fs');
 const { initDB, query, queryOne, run, scalar } = require('./database');
-const { GoogleGenAI } = require('@google/generative-ai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { execSync } = require('child_process');
 require('dotenv').config();
 
@@ -24,7 +24,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 });
 
 // Veo 3.1 config
-const veoClient = process.env.GOOGLE_API_KEY ? new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY }) : null;
+const veoClient = process.env.GOOGLE_API_KEY ? new GoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY }) : null;
 const LOGO_PATH = path.join(__dirname, 'public', 'logo-cesantoni.png');
 const FFMPEG = '/opt/homebrew/bin/ffmpeg';
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
