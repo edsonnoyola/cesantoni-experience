@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Landings | Cesantoni Experience</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f0f0f;
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
+            border-bottom: 1px solid #333;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .logo {
+            height: 40px;
+        }
+
+        .header-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #c9a45c;
+        }
+
+        .back-btn {
+            background: #222;
+            color: #fff;
+            border: 1px solid #444;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .back-btn:hover {
+            background: #333;
+            border-color: #c9a45c;
+        }
+
+        /* Main Content */
+        .main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #1a1a1a 0%, #141414 100%);
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #c9a45c;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: #888;
+            margin-top: 0.25rem;
+        }
+
+        /* Actions Bar */
+        .actions-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .search-box input {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 0.875rem;
+            width: 100%;
+            outline: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #c9a45c 0%, #a8893d 100%);
+            color: #000;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(201, 164, 92, 0.3);
+        }
+
+        /* Landings Grid */
+        .landings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .landing-card {
+            background: linear-gradient(135deg, #1a1a1a 0%, #141414 100%);
+            border: 1px solid #333;
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .landing-card:hover {
+            border-color: #c9a45c;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        }
+
+        .landing-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: #222;
+        }
+
+        .landing-content {
+            padding: 1.25rem;
+        }
+
+        .landing-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .landing-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .landing-sku {
+            font-size: 0.75rem;
+            color: #888;
+            background: #222;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .landing-description {
+            font-size: 0.875rem;
+            color: #aaa;
+            margin-bottom: 1rem;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .landing-meta {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .meta-item.has-video {
+            color: #4ade80;
+        }
+
+        .meta-item.no-video {
+            color: #f87171;
+        }
+
+        .landing-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-sm {
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid #333;
+            background: #222;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            transition: all 0.2s;
+        }
+
+        .btn-sm:hover {
+            background: #333;
+            border-color: #444;
+        }
+
+        .btn-sm.btn-view {
+            background: #1e3a5f;
+            border-color: #2563eb;
+        }
+
+        .btn-sm.btn-edit {
+            background: #3f3f00;
+            border-color: #eab308;
+        }
+
+        .btn-sm.btn-qr {
+            background: #1f2937;
+            border-color: #6b7280;
+        }
+
+        .btn-sm.btn-video {
+            background: #3b0764;
+            border-color: #a855f7;
+        }
+
+        .btn-sm.btn-delete {
+            background: #450a0a;
+            border-color: #dc2626;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: #1a1a1a;
+            border: 2px dashed #333;
+            border-radius: 16px;
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        .empty-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-text {
+            color: #888;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 16px;
+            max-width: 700px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid #333;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 1.5rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: #fff;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: #ccc;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: #0f0f0f;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.875rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #c9a45c;
+        }
+
+        textarea.form-control {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .product-preview {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem;
+            background: #0f0f0f;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .product-preview img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .product-preview-info h4 {
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .product-preview-info p {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            padding: 1.25rem 1.5rem;
+            border-top: 1px solid #333;
+        }
+
+        .btn-cancel {
+            background: #333;
+            color: #fff;
+            border: 1px solid #444;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-cancel:hover {
+            background: #444;
+        }
+
+        /* Video Preview */
+        .video-preview-container {
+            margin-top: 0.5rem;
+        }
+
+        .video-preview {
+            width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            background: #000;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transform: translateY(150%);
+            transition: transform 0.3s;
+            z-index: 2000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+        }
+
+        .toast.success {
+            border-color: #22c55e;
+        }
+
+        .toast.error {
+            border-color: #ef4444;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .landings-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <img src="/images/logo-cesantoni.png" alt="Cesantoni" class="logo" onerror="this.style.display='none'">
+            <span class="header-title">Gestión de Landings</span>
+        </div>
+        <a href="/" class="back-btn">
+            ← Volver al Dashboard
+        </a>
+    </header>
+
+    <!-- Main -->
+    <main class="main">
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalLandings">0</div>
+                <div class="stat-label">Landings Creados</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="withVideo">0</div>
+                <div class="stat-label">Con Video</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalProducts">105</div>
+                <div class="stat-label">Productos Totales</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="coverage">0%</div>
+                <div class="stat-label">Cobertura</div>
+            </div>
+        </div>
+
+        <!-- Actions Bar -->
+        <div class="actions-bar">
+            <div class="search-box">
+                <span>🔍</span>
+                <input type="text" id="searchInput" placeholder="Buscar landing por nombre...">
+            </div>
+            <button class="btn-primary" onclick="openCreateModal()">
+                <span>+</span> Crear Landing
+            </button>
+        </div>
+
+        <!-- Landings Grid -->
+        <div class="landings-grid" id="landingsGrid">
+            <!-- Se llena dinámicamente -->
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-icon">📄</div>
+            <h3 class="empty-title">No hay landings creados</h3>
+            <p class="empty-text">Crea tu primer landing para comenzar a generar QRs y trackear visitas</p>
+            <button class="btn-primary" onclick="openCreateModal()">
+                <span>+</span> Crear Landing
+            </button>
+        </div>
+    </main>
+
+    <!-- Modal Crear/Editar -->
+    <div class="modal-overlay" id="landingModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Crear Landing</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="landingForm">
+                    <input type="hidden" id="landingId">
+                    
+                    <!-- Selección de Producto -->
+                    <div class="form-group">
+                        <label class="form-label">Producto *</label>
+                        <select class="form-control" id="productSelect" required onchange="onProductChange()">
+                            <option value="">Selecciona un producto...</option>
+                        </select>
+                    </div>
+
+                    <!-- Preview del Producto -->
+                    <div class="product-preview" id="productPreview" style="display: none;">
+                        <img id="previewImage" src="" alt="">
+                        <div class="product-preview-info">
+                            <h4 id="previewName"></h4>
+                            <p id="previewSku"></p>
+                            <p id="previewCategory"></p>
+                        </div>
+                    </div>
+
+                    <!-- Título -->
+                    <div class="form-group">
+                        <label class="form-label">Título del Landing</label>
+                        <input type="text" class="form-control" id="landingTitle" placeholder="Ej: Piso Premium Alabama - Elegancia Natural">
+                    </div>
+
+                    <!-- Descripción -->
+                    <div class="form-group">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-control" id="landingDescription" placeholder="Descripción premium del producto para el landing..."></textarea>
+                    </div>
+
+                    <!-- Texto Promocional -->
+                    <div class="form-group">
+                        <label class="form-label">Texto Promocional</label>
+                        <input type="text" class="form-control" id="landingPromo" placeholder="Ej: 🔥 20% de descuento este mes">
+                    </div>
+
+                    <!-- Video URL -->
+                    <div class="form-group">
+                        <label class="form-label">URL del Video</label>
+                        <input type="text" class="form-control" id="landingVideo" placeholder="/videos/alabama.mp4">
+                        <div class="video-preview-container" id="videoPreviewContainer" style="display: none;">
+                            <video class="video-preview" id="videoPreview" controls></video>
+                        </div>
+                    </div>
+
+                    <!-- Imagen Override -->
+                    <div class="form-group">
+                        <label class="form-label">Imagen Override (opcional)</label>
+                        <input type="text" class="form-control" id="landingImage" placeholder="URL de imagen personalizada">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+                <button class="btn-primary" onclick="saveLanding()">
+                    <span id="saveBtnIcon">💾</span>
+                    <span id="saveBtnText">Guardar Landing</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <span id="toastIcon">✅</span>
+        <span id="toastMessage">Guardado correctamente</span>
+    </div>
+
+    <script>
+        let products = [];
+        let landings = [];
+        let editingId = null;
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', () => {
+            loadProducts();
+            loadLandings();
+            
+            // Search
+            document.getElementById('searchInput').addEventListener('input', filterLandings);
+            
+            // Video preview
+            document.getElementById('landingVideo').addEventListener('input', (e) => {
+                const url = e.target.value;
+                const container = document.getElementById('videoPreviewContainer');
+                const video = document.getElementById('videoPreview');
+                
+                if (url && (url.endsWith('.mp4') || url.includes('/videos/'))) {
+                    video.src = url;
+                    container.style.display = 'block';
+                } else {
+                    container.style.display = 'none';
+                }
+            });
+        });
+
+        // Cargar productos
+        async function loadProducts() {
+            try {
+                const res = await fetch('/api/products');
+                products = await res.json();
+                
+                const select = document.getElementById('productSelect');
+                products.sort((a, b) => a.name.localeCompare(b.name));
+                
+                products.forEach(p => {
+                    const option = document.createElement('option');
+                    option.value = p.id;
+                    option.textContent = `${p.name} (${p.sku})`;
+                    option.dataset.product = JSON.stringify(p);
+                    select.appendChild(option);
+                });
+                
+                document.getElementById('totalProducts').textContent = products.length;
+                updateCoverage();
+            } catch (err) {
+                console.error('Error cargando productos:', err);
+            }
+        }
+
+        // Cargar landings
+        async function loadLandings() {
+            try {
+                const res = await fetch('/api/landings');
+                landings = await res.json();
+                renderLandings();
+                updateStats();
+            } catch (err) {
+                console.error('Error cargando landings:', err);
+            }
+        }
+
+        // Renderizar landings
+        function renderLandings(filtered = null) {
+            const grid = document.getElementById('landingsGrid');
+            const empty = document.getElementById('emptyState');
+            const data = filtered || landings;
+            
+            if (data.length === 0) {
+                grid.style.display = 'none';
+                empty.style.display = 'block';
+                return;
+            }
+            
+            grid.style.display = 'grid';
+            empty.style.display = 'none';
+            
+            grid.innerHTML = data.map(landing => `
+                <div class="landing-card">
+                    <img class="landing-image" 
+                         src="${landing.image_url || landing.product_image || 'https://via.placeholder.com/400x200?text=' + encodeURIComponent(landing.product_name)}" 
+                         alt="${landing.product_name}"
+                         onerror="this.src='https://via.placeholder.com/400x200?text=Sin+imagen'">
+                    <div class="landing-content">
+                        <div class="landing-header">
+                            <span class="landing-name">${landing.title || landing.product_name}</span>
+                            <span class="landing-sku">${landing.product_sku}</span>
+                        </div>
+                        <p class="landing-description">${landing.description || 'Sin descripción'}</p>
+                        <div class="landing-meta">
+                            <span class="meta-item ${landing.video_url ? 'has-video' : 'no-video'}">
+                                ${landing.video_url ? '🎬 Con video' : '📷 Sin video'}
+                            </span>
+                            ${landing.promo_text ? `<span class="meta-item">🏷️ Promo activa</span>` : ''}
+                            <span class="meta-item">📅 ${formatDate(landing.updated_at)}</span>
+                        </div>
+                        <div class="landing-actions">
+                            <button class="btn-sm btn-view" onclick="viewLanding('${landing.product_sku}')">
+                                👁️ Ver
+                            </button>
+                            <button class="btn-sm btn-edit" onclick="editLanding(${landing.id})">
+                                ✏️ Editar
+                            </button>
+                            <button class="btn-sm btn-qr" onclick="generateQR('${landing.product_sku}')">
+                                📱 QR
+                            </button>
+                            ${!landing.video_url ? `
+                                <button class="btn-sm btn-video" onclick="generateVideo(${landing.product_id}, '${landing.product_name}')">
+                                    🎬 Video
+                                </button>
+                            ` : ''}
+                            <button class="btn-sm btn-delete" onclick="deleteLanding(${landing.id})">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Actualizar estadísticas
+        function updateStats() {
+            document.getElementById('totalLandings').textContent = landings.length;
+            document.getElementById('withVideo').textContent = landings.filter(l => l.video_url).length;
+            updateCoverage();
+        }
+
+        function updateCoverage() {
+            const coverage = products.length > 0 
+                ? Math.round((landings.length / products.length) * 100) 
+                : 0;
+            document.getElementById('coverage').textContent = coverage + '%';
+        }
+
+        // Filtrar landings
+        function filterLandings() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            if (!search) {
+                renderLandings();
+                return;
+            }
+            
+            const filtered = landings.filter(l => 
+                l.product_name.toLowerCase().includes(search) ||
+                l.title?.toLowerCase().includes(search) ||
+                l.product_sku.toLowerCase().includes(search)
+            );
+            renderLandings(filtered);
+        }
+
+        // Abrir modal crear
+        function openCreateModal() {
+            editingId = null;
+            document.getElementById('modalTitle').textContent = 'Crear Landing';
+            document.getElementById('landingForm').reset();
+            document.getElementById('productPreview').style.display = 'none';
+            document.getElementById('videoPreviewContainer').style.display = 'none';
+            document.getElementById('productSelect').disabled = false;
+            document.getElementById('landingModal').classList.add('active');
+        }
+
+        // Editar landing
+        function editLanding(id) {
+            const landing = landings.find(l => l.id === id);
+            if (!landing) return;
+            
+            editingId = id;
+            document.getElementById('modalTitle').textContent = 'Editar Landing';
+            document.getElementById('productSelect').value = landing.product_id;
+            document.getElementById('productSelect').disabled = true;
+            document.getElementById('landingTitle').value = landing.title || '';
+            document.getElementById('landingDescription').value = landing.description || '';
+            document.getElementById('landingPromo').value = landing.promo_text || '';
+            document.getElementById('landingVideo').value = landing.video_url || '';
+            document.getElementById('landingImage').value = landing.image_url || '';
+            
+            onProductChange();
+            
+            if (landing.video_url) {
+                document.getElementById('videoPreview').src = landing.video_url;
+                document.getElementById('videoPreviewContainer').style.display = 'block';
+            }
+            
+            document.getElementById('landingModal').classList.add('active');
+        }
+
+        // Cerrar modal
+        function closeModal() {
+            document.getElementById('landingModal').classList.remove('active');
+            editingId = null;
+        }
+
+        // Cambio de producto
+        function onProductChange() {
+            const select = document.getElementById('productSelect');
+            const option = select.options[select.selectedIndex];
+            const preview = document.getElementById('productPreview');
+            
+            if (!option.value) {
+                preview.style.display = 'none';
+                return;
+            }
+            
+            const product = JSON.parse(option.dataset.product);
+            document.getElementById('previewImage').src = product.image_url || '';
+            document.getElementById('previewName').textContent = product.name;
+            document.getElementById('previewSku').textContent = product.sku;
+            document.getElementById('previewCategory').textContent = product.category || 'Porcelánico Premium';
+            preview.style.display = 'flex';
+            
+            // Auto-fill si está vacío
+            if (!document.getElementById('landingTitle').value) {
+                document.getElementById('landingTitle').value = `${product.name} - Porcelánico Premium`;
+            }
+        }
+
+        // Guardar landing
+        async function saveLanding() {
+            const productId = document.getElementById('productSelect').value;
+            if (!productId) {
+                showToast('Selecciona un producto', 'error');
+                return;
+            }
+            
+            const data = {
+                product_id: parseInt(productId),
+                title: document.getElementById('landingTitle').value,
+                description: document.getElementById('landingDescription').value,
+                promo_text: document.getElementById('landingPromo').value,
+                video_url: document.getElementById('landingVideo').value,
+                image_url: document.getElementById('landingImage').value
+            };
+            
+            try {
+                const url = editingId ? `/api/landings/${editingId}` : '/api/landings';
+                const method = editingId ? 'PUT' : 'POST';
+                
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!res.ok) throw new Error('Error al guardar');
+                
+                showToast(editingId ? 'Landing actualizado' : 'Landing creado', 'success');
+                closeModal();
+                loadLandings();
+            } catch (err) {
+                showToast('Error al guardar landing', 'error');
+                console.error(err);
+            }
+        }
+
+        // Eliminar landing
+        async function deleteLanding(id) {
+            if (!confirm('¿Eliminar este landing?')) return;
+            
+            try {
+                await fetch(`/api/landings/${id}`, { method: 'DELETE' });
+                showToast('Landing eliminado', 'success');
+                loadLandings();
+            } catch (err) {
+                showToast('Error al eliminar', 'error');
+            }
+        }
+
+        // Ver landing
+        function viewLanding(sku) {
+            window.open(`/p/${sku}?store=cesantoni-fresnillo`, '_blank');
+        }
+
+        // Generar QR
+        function generateQR(sku) {
+            window.location.href = `/#qr?product=${sku}`;
+        }
+
+        // Generar video
+        async function generateVideo(productId, productName) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+            
+            if (!confirm(`¿Generar video con IA para "${productName}"?\n\nEsto puede tardar ~60 segundos.`)) return;
+            
+            showToast('Generando video con Veo 3.1...', 'success');
+            
+            try {
+                const res = await fetch('/api/video/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        product_id: productId,
+                        product_name: productName,
+                        image_url: product.image_url
+                    })
+                });
+                
+                if (res.ok) {
+                    showToast('Video en proceso. Revisa en ~60 seg.', 'success');
+                }
+            } catch (err) {
+                showToast('Error generando video', 'error');
+            }
+        }
+
+        // Formatear fecha
+        function formatDate(dateStr) {
+            if (!dateStr) return 'N/A';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+        }
+
+        // Toast
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const msg = document.getElementById('toastMessage');
+            
+            icon.textContent = type === 'success' ? '✅' : '❌';
+            msg.textContent = message;
+            toast.className = `toast show ${type}`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

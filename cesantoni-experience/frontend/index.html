@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cesantoni Experience - CRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cesantoni-green: #8BC34A;
+            --cesantoni-dark: #1a1a1a;
+            --cesantoni-gold: #C9A227;
+            --cesantoni-cream: #F5F3EF;
+        }
+        
+        * { box-sizing: border-box; }
+        body { font-family: 'Source Sans 3', sans-serif; background: var(--cesantoni-cream); margin: 0; min-height: 100vh; }
+        .font-display { font-family: 'Playfair Display', serif; }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 100%);
+            min-height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 100;
+        }
+        .sidebar-logo { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-logo h1 { color: var(--cesantoni-green); font-family: 'Playfair Display', serif; font-size: 1.6rem; margin: 0; letter-spacing: 2px; }
+        .sidebar-logo span { color: rgba(255,255,255,0.5); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 3px; }
+        .nav-section { padding: 16px 0; }
+        .nav-section-title { color: rgba(255,255,255,0.4); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 2px; padding: 0 20px; margin-bottom: 8px; }
+        .nav-item { display: flex; align-items: center; gap: 10px; padding: 12px 20px; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.3s; border-left: 3px solid transparent; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: white; }
+        .nav-item.active { background: rgba(139, 195, 74, 0.1); color: var(--cesantoni-green); border-left-color: var(--cesantoni-green); }
+        .nav-item svg { width: 18px; height: 18px; }
+        
+        /* Main */
+        .main-content { margin-left: 260px; padding: 24px 32px; min-height: 100vh; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .page-title { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--cesantoni-dark); margin: 0; }
+        .page-subtitle { color: #666; margin-top: 4px; font-size: 0.9rem; }
+        
+        /* Stats */
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: white; border-radius: 14px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        .stat-card .icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+        .stat-card .icon.green { background: rgba(139, 195, 74, 0.15); color: var(--cesantoni-green); }
+        .stat-card .icon.gold { background: rgba(201, 162, 39, 0.15); color: var(--cesantoni-gold); }
+        .stat-card .icon.dark { background: rgba(26, 26, 26, 0.1); color: var(--cesantoni-dark); }
+        .stat-card .icon.blue { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+        .stat-card .value { font-size: 2rem; font-weight: 700; color: var(--cesantoni-dark); }
+        .stat-card .label { color: #888; font-size: 0.85rem; margin-top: 4px; }
+        .stat-card .trend { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; margin-top: 8px; padding: 3px 8px; border-radius: 12px; }
+        .stat-card .trend.up { background: rgba(34, 197, 94, 0.1); color: #16a34a; }
+        
+        /* Buttons */
+        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.3s; border: none; font-size: 0.9rem; }
+        .btn-primary { background: var(--cesantoni-green); color: white; }
+        .btn-primary:hover { background: #7cb342; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(139, 195, 74, 0.4); }
+        .btn-secondary { background: white; color: var(--cesantoni-dark); border: 1px solid #ddd; }
+        .btn-secondary:hover { border-color: var(--cesantoni-green); color: var(--cesantoni-green); }
+        
+        /* Forms */
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-weight: 600; color: var(--cesantoni-dark); margin-bottom: 6px; font-size: 0.85rem; }
+        .form-input, .form-select { width: 100%; padding: 10px 14px; border: 2px solid #e5e5e5; border-radius: 10px; font-size: 0.95rem; transition: all 0.3s; font-family: inherit; }
+        .form-input:focus, .form-select:focus { outline: none; border-color: var(--cesantoni-green); box-shadow: 0 0 0 3px rgba(139, 195, 74, 0.1); }
+        
+        /* Cards */
+        .card { background: white; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden; }
+        .card-header { padding: 16px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .card-header h3 { font-family: 'Playfair Display', serif; font-size: 1.1rem; margin: 0; }
+        .card-body { padding: 20px; }
+        
+        /* Table */
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px 16px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #888; background: #fafafa; font-weight: 600; }
+        td { padding: 14px 16px; border-bottom: 1px solid #f0f0f0; }
+        tr:hover td { background: rgba(139, 195, 74, 0.03); }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; }
+        .badge.active { background: rgba(34, 197, 94, 0.1); color: #16a34a; }
+        .badge.pending { background: rgba(234, 179, 8, 0.1); color: #ca8a04; }
+        
+        /* Grid */
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        
+        /* Pages */
+        .page-section { display: none; }
+        .page-section.active { display: block; }
+        
+        /* Heat Map */
+        .mexico-map-container { position: relative; background: #fafafa; border-radius: 14px; padding: 16px; }
+        .mexico-map { width: 100%; }
+        .mexico-map .state { fill: #e8f5e9; stroke: #fff; stroke-width: 2; cursor: pointer; transition: all 0.3s; }
+        .mexico-map .state:hover { fill: #81c784; }
+        .mexico-map .state.selected { fill: #43a047; stroke: #2e7d32; stroke-width: 3; }
+        .mexico-map .state.heat-1 { fill: #e8f5e9; }
+        .mexico-map .state.heat-2 { fill: #a5d6a7; }
+        .mexico-map .state.heat-3 { fill: #66bb6a; }
+        .mexico-map .state.heat-4 { fill: #43a047; }
+        .mexico-map .state.heat-5 { fill: #2e7d32; }
+        
+        .map-legend { display: flex; justify-content: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 4px; font-size: 0.7rem; color: #666; }
+        .legend-color { width: 14px; height: 14px; border-radius: 3px; }
+        
+        .map-view-btn { padding: 6px 14px; border: 1px solid #ddd; background: white; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: all 0.3s; }
+        .map-view-btn.active { background: var(--cesantoni-green); color: white; border-color: var(--cesantoni-green); }
+        
+        .detail-panel { background: white; border-radius: 14px; padding: 20px; }
+        .detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #eee; }
+        .detail-header h4 { margin: 0; font-family: 'Playfair Display', serif; font-size: 1.1rem; }
+        .detail-badge { background: rgba(139, 195, 74, 0.15); color: var(--cesantoni-green); padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; }
+        .detail-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+        .detail-stat { text-align: center; padding: 10px 6px; background: #f8f8f8; border-radius: 8px; }
+        .detail-stat-value { font-size: 1.2rem; font-weight: 700; color: var(--cesantoni-dark); }
+        .detail-stat-label { font-size: 0.65rem; color: #888; margin-top: 2px; }
+        
+        .detail-list h5 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #888; margin: 0 0 10px 0; }
+        .detail-list-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+        .list-rank { width: 22px; height: 22px; background: var(--cesantoni-green); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600; }
+        .list-info { flex: 1; }
+        .list-name { font-weight: 600; color: var(--cesantoni-dark); font-size: 0.85rem; }
+        .list-meta { font-size: 0.7rem; color: #888; }
+        .list-trend { font-size: 0.7rem; font-weight: 600; padding: 2px 6px; border-radius: 8px; }
+        .list-trend.up { background: rgba(34, 197, 94, 0.1); color: #16a34a; }
+        .list-trend.down { background: rgba(239, 68, 68, 0.1); color: #dc2626; }
+        
+        /* QR Preview */
+        .qr-preview { background: white; border-radius: 14px; padding: 24px; text-align: center; }
+        .qr-preview h3 { font-family: 'Playfair Display', serif; margin: 0 0 8px 0; }
+        #qr-canvas { margin: 20px auto; }
+        #qr-canvas img { max-width: 200px; border-radius: 8px; }
+        #qr-url { font-size: 0.75rem; color: #888; word-break: break-all; padding: 10px; background: #f5f5f5; border-radius: 6px; margin-top: 12px; }
+        
+        /* Fichas Grid */
+        .fichas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+        .ficha-card { background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.3s; }
+        .ficha-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+        .ficha-card-img { height: 140px; background: linear-gradient(135deg, #d4c4b0, #a89888); }
+        .ficha-card-body { padding: 16px; }
+        .ficha-card h4 { margin: 0 0 4px 0; font-family: 'Playfair Display', serif; }
+        .ficha-card p { margin: 0; color: #888; font-size: 0.85rem; }
+        .ficha-card .tags { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+        .ficha-card .tag { padding: 3px 8px; background: #f0f0f0; border-radius: 12px; font-size: 0.7rem; color: #666; }
+        
+        /* Loading */
+        .loading { text-align: center; padding: 40px; color: #888; }
+        .spinner { width: 32px; height: 32px; border: 3px solid #eee; border-top-color: var(--cesantoni-green); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 12px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Toast */
+        .toast { position: fixed; bottom: 24px; right: 24px; background: var(--cesantoni-dark); color: white; padding: 14px 20px; border-radius: 10px; z-index: 1000; transform: translateY(100px); opacity: 0; transition: all 0.3s; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { background: var(--cesantoni-green); }
+        .toast.error { background: #dc2626; }
+        
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s; }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal { background: white; border-radius: 16px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; transform: scale(0.9); transition: transform 0.3s; }
+        .modal-overlay.active .modal { transform: scale(1); }
+        .modal-header { padding: 20px 24px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h2 { font-family: 'Playfair Display', serif; margin: 0; font-size: 1.3rem; }
+        .modal-close { width: 32px; height: 32px; border-radius: 50%; border: none; background: #f0f0f0; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .modal-body { padding: 24px; }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-logo">
+            <h1>CESANTONI</h1>
+            <span>Experience CRM</span>
+        </div>
+        <div class="nav-section">
+            <div class="nav-section-title">Principal</div>
+            <div class="nav-item active" onclick="showPage('dashboard')">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                Dashboard
+            </div>
+        </div>
+        <div class="nav-section">
+            <div class="nav-section-title">Catálogo</div>
+            <div class="nav-item" onclick="showPage('productos')">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                Productos
+            </div>
+        </div>
+        <div class="nav-section">
+            <div class="nav-section-title">Distribución</div>
+            <div class="nav-item" onclick="showPage('distribuidores')">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                Distribuidores
+            </div>
+            <div class="nav-item" onclick="showPage('tiendas')">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Tiendas
+            </div>
+            <div class="nav-item" onclick="showPage('qr')">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+                Generar QR
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- DASHBOARD -->
+        <section id="page-dashboard" class="page-section active">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Dashboard</h1>
+                    <p class="page-subtitle">Resumen de actividad en tiempo real</p>
+                </div>
+                <button class="btn btn-primary" onclick="seedData()">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    Cargar Datos Demo
+                </button>
+            </div>
+            
+            <div class="stats-grid" id="stats-grid">
+                <div class="stat-card">
+                    <div class="icon green"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></div>
+                    <div class="value" id="stat-escaneos">0</div>
+                    <div class="label">Escaneos Totales</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon blue"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg></div>
+                    <div class="value" id="stat-whatsapp">0</div>
+                    <div class="label">Clicks WhatsApp</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon gold"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
+                    <div class="value" id="stat-conversion">0%</div>
+                    <div class="label">Conversión</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon dark"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg></div>
+                    <div class="value" id="stat-tiendas">0</div>
+                    <div class="label">Tiendas Activas</div>
+                </div>
+            </div>
+            
+            <!-- Heat Map -->
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header">
+                    <h3>🗺️ Mapa de Calor - Escaneos por Estado</h3>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="map-view-btn active">Por Estado</button>
+                        <button class="map-view-btn">Por Tienda</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div style="display: grid; grid-template-columns: 1fr 280px; gap: 20px;">
+                        <div class="mexico-map-container">
+                            <svg viewBox="0 0 800 500" class="mexico-map" id="mexico-map">
+                                <g id="map-states">
+                                    <path class="state heat-2" d="M25,50 L60,45 L75,120 L65,180 L40,200 L20,150 Z" data-state="Baja California"/>
+                                    <path class="state heat-1" d="M40,200 L65,180 L80,250 L70,320 L45,340 L30,280 Z" data-state="Baja California Sur"/>
+                                    <path class="state heat-2" d="M60,45 L150,35 L180,100 L160,170 L75,120 Z" data-state="Sonora"/>
+                                    <path class="state heat-2" d="M150,35 L250,30 L270,120 L240,200 L180,100 Z" data-state="Chihuahua"/>
+                                    <path class="state heat-2" d="M250,30 L340,40 L350,130 L300,180 L270,120 Z" data-state="Coahuila"/>
+                                    <path class="state heat-4" d="M340,40 L400,60 L410,150 L350,130 Z" data-state="Nuevo León"/>
+                                    <path class="state heat-2" d="M400,60 L450,80 L460,200 L410,150 Z" data-state="Tamaulipas"/>
+                                    <path class="state heat-2" d="M75,120 L160,170 L170,260 L100,300 L80,250 Z" data-state="Sinaloa"/>
+                                    <path class="state heat-1" d="M160,170 L240,200 L250,280 L170,260 Z" data-state="Durango"/>
+                                    <path class="state heat-1" d="M240,200 L300,180 L320,270 L250,280 Z" data-state="Zacatecas"/>
+                                    <path class="state heat-2" d="M300,180 L350,130 L380,220 L320,270 Z" data-state="San Luis Potosí"/>
+                                    <path class="state heat-1" d="M100,300 L170,260 L180,320 L120,340 Z" data-state="Nayarit"/>
+                                    <path class="state heat-1" d="M250,280 L280,275 L285,305 L255,310 Z" data-state="Aguascalientes"/>
+                                    <path class="state heat-4" d="M120,340 L180,320 L250,280 L255,310 L240,380 L160,400 Z" data-state="Jalisco"/>
+                                    <path class="state heat-2" d="M285,305 L340,290 L350,340 L300,355 Z" data-state="Guanajuato"/>
+                                    <path class="state heat-3" d="M340,290 L380,280 L385,320 L350,340 Z" data-state="Querétaro"/>
+                                    <path class="state heat-2" d="M380,280 L420,270 L425,310 L385,320 Z" data-state="Hidalgo"/>
+                                    <path class="state heat-1" d="M160,400 L190,390 L195,420 L165,425 Z" data-state="Colima"/>
+                                    <path class="state heat-2" d="M190,390 L240,380 L300,355 L310,410 L250,440 L195,420 Z" data-state="Michoacán"/>
+                                    <path class="state heat-3" d="M350,340 L385,320 L400,360 L370,380 Z" data-state="Estado de México"/>
+                                    <path class="state heat-5" d="M370,360 L390,355 L395,380 L375,385 Z" data-state="CDMX"/>
+                                    <path class="state heat-1" d="M420,340 L440,335 L442,355 L422,358 Z" data-state="Tlaxcala"/>
+                                    <path class="state heat-3" d="M400,360 L450,340 L470,400 L420,420 Z" data-state="Puebla"/>
+                                    <path class="state heat-2" d="M370,380 L400,360 L405,400 L375,410 Z" data-state="Morelos"/>
+                                    <path class="state heat-2" d="M250,440 L310,410 L370,380 L375,410 L340,470 L280,480 Z" data-state="Guerrero"/>
+                                    <path class="state heat-3" d="M420,270 L480,250 L520,350 L470,400 L425,310 Z" data-state="Veracruz"/>
+                                    <path class="state heat-2" d="M340,470 L420,420 L470,400 L490,460 L420,490 Z" data-state="Oaxaca"/>
+                                    <path class="state heat-1" d="M520,350 L580,340 L590,380 L540,390 Z" data-state="Tabasco"/>
+                                    <path class="state heat-2" d="M490,460 L540,390 L590,380 L600,450 L550,480 Z" data-state="Chiapas"/>
+                                    <path class="state heat-1" d="M580,340 L640,300 L660,360 L620,380 L590,380 Z" data-state="Campeche"/>
+                                    <path class="state heat-2" d="M640,300 L720,280 L730,340 L660,360 Z" data-state="Yucatán"/>
+                                    <path class="state heat-3" d="M720,280 L770,290 L780,400 L730,340 Z" data-state="Quintana Roo"/>
+                                </g>
+                            </svg>
+                            <div class="map-legend">
+                                <div class="legend-item"><span class="legend-color" style="background:#e8f5e9;"></span>0-100</div>
+                                <div class="legend-item"><span class="legend-color" style="background:#a5d6a7;"></span>100-250</div>
+                                <div class="legend-item"><span class="legend-color" style="background:#66bb6a;"></span>250-500</div>
+                                <div class="legend-item"><span class="legend-color" style="background:#43a047;"></span>500-750</div>
+                                <div class="legend-item"><span class="legend-color" style="background:#2e7d32;"></span>750+</div>
+                            </div>
+                        </div>
+                        <div class="detail-panel">
+                            <div class="detail-header">
+                                <h4 id="detail-title">Nacional</h4>
+                                <span class="detail-badge">Total</span>
+                            </div>
+                            <div class="detail-stats">
+                                <div class="detail-stat">
+                                    <div class="detail-stat-value" id="detail-escaneos">0</div>
+                                    <div class="detail-stat-label">Escaneos</div>
+                                </div>
+                                <div class="detail-stat">
+                                    <div class="detail-stat-value" id="detail-tiendas">0</div>
+                                    <div class="detail-stat-label">Tiendas</div>
+                                </div>
+                                <div class="detail-stat">
+                                    <div class="detail-stat-value" id="detail-conversion">0%</div>
+                                    <div class="detail-stat-label">Conv.</div>
+                                </div>
+                            </div>
+                            <div class="detail-list" id="top-tiendas-list">
+                                <h5>Top Tiendas</h5>
+                                <div class="loading"><div class="spinner"></div>Cargando...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Top Productos y Actividad -->
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header"><h3>Top Productos</h3></div>
+                    <div class="card-body" id="top-productos" style="padding: 0;">
+                        <div class="loading"><div class="spinner"></div>Cargando...</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><h3>Actividad Reciente</h3></div>
+                    <div class="card-body" id="actividad-reciente" style="padding: 0;">
+                        <div class="loading"><div class="spinner"></div>Cargando...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PRODUCTOS -->
+        <section id="page-productos" class="page-section">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Productos</h1>
+                    <p class="page-subtitle">Catálogo de pisos y revestimientos</p>
+                </div>
+                <button class="btn btn-primary" onclick="openModal('producto-modal')">+ Nuevo Producto</button>
+            </div>
+            <div class="fichas-grid" id="productos-grid">
+                <div class="loading"><div class="spinner"></div>Cargando...</div>
+            </div>
+        </section>
+
+        <!-- DISTRIBUIDORES -->
+        <section id="page-distribuidores" class="page-section">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Distribuidores</h1>
+                    <p class="page-subtitle">Gestiona tus socios comerciales</p>
+                </div>
+                <button class="btn btn-primary" onclick="openModal('distribuidor-modal')">+ Nuevo Distribuidor</button>
+            </div>
+            <div class="grid-3" id="distribuidores-grid">
+                <div class="loading"><div class="spinner"></div>Cargando...</div>
+            </div>
+        </section>
+
+        <!-- TIENDAS -->
+        <section id="page-tiendas" class="page-section">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Tiendas</h1>
+                    <p class="page-subtitle">Puntos de venta y showrooms</p>
+                </div>
+                <button class="btn btn-primary" onclick="openModal('tienda-modal')">+ Nueva Tienda</button>
+            </div>
+            <div id="tiendas-table">
+                <div class="loading"><div class="spinner"></div>Cargando...</div>
+            </div>
+        </section>
+
+        <!-- GENERAR QR -->
+        <section id="page-qr" class="page-section">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Generador de QR</h1>
+                    <p class="page-subtitle">Crea QR codes con tracking automático</p>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header"><h3>Configuración</h3></div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label">Producto</label>
+                            <select class="form-select" id="qr-producto"></select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tienda</label>
+                            <select class="form-select" id="qr-tienda"></select>
+                        </div>
+                        <button class="btn btn-primary" style="width: 100%;" onclick="generarQR()">Generar QR + Landing</button>
+                    </div>
+                </div>
+                <div class="qr-preview" id="qr-result">
+                    <h3>Vista Previa</h3>
+                    <p style="color: #888; font-size: 0.9rem;">Selecciona un producto y tienda para generar</p>
+                    <div id="qr-canvas" style="margin: 24px auto; width: 200px; height: 200px; background: #f5f5f5; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 3rem;">QR</div>
+                    <div id="qr-url" style="display: none;"></div>
+                    <div id="qr-actions" style="display: none; margin-top: 16px;">
+                        <a id="qr-download" class="btn btn-secondary" download>Descargar QR</a>
+                        <a id="qr-landing-link" class="btn btn-primary" target="_blank">Ver Landing</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="producto-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Nuevo Producto</h2>
+                <button class="modal-close" onclick="closeModal('producto-modal')">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="producto-form">
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" class="form-input" name="nombre" required placeholder="Volterra">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tipo</label>
+                            <input type="text" class="form-input" name="tipo" placeholder="Muro Cerámico">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Formato</label>
+                            <input type="text" class="form-input" name="formato" placeholder="30 x 60 cm">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Acabado</label>
+                            <input type="text" class="form-input" name="acabado" placeholder="Piedra Estructurado">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Precio Base (MXN/m²)</label>
+                            <input type="number" class="form-input" name="precio_base" placeholder="549">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Uso</label>
+                            <input type="text" class="form-input" name="uso" placeholder="Interior, Baños">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Guardar Producto</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="distribuidor-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Nuevo Distribuidor</h2>
+                <button class="modal-close" onclick="closeModal('distribuidor-modal')">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="distribuidor-form">
+                    <div class="form-group">
+                        <label class="form-label">Nombre</label>
+                        <input type="text" class="form-input" name="nombre" required placeholder="Interceramic">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tipo</label>
+                        <select class="form-select" name="tipo">
+                            <option>Tienda Especializada</option>
+                            <option>Home Center</option>
+                            <option>Showroom</option>
+                            <option>Distribuidor Mayorista</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Guardar Distribuidor</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="tienda-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Nueva Tienda</h2>
+                <button class="modal-close" onclick="closeModal('tienda-modal')">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="tienda-form">
+                    <div class="form-group">
+                        <label class="form-label">Distribuidor</label>
+                        <select class="form-select" name="distribuidor_id" id="tienda-distribuidor" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Nombre de la Tienda</label>
+                        <input type="text" class="form-input" name="nombre" required placeholder="Interceramic Polanco">
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Estado</label>
+                            <input type="text" class="form-input" name="estado" required placeholder="CDMX">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Ciudad</label>
+                            <input type="text" class="form-input" name="ciudad" required placeholder="Ciudad de México">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Dirección</label>
+                        <input type="text" class="form-input" name="direccion" placeholder="Av. Presidente Masaryk 456">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">WhatsApp</label>
+                        <input type="text" class="form-input" name="whatsapp" placeholder="5215512345678">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Guardar Tienda</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const API = '';
+
+        // =====================
+        // NAVIGATION
+        // =====================
+        function showPage(pageId) {
+            document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('page-' + pageId).classList.add('active');
+            event.currentTarget.classList.add('active');
+            
+            // Load data for page
+            if (pageId === 'dashboard') loadDashboard();
+            if (pageId === 'productos') loadProductos();
+            if (pageId === 'distribuidores') loadDistribuidores();
+            if (pageId === 'tiendas') loadTiendas();
+            if (pageId === 'qr') loadQRForm();
+        }
+
+        // =====================
+        // TOAST
+        // =====================
+        function toast(message, type = 'success') {
+            const t = document.getElementById('toast');
+            t.textContent = message;
+            t.className = 'toast ' + type + ' show';
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        // =====================
+        // MODALS
+        // =====================
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        // =====================
+        // SEED DATA
+        // =====================
+        async function seedData() {
+            try {
+                const res = await fetch(API + '/api/seed', { method: 'POST' });
+                const data = await res.json();
+                toast('Datos de demo cargados: ' + data.escaneos + ' escaneos');
+                loadDashboard();
+            } catch (e) {
+                toast('Error: ' + e.message, 'error');
+            }
+        }
+
+        // =====================
+        // DASHBOARD
+        // =====================
+        async function loadDashboard() {
+            try {
+                // Stats
+                const stats = await fetch(API + '/api/analytics/stats').then(r => r.json());
+                document.getElementById('stat-escaneos').textContent = stats.escaneos.toLocaleString();
+                document.getElementById('stat-whatsapp').textContent = stats.whatsapp_clicks.toLocaleString();
+                document.getElementById('stat-conversion').textContent = stats.conversion + '%';
+                document.getElementById('stat-tiendas').textContent = stats.tiendas;
+                
+                document.getElementById('detail-escaneos').textContent = stats.escaneos.toLocaleString();
+                document.getElementById('detail-tiendas').textContent = stats.tiendas;
+                document.getElementById('detail-conversion').textContent = stats.conversion + '%';
+
+                // Top tiendas
+                const topTiendas = await fetch(API + '/api/analytics/top-tiendas?limit=5').then(r => r.json());
+                document.getElementById('top-tiendas-list').innerHTML = '<h5>Top Tiendas</h5>' + 
+                    topTiendas.map((t, i) => `
+                        <div class="detail-list-item">
+                            <span class="list-rank">${i + 1}</span>
+                            <div class="list-info">
+                                <div class="list-name">${t.nombre}</div>
+                                <div class="list-meta">${t.estado} • ${t.escaneos} escaneos</div>
+                            </div>
+                            <span class="list-trend up">${Math.round(t.whatsapp/Math.max(t.escaneos,1)*100)}%</span>
+                        </div>
+                    `).join('');
+
+                // Top productos
+                const topProductos = await fetch(API + '/api/analytics/top-productos?limit=5').then(r => r.json());
+                document.getElementById('top-productos').innerHTML = '<table><tbody>' + 
+                    topProductos.map(p => `
+                        <tr>
+                            <td style="padding: 12px 16px;">
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <div style="width:36px;height:36px;background:linear-gradient(135deg,#d4c4b0,#a89888);border-radius:6px;"></div>
+                                    <div>
+                                        <div style="font-weight:600;">${p.nombre}</div>
+                                        <div style="font-size:0.75rem;color:#888;">${p.tipo || ''}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="text-align:right;font-weight:600;">${p.escaneos}</td>
+                        </tr>
+                    `).join('') + '</tbody></table>';
+
+                // Actividad reciente
+                const actividad = await fetch(API + '/api/analytics/actividad-reciente?limit=5').then(r => r.json());
+                document.getElementById('actividad-reciente').innerHTML = '<table><tbody>' + 
+                    actividad.map(a => `
+                        <tr>
+                            <td style="padding: 12px 16px;">
+                                <div style="font-weight:600;">${a.producto || 'N/A'}</div>
+                                <div style="font-size:0.75rem;color:#888;">${a.tienda || ''}</div>
+                            </td>
+                            <td><span class="badge ${a.tipo === 'whatsapp' ? 'active' : 'pending'}">${a.tipo}</span></td>
+                            <td style="font-size:0.8rem;color:#888;">${new Date(a.created_at).toLocaleString('es-MX', {hour:'2-digit',minute:'2-digit'})}</td>
+                        </tr>
+                    `).join('') + '</tbody></table>';
+
+                // Heat map click handlers
+                initHeatMap();
+
+            } catch (e) {
+                console.error('Error loading dashboard:', e);
+            }
+        }
+
+        function initHeatMap() {
+            document.querySelectorAll('.mexico-map .state').forEach(state => {
+                state.addEventListener('click', async () => {
+                    document.querySelectorAll('.state').forEach(s => s.classList.remove('selected'));
+                    state.classList.add('selected');
+                    
+                    const estadoName = state.dataset.state;
+                    document.getElementById('detail-title').textContent = estadoName;
+                    
+                    const tiendas = await fetch(API + '/api/analytics/top-tiendas?estado=' + encodeURIComponent(estadoName) + '&limit=4').then(r => r.json());
+                    
+                    const total = tiendas.reduce((a, t) => a + t.escaneos, 0);
+                    const totalWa = tiendas.reduce((a, t) => a + t.whatsapp, 0);
+                    
+                    document.getElementById('detail-escaneos').textContent = total.toLocaleString();
+                    document.getElementById('detail-tiendas').textContent = tiendas.length;
+                    document.getElementById('detail-conversion').textContent = total > 0 ? Math.round(totalWa/total*100) + '%' : '0%';
+                    
+                    document.getElementById('top-tiendas-list').innerHTML = '<h5>Top Tiendas en ' + estadoName + '</h5>' + 
+                        tiendas.map((t, i) => `
+                            <div class="detail-list-item">
+                                <span class="list-rank">${i + 1}</span>
+                                <div class="list-info">
+                                    <div class="list-name">${t.nombre}</div>
+                                    <div class="list-meta">${t.escaneos} escaneos</div>
+                                </div>
+                            </div>
+                        `).join('') || '<p style="color:#888;font-size:0.9rem;">Sin tiendas en este estado</p>';
+                });
+            });
+        }
+
+        // =====================
+        // PRODUCTOS
+        // =====================
+        async function loadProductos() {
+            try {
+                const productos = await fetch(API + '/api/productos').then(r => r.json());
+                document.getElementById('productos-grid').innerHTML = productos.length ? productos.map(p => `
+                    <div class="ficha-card">
+                        <div class="ficha-card-img" style="background:linear-gradient(135deg,#d4c4b0,#a89888);"></div>
+                        <div class="ficha-card-body">
+                            <h4>${p.nombre}</h4>
+                            <p>${p.tipo || ''} • ${p.formato || ''}</p>
+                            <div class="tags">
+                                ${p.uso ? p.uso.split(',').map(t => `<span class="tag">${t.trim()}</span>`).join('') : ''}
+                            </div>
+                        </div>
+                    </div>
+                `).join('') : '<p style="color:#888;">No hay productos. Carga datos demo o crea uno nuevo.</p>';
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        document.getElementById('producto-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = new FormData(e.target);
+            const data = Object.fromEntries(form);
+            
+            await fetch(API + '/api/productos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            closeModal('producto-modal');
+            toast('Producto creado');
+            loadProductos();
+            e.target.reset();
+        });
+
+        // =====================
+        // DISTRIBUIDORES
+        // =====================
+        async function loadDistribuidores() {
+            try {
+                const distribuidores = await fetch(API + '/api/distribuidores').then(r => r.json());
+                document.getElementById('distribuidores-grid').innerHTML = distribuidores.length ? distribuidores.map(d => `
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 style="margin:0 0 4px 0;font-family:'Playfair Display',serif;">${d.nombre}</h4>
+                            <p style="color:#888;font-size:0.85rem;margin:0 0 12px 0;">${d.tipo || ''}</p>
+                            <div style="display:flex;gap:16px;">
+                                <div style="text-align:center;">
+                                    <div style="font-size:1.3rem;font-weight:700;color:var(--cesantoni-green);">${d.total_tiendas}</div>
+                                    <div style="font-size:0.7rem;color:#888;">Tiendas</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('') : '<p style="color:#888;">No hay distribuidores.</p>';
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        document.getElementById('distribuidor-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = new FormData(e.target);
+            const data = Object.fromEntries(form);
+            
+            await fetch(API + '/api/distribuidores', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            closeModal('distribuidor-modal');
+            toast('Distribuidor creado');
+            loadDistribuidores();
+            e.target.reset();
+        });
+
+        // =====================
+        // TIENDAS
+        // =====================
+        async function loadTiendas() {
+            try {
+                const tiendas = await fetch(API + '/api/tiendas').then(r => r.json());
+                document.getElementById('tiendas-table').innerHTML = `
+                    <div class="card">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Tienda</th>
+                                    <th>Distribuidor</th>
+                                    <th>Ubicación</th>
+                                    <th>Escaneos</th>
+                                    <th>WhatsApp</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tiendas.map(t => `
+                                    <tr>
+                                        <td><strong>${t.nombre}</strong></td>
+                                        <td>${t.distribuidor_nombre || '-'}</td>
+                                        <td>${t.ciudad}, ${t.estado}</td>
+                                        <td>${t.total_escaneos || 0}</td>
+                                        <td>${t.total_whatsapp || 0}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                // Update modal select
+                const distribuidores = await fetch(API + '/api/distribuidores').then(r => r.json());
+                document.getElementById('tienda-distribuidor').innerHTML = distribuidores.map(d => 
+                    `<option value="${d.id}">${d.nombre}</option>`
+                ).join('');
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        document.getElementById('tienda-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = new FormData(e.target);
+            const data = Object.fromEntries(form);
+            
+            await fetch(API + '/api/tiendas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            closeModal('tienda-modal');
+            toast('Tienda creada');
+            loadTiendas();
+            e.target.reset();
+        });
+
+        // =====================
+        // QR GENERATOR
+        // =====================
+        async function loadQRForm() {
+            const productos = await fetch(API + '/api/productos').then(r => r.json());
+            const tiendas = await fetch(API + '/api/tiendas').then(r => r.json());
+            
+            document.getElementById('qr-producto').innerHTML = '<option value="">Selecciona producto...</option>' + 
+                productos.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
+            
+            document.getElementById('qr-tienda').innerHTML = '<option value="">Selecciona tienda...</option>' + 
+                tiendas.map(t => `<option value="${t.id}">${t.nombre} (${t.estado})</option>`).join('');
+        }
+
+        async function generarQR() {
+            const producto_id = document.getElementById('qr-producto').value;
+            const tienda_id = document.getElementById('qr-tienda').value;
+            
+            if (!producto_id || !tienda_id) {
+                toast('Selecciona producto y tienda', 'error');
+                return;
+            }
+            
+            try {
+                const res = await fetch(API + '/api/generar-qr', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ producto_id, tienda_id })
+                });
+                
+                const data = await res.json();
+                
+                if (data.error) {
+                    toast(data.error, 'error');
+                    return;
+                }
+                
+                // Show QR
+                document.getElementById('qr-canvas').innerHTML = `<img src="${data.qr_image}" alt="QR Code">`;
+                document.getElementById('qr-url').style.display = 'block';
+                document.getElementById('qr-url').textContent = data.url;
+                document.getElementById('qr-actions').style.display = 'flex';
+                document.getElementById('qr-actions').style.justifyContent = 'center';
+                document.getElementById('qr-actions').style.gap = '12px';
+                document.getElementById('qr-download').href = data.qr_image;
+                document.getElementById('qr-landing-link').href = data.landing_page;
+                
+                toast('QR generado: ' + data.producto + ' @ ' + data.tienda);
+                
+            } catch (e) {
+                toast('Error: ' + e.message, 'error');
+            }
+        }
+
+        // =====================
+        // INIT
+        // =====================
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboard();
+        });
+
+        // Close modals on overlay click
+        document.querySelectorAll('.modal-overlay').forEach(m => {
+            m.addEventListener('click', e => {
+                if (e.target === m) m.classList.remove('active');
+            });
+        });
+    </script>
+</body>
+</html>

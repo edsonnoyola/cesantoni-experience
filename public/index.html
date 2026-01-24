@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cesantoni Experience - CRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #1a1a1a; --accent: #c41e3a; --green: #28a745; --gold: #f4b942; --gray: #f5f5f5; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Source Sans 3', sans-serif; background: var(--gray); color: var(--primary); }
+        
+        /* Sidebar */
+        .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 220px; background: var(--primary); padding: 20px 0; z-index: 100; }
+        .logo { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        .logo h1 { font-family: 'Playfair Display', serif; color: white; font-size: 1.3rem; }
+        .logo span { color: var(--accent); font-size: 0.75rem; }
+        .nav-item { display: flex; align-items: center; gap: 10px; padding: 12px 20px; color: rgba(255,255,255,0.6); cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: white; }
+        .nav-item.active { background: rgba(196,30,58,0.2); color: var(--accent); border-left: 3px solid var(--accent); }
+        
+        /* Main */
+        .main { margin-left: 220px; padding: 20px; min-height: 100vh; }
+        
+        /* Header */
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .page-header h1 { font-family: 'Playfair Display', serif; font-size: 1.6rem; }
+        .period-select { padding: 8px 16px; border: 1px solid #ddd; border-radius: 6px; background: white; }
+        
+        /* Stats Grid */
+        .stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 20px; }
+        .stat-card { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .stat-card .label { font-size: 0.75rem; color: #888; margin-bottom: 4px; text-transform: uppercase; }
+        .stat-card .value { font-size: 1.8rem; font-weight: 700; }
+        .stat-card .change { font-size: 0.75rem; margin-top: 4px; }
+        .stat-card .change.up { color: var(--green); }
+        .stat-card .change.down { color: var(--accent); }
+        
+        /* Grid layouts */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+        .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 20px; }
+        
+        /* Cards */
+        .card { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .card-title { font-family: 'Playfair Display', serif; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
+        .card-action { font-size: 0.75rem; color: var(--accent); cursor: pointer; }
+        
+        /* Heat Map */
+        .mexico-map { position: relative; width: 100%; }
+        .mexico-map svg { width: 100%; height: auto; }
+        .mexico-map path { fill: #e0e0e0; stroke: white; stroke-width: 1; transition: all 0.2s; cursor: pointer; }
+        .mexico-map path:hover { opacity: 0.8; }
+        .heat-0 { fill: #f0f0f0; }
+        .heat-1 { fill: #ffebee; }
+        .heat-2 { fill: #ffcdd2; }
+        .heat-3 { fill: #ef9a9a; }
+        .heat-4 { fill: #e57373; }
+        .heat-5 { fill: #ef5350; }
+        .heat-6 { fill: #c41e3a; }
+        .map-legend { display: flex; justify-content: center; gap: 8px; margin-top: 12px; font-size: 0.7rem; }
+        .map-legend span { display: flex; align-items: center; gap: 4px; }
+        .map-legend .dot { width: 12px; height: 12px; border-radius: 2px; }
+        
+        /* Rankings */
+        .ranking-list { list-style: none; }
+        .ranking-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+        .ranking-item:last-child { border-bottom: none; }
+        .ranking-pos { width: 24px; height: 24px; border-radius: 50%; background: #f0f0f0; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; }
+        .ranking-pos.gold { background: var(--gold); color: white; }
+        .ranking-pos.silver { background: #aaa; color: white; }
+        .ranking-pos.bronze { background: #cd7f32; color: white; }
+        .ranking-info { flex: 1; }
+        .ranking-name { font-size: 0.85rem; font-weight: 600; }
+        .ranking-sub { font-size: 0.7rem; color: #888; }
+        .ranking-value { font-weight: 700; color: var(--accent); }
+        
+        /* Chart */
+        .chart-container { position: relative; height: 200px; }
+        
+        /* Alerts */
+        .alert-item { display: flex; align-items: center; gap: 10px; padding: 10px; background: #fff8e1; border-radius: 6px; margin-bottom: 8px; font-size: 0.8rem; }
+        .alert-item.danger { background: #ffebee; }
+        .alert-item .icon { font-size: 1.2rem; }
+        
+        /* Promos */
+        .promo-mini { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.8rem; }
+        .promo-mini:last-child { border-bottom: none; }
+        .promo-badge { padding: 2px 8px; border-radius: 10px; font-size: 0.65rem; font-weight: 600; }
+        .promo-badge.active { background: #d4edda; color: #155724; }
+        .promo-badge.expiring { background: #fff3cd; color: #856404; }
+        
+        /* Pages */
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        /* Productos page */
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+        .product-card { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.2s; }
+        .product-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .product-card-img { height: 120px; background: #f5f5f5 center/cover; }
+        .product-card-body { padding: 12px; }
+        .product-card-body h4 { font-size: 0.9rem; margin-bottom: 4px; }
+        .product-card-body p { font-size: 0.75rem; color: #888; }
+        
+        /* Filters */
+        .filters-row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+        .filter-chip { padding: 6px 14px; background: white; border: 1px solid #ddd; border-radius: 20px; font-size: 0.8rem; cursor: pointer; }
+        .filter-chip:hover, .filter-chip.active { background: var(--accent); color: white; border-color: var(--accent); }
+        .search-input { padding: 10px 16px; border: 1px solid #ddd; border-radius: 8px; width: 300px; }
+        
+        /* Promo section */
+        .promo-filters { display: flex; flex-direction: column; gap: 12px; }
+        .filter-section { padding-bottom: 12px; border-bottom: 1px solid #eee; }
+        .filter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .filter-label { font-weight: 600; font-size: 0.8rem; color: #666; }
+        .filter-grid { display: flex; flex-wrap: wrap; gap: 6px; max-height: 120px; overflow-y: auto; }
+        .filter-chip2 { padding: 5px 10px; background: #f5f5f5; border: 2px solid transparent; border-radius: 6px; font-size: 0.75rem; cursor: pointer; }
+        .filter-chip2:hover { background: #eee; }
+        .filter-chip2.selected { background: #fef2f2; border-color: var(--accent); }
+        .chip-btn { padding: 3px 8px; font-size: 0.65rem; background: #eee; border: none; border-radius: 4px; cursor: pointer; margin-left: 4px; }
+        
+        .promo-summary { display: flex; justify-content: space-around; background: linear-gradient(135deg, var(--accent), #a01830); color: white; padding: 16px; border-radius: 8px; margin: 12px 0; text-align: center; }
+        .promo-summary .big { font-size: 1.8rem; font-weight: 700; }
+        .promo-summary .lbl { font-size: 0.7rem; opacity: 0.8; }
+        
+        .promo-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+        .promo-form input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; }
+        
+        .promo-group { border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+        .promo-group-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: #fafafa; cursor: pointer; font-size: 0.85rem; }
+        .promo-group-items { display: none; }
+        .promo-group.open .promo-group-items { display: block; }
+        .promo-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-top: 1px solid #eee; font-size: 0.8rem; }
+        
+        /* Buttons */
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: #a01830; }
+        .btn-secondary { background: #eee; color: #333; }
+        .btn-sm { padding: 4px 10px; font-size: 0.7rem; }
+        
+        /* Landing grid */
+        .landing-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+        .landing-card { background: white; border: 1px solid #eee; border-radius: 10px; overflow: hidden; cursor: pointer; transition: all 0.2s; }
+        .landing-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .landing-card-img { height: 100px; background: #f5f5f5 center/cover; }
+        .landing-card-body { padding: 10px; }
+        .landing-card-body h4 { font-size: 0.85rem; }
+        .landing-card-body .price { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+        
+        /* Tooltip */
+        .tooltip { position: absolute; background: var(--primary); color: white; padding: 8px 12px; border-radius: 6px; font-size: 0.75rem; pointer-events: none; z-index: 1000; }
+        
+        /* Badge */
+        .badge { padding: 2px 8px; border-radius: 10px; font-size: 0.65rem; font-weight: 600; }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        
+        @media (max-width: 1200px) {
+            .stats-row { grid-template-columns: repeat(3, 1fr); }
+            .grid-3 { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 900px) {
+            .sidebar { width: 60px; }
+            .sidebar .logo h1, .sidebar .logo span, .nav-item span:last-child { display: none; }
+            .main { margin-left: 60px; }
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .grid-2, .grid-2-1 { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <img src="/images/logo-cesantoni.png" alt="Cesantoni" style="width: 160px; height: auto; margin-bottom: 5px;">
+            <span>Experience CRM</span>
+        </div>
+        <div class="nav-item active" onclick="showPage('dashboard')">📊 <span>Dashboard</span></div>
+        <div class="nav-item" onclick="showPage('productos')">📦 <span>Productos</span></div>
+        <div class="nav-item" onclick="showPage('tiendas')">🏪 <span>Tiendas</span></div>
+        <a href="/qr-tiendas.html" class="nav-item" style="text-decoration:none;color:inherit;">📱 <span>Generar QRs</span></a>
+        <div class="nav-item" onclick="showPage('promociones')">💰 <span>Promociones</span></div>
+        <a href="/landings.html" class="nav-item" style="text-decoration:none;color:inherit;">📄 <span>Landings</span></a>
+    </nav>
+
+    <main class="main">
+        <!-- ==================== DASHBOARD ==================== -->
+        <div id="page-dashboard" class="page active">
+            <div class="page-header">
+                <h1>Dashboard</h1>
+                <select class="period-select" id="period" onchange="loadDashboard()">
+                    <option value="7">Últimos 7 días</option>
+                    <option value="30" selected>Últimos 30 días</option>
+                    <option value="90">Últimos 90 días</option>
+                </select>
+            </div>
+            
+            <!-- KPIs -->
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="label">Escaneos</div>
+                    <div class="value" id="kpi-scans">-</div>
+                    <div class="change up" id="kpi-scans-change">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Clicks WhatsApp</div>
+                    <div class="value" id="kpi-wa">-</div>
+                    <div class="change" id="kpi-wa-change">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Conversión</div>
+                    <div class="value" id="kpi-conv">-</div>
+                    <div class="change" id="kpi-conv-change">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Tiendas Activas</div>
+                    <div class="value" id="kpi-stores">-</div>
+                    <div class="change" id="kpi-stores-change">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Promos Activas</div>
+                    <div class="value" id="kpi-promos">-</div>
+                </div>
+            </div>
+            
+            <!-- Map + Trend -->
+            <div class="grid-2-1">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">🗺️ Escaneos por Estado</span>
+                    </div>
+                    <div class="mexico-map" id="mexico-map"></div>
+                    <div class="map-legend">
+                        <span><div class="dot heat-1"></div> 1-10</span>
+                        <span><div class="dot heat-2"></div> 11-25</span>
+                        <span><div class="dot heat-3"></div> 26-50</span>
+                        <span><div class="dot heat-4"></div> 51-100</span>
+                        <span><div class="dot heat-5"></div> 101-200</span>
+                        <span><div class="dot heat-6"></div> 200+</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">📈 Tendencia</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Rankings -->
+            <div class="grid-3">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">🏆 Top Productos</span>
+                    </div>
+                    <ul class="ranking-list" id="top-products"></ul>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">🏪 Top Tiendas</span>
+                    </div>
+                    <ul class="ranking-list" id="top-stores"></ul>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">📍 Top Estados</span>
+                    </div>
+                    <ul class="ranking-list" id="top-states"></ul>
+                </div>
+            </div>
+            
+            <!-- Alerts + Promos -->
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">⚠️ Alertas</span>
+                    </div>
+                    <div id="alerts-list"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">💰 Promociones</span>
+                        <span class="card-action" onclick="showPage('promociones')">Ver todas →</span>
+                    </div>
+                    <div id="promos-summary"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ==================== PRODUCTOS ==================== -->
+        <div id="page-productos" class="page">
+            <div class="page-header">
+                <h1>Productos</h1>
+                <input type="text" class="search-input" placeholder="Buscar producto..." id="search-products" oninput="filterProducts()">
+            </div>
+            <div class="filters-row" id="category-filters"></div>
+            <div class="products-grid" id="products-grid"></div>
+        </div>
+        
+        <!-- ==================== TIENDAS ==================== -->
+        <div id="page-tiendas" class="page">
+            <div class="page-header">
+                <h1>Tiendas</h1>
+            </div>
+            <div class="filters-row">
+                <select id="filter-dist" onchange="filterStores()"><option value="">Todos los distribuidores</option></select>
+                <select id="filter-state" onchange="filterStores()"><option value="">Todos los estados</option></select>
+            </div>
+            <div id="stores-list"></div>
+        </div>
+        
+        <!-- ==================== QR ==================== -->
+        <div id="page-qr" class="page">
+            <div class="page-header"><h1>Generar QR</h1></div>
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title" style="margin-bottom:16px">Configuración</div>
+                    <div style="display:flex;flex-direction:column;gap:12px">
+                        <select id="qr-product" style="padding:10px;border:1px solid #ddd;border-radius:6px"></select>
+                        <select id="qr-store" style="padding:10px;border:1px solid #ddd;border-radius:6px"></select>
+                        <button class="btn btn-primary" onclick="generateQR()">Generar QR</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title" style="margin-bottom:16px">Preview</div>
+                    <div id="qr-result" style="text-align:center"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ==================== PROMOCIONES ==================== -->
+        <div id="page-promociones" class="page">
+            <div class="page-header"><h1>Promociones</h1></div>
+            
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title" style="margin-bottom:12px">➕ Crear Promoción</div>
+                    <div class="promo-filters">
+                        <div class="filter-section">
+                            <div class="filter-header"><span class="filter-label">1. Productos</span><div><button class="chip-btn" onclick="promoSelectAll('product')">Todos</button><button class="chip-btn" onclick="promoSelectNone('product')">Ninguno</button></div></div>
+                            <div class="filter-grid" id="promo-products"></div>
+                        </div>
+                        <div class="filter-section">
+                            <div class="filter-header"><span class="filter-label">2. Distribuidores</span><div><button class="chip-btn" onclick="promoSelectAll('dist')">Todos</button><button class="chip-btn" onclick="promoSelectNone('dist')">Ninguno</button></div></div>
+                            <div class="filter-grid" id="promo-dists"></div>
+                        </div>
+                        <div class="filter-section">
+                            <div class="filter-header"><span class="filter-label">3. Estados</span><div><button class="chip-btn" onclick="promoSelectAll('state')">Todos</button><button class="chip-btn" onclick="promoSelectNone('state')">Ninguno</button></div></div>
+                            <div class="filter-grid" id="promo-states"></div>
+                        </div>
+                        <div class="filter-section">
+                            <div class="filter-header"><span class="filter-label">4. Ciudades</span><div><button class="chip-btn" onclick="promoSelectAll('city')">Todas</button><button class="chip-btn" onclick="promoSelectNone('city')">Ninguna</button></div></div>
+                            <div class="filter-grid" id="promo-cities"></div>
+                        </div>
+                        <div class="filter-section">
+                            <div class="filter-header"><span class="filter-label">5. Tiendas</span><div><button class="chip-btn" onclick="promoSelectAll('store')">Todas</button><button class="chip-btn" onclick="promoSelectNone('store')">Ninguna</button></div></div>
+                            <div class="filter-grid" id="promo-stores"></div>
+                        </div>
+                    </div>
+                    <div class="promo-summary">
+                        <div><span class="big" id="promo-cnt-prod">0</span><div class="lbl">Productos</div></div>
+                        <div><span class="big" id="promo-cnt-store">0</span><div class="lbl">Tiendas</div></div>
+                        <div><span class="big" id="promo-cnt-total">0</span><div class="lbl">Promos</div></div>
+                    </div>
+                    <div class="promo-form">
+                        <input type="text" id="promo-name" placeholder="Nombre">
+                        <input type="number" id="promo-price" placeholder="Precio $">
+                        <input type="text" id="promo-text" placeholder="Texto">
+                        <input type="date" id="promo-start">
+                        <input type="date" id="promo-end">
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:12px">
+                        <button class="btn btn-secondary" onclick="resetPromoForm()">Limpiar</button>
+                        <button class="btn btn-primary" onclick="createPromos()">Crear</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">📋 Gestionar</span>
+                        <span id="promo-total-badge"></span>
+                    </div>
+                    <div style="display:flex;gap:8px;margin-bottom:12px">
+                        <select id="manage-dist" onchange="renderPromoList()" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px"><option value="">Todos dist.</option></select>
+                        <select id="manage-state" onchange="renderPromoList()" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px"><option value="">Todos estados</option></select>
+                    </div>
+                    <div id="promo-list" style="max-height:400px;overflow-y:auto"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ==================== LANDINGS ==================== -->
+        <div id="page-landings" class="page">
+            <div class="page-header">
+                <h1>Landings</h1>
+                <span class="badge badge-info" style="background:#e3f2fd;color:#1976d2">1 landing = miles de tiendas</span>
+            </div>
+            
+            <!-- Mis Landings Creadas -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">📄 Mis Landings</span>
+                    <button class="btn btn-primary btn-sm" onclick="showCreateLanding()">+ Crear Landing</button>
+                </div>
+                <div id="landings-list"></div>
+            </div>
+            
+            <!-- Modal Crear/Editar Landing -->
+            <div class="card" id="landing-editor" style="display:none">
+                <div class="card-header">
+                    <span class="card-title" id="editor-title">✨ Crear Nueva Landing</span>
+                    <button class="btn btn-sm btn-secondary" onclick="closeLandingEditor()">✕ Cerrar</button>
+                </div>
+                
+                <!-- Paso 1: Seleccionar Producto -->
+                <div id="editor-step1">
+                    <p style="color:#666;margin-bottom:12px">Selecciona un producto de la bodega:</p>
+                    <input type="text" class="search-input" placeholder="Buscar producto..." id="landing-search" oninput="filterLandingProducts()" style="margin-bottom:12px;width:100%">
+                    <div class="products-grid" id="landing-products-grid" style="max-height:250px;overflow-y:auto"></div>
+                </div>
+                
+                <!-- Paso 2: Editar Landing -->
+                <div id="editor-step2" style="display:none">
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #eee">
+                        <img id="editor-product-img" src="" style="width:60px;height:60px;object-fit:cover;border-radius:6px">
+                        <div>
+                            <div style="font-weight:600" id="editor-product-name"></div>
+                            <div style="font-size:0.8rem;color:#888" id="editor-product-sku"></div>
+                        </div>
+                        <button class="btn btn-sm btn-secondary" onclick="backToStep1()" style="margin-left:auto">Cambiar producto</button>
+                    </div>
+                    
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+                        <div>
+                            <div class="form-group" style="margin-bottom:12px">
+                                <label style="font-size:0.75rem;font-weight:600;color:#666">Título</label>
+                                <input type="text" id="landing-title" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px">
+                            </div>
+                            <div class="form-group" style="margin-bottom:12px">
+                                <label style="font-size:0.75rem;font-weight:600;color:#666">Descripción Premium ✨</label>
+                                <textarea id="landing-desc" rows="4" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px"></textarea>
+                                <button class="btn btn-sm btn-secondary" onclick="regenerateDescription()" style="margin-top:6px">🔄 Generar otra descripción</button>
+                            </div>
+                            <div class="form-group" style="margin-bottom:12px">
+                                <label style="font-size:0.75rem;font-weight:600;color:#666">Texto Promocional (opcional)</label>
+                                <input type="text" id="landing-promo-text" placeholder="🔥 HOT SALE - 30% OFF" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px">
+                            </div>
+                            <div class="form-group" style="margin-bottom:12px">
+                                <label style="font-size:0.75rem;font-weight:600;color:#666">Video</label>
+                                <div style="display:flex;gap:8px">
+                                    <input type="text" id="landing-video" placeholder="Se genera con Veo 3.1" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px">
+                                    <button class="btn btn-primary" onclick="generateVideoVeo()" id="btnGenVideo">🎬 Generar</button>
+                                </div>
+                                <div id="video-status" style="font-size:0.75rem;color:#888;margin-top:6px"></div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label style="font-size:0.75rem;font-weight:600;color:#666;display:block;margin-bottom:8px">Vista Previa</label>
+                            <div id="landing-preview" style="border:1px solid #ddd;border-radius:8px;overflow:hidden;background:#1a1a1a"></div>
+                        </div>
+                    </div>
+                    
+                    <div style="display:flex;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid #eee">
+                        <button class="btn btn-primary" onclick="saveLanding()">💾 Guardar Landing</button>
+                        <button class="btn btn-secondary" onclick="previewFullLanding()">👁️ Preview Completo</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal Generar QRs -->
+            <div class="card" id="qr-generator" style="display:none">
+                <div class="card-header">
+                    <span class="card-title">📱 Generar QRs para: <span id="qr-landing-name"></span></span>
+                    <button class="btn btn-sm btn-secondary" onclick="closeQRGenerator()">✕ Cerrar</button>
+                </div>
+                
+                <p style="color:#666;margin-bottom:16px">Selecciona las tiendas donde quieres generar QRs. Cada QR tendrá una URL única que trackea la tienda.</p>
+                
+                <div class="promo-filters">
+                    <div class="filter-section">
+                        <div class="filter-header"><span class="filter-label">Distribuidores</span><div><button class="chip-btn" onclick="qrSelectAll('dist')">Todos</button><button class="chip-btn" onclick="qrSelectNone('dist')">Ninguno</button></div></div>
+                        <div class="filter-grid" id="qr-dists"></div>
+                    </div>
+                    <div class="filter-section">
+                        <div class="filter-header"><span class="filter-label">Estados</span><div><button class="chip-btn" onclick="qrSelectAll('state')">Todos</button><button class="chip-btn" onclick="qrSelectNone('state')">Ninguno</button></div></div>
+                        <div class="filter-grid" id="qr-states"></div>
+                    </div>
+                    <div class="filter-section">
+                        <div class="filter-header"><span class="filter-label">Tiendas</span><div><button class="chip-btn" onclick="qrSelectAll('store')">Todas</button><button class="chip-btn" onclick="qrSelectNone('store')">Ninguna</button></div></div>
+                        <div class="filter-grid" id="qr-stores" style="max-height:200px;overflow-y:auto"></div>
+                    </div>
+                </div>
+                
+                <div style="background:#f8f9fa;padding:20px;border-radius:8px;margin:16px 0;text-align:center">
+                    <span style="font-size:2.5rem;font-weight:700;color:var(--accent)" id="qr-count">0</span>
+                    <div style="color:#666;font-size:0.9rem">QRs / URLs a generar</div>
+                </div>
+                
+                <div style="display:flex;gap:10px;flex-wrap:wrap">
+                    <button class="btn btn-primary" onclick="copyAllURLs()">📋 Copiar URLs</button>
+                    <button class="btn btn-secondary" onclick="downloadQRsPDF()">📄 Descargar QRs PDF</button>
+                    <button class="btn btn-secondary" onclick="downloadURLsCSV()">📊 Exportar CSV</button>
+                </div>
+                
+                <div id="urls-output" style="display:none;margin-top:16px">
+                    <label style="font-size:0.75rem;font-weight:600;color:#666">URLs Generadas:</label>
+                    <textarea id="urls-textarea" rows="8" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-family:monospace;font-size:0.75rem" readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ==================== DATA ====================
+        let products = [], stores = [], promotions = [], scans = [];
+        let trendChart = null;
+        
+        async function loadAllData() {
+            const [p, s, pr] = await Promise.all([
+                fetch('/api/products').then(r => r.json()),
+                fetch('/api/stores').then(r => r.json()),
+                fetch('/api/promotions').then(r => r.json())
+            ]);
+            products = p;
+            stores = s;
+            promotions = pr;
+        }
+        
+        // ==================== NAVIGATION ====================
+        function showPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(`page-${page}`).classList.add('active');
+            event.currentTarget.classList.add('active');
+            
+            if (page === 'dashboard') loadDashboard();
+            if (page === 'productos') loadProducts();
+            if (page === 'tiendas') loadStores();
+            if (page === 'qr') loadQRSelects();
+            if (page === 'promociones') loadPromoSection();
+            if (page === 'landings') loadLandings();
+        }
+        
+        // ==================== DASHBOARD ====================
+        async function loadDashboard() {
+            await loadAllData();
+            const days = parseInt(document.getElementById('period').value);
+            
+            try {
+                const analytics = await fetch(`/api/analytics/overview?days=${days}`).then(r => r.json());
+                
+                // KPIs
+                document.getElementById('kpi-scans').textContent = (analytics.total_scans || 0).toLocaleString();
+                document.getElementById('kpi-wa').textContent = (analytics.whatsapp_clicks || 0).toLocaleString();
+                const conv = analytics.total_scans > 0 ? ((analytics.whatsapp_clicks || 0) / analytics.total_scans * 100).toFixed(1) : 0;
+                document.getElementById('kpi-conv').textContent = conv + '%';
+                document.getElementById('kpi-stores').textContent = analytics.active_stores || stores.length;
+                document.getElementById('kpi-promos').textContent = promotions.filter(p => p.active).length;
+                
+                // Changes (mock for now)
+                document.getElementById('kpi-scans-change').textContent = '↑ 12% vs anterior';
+                document.getElementById('kpi-scans-change').className = 'change up';
+                
+                // Top products
+                const topProducts = analytics.top_products || [];
+                document.getElementById('top-products').innerHTML = topProducts.slice(0, 5).map((p, i) => `
+                    <li class="ranking-item">
+                        <span class="ranking-pos ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}">${i + 1}</span>
+                        <div class="ranking-info">
+                            <div class="ranking-name">${p.product_name || p.name || 'Producto'}</div>
+                        </div>
+                        <span class="ranking-value">${p.scans || p.count || 0}</span>
+                    </li>
+                `).join('') || '<li style="color:#999;padding:20px;text-align:center">Sin datos</li>';
+                
+                // Top stores
+                const topStores = analytics.top_stores || [];
+                document.getElementById('top-stores').innerHTML = topStores.slice(0, 5).map((s, i) => `
+                    <li class="ranking-item">
+                        <span class="ranking-pos ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}">${i + 1}</span>
+                        <div class="ranking-info">
+                            <div class="ranking-name">${s.store_name || s.name || 'Tienda'}</div>
+                            <div class="ranking-sub">${s.state || ''}</div>
+                        </div>
+                        <span class="ranking-value">${s.scans || s.count || 0}</span>
+                    </li>
+                `).join('') || '<li style="color:#999;padding:20px;text-align:center">Sin datos</li>';
+                
+                // Top states
+                const topStates = analytics.top_states || [];
+                document.getElementById('top-states').innerHTML = topStates.slice(0, 5).map((s, i) => `
+                    <li class="ranking-item">
+                        <span class="ranking-pos ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}">${i + 1}</span>
+                        <div class="ranking-info">
+                            <div class="ranking-name">${s.state || 'Estado'}</div>
+                        </div>
+                        <span class="ranking-value">${s.scans || s.count || 0}</span>
+                    </li>
+                `).join('') || '<li style="color:#999;padding:20px;text-align:center">Sin datos</li>';
+                
+                // Render heat map
+                renderMexicoMap(analytics.by_state || topStates);
+                
+                // Render trend chart
+                renderTrendChart(analytics.daily || []);
+                
+            } catch (e) {
+                console.error('Analytics error:', e);
+            }
+            
+            // Alerts
+            renderAlerts();
+            
+            // Promos summary
+            renderPromosSummary();
+        }
+        
+        function renderMexicoMap(stateData) {
+            const stateScans = {};
+            stateData.forEach(s => {
+                stateScans[s.state] = s.scans || s.count || 0;
+            });
+            
+            const getHeatColor = (count) => {
+                if (!count || count === 0) return '#e8e8e8';
+                if (count <= 10) return '#ffcdd2';
+                if (count <= 25) return '#ef9a9a';
+                if (count <= 50) return '#e57373';
+                if (count <= 100) return '#ef5350';
+                if (count <= 200) return '#e53935';
+                return '#c41e3a';
+            };
+            
+            // Mexico SVG paths by state
+            const mexicoSVG = `
+            <svg viewBox="0 0 800 600" style="width:100%;height:auto">
+              <g id="mexico-states">
+                <path id="Baja California" d="M40,50 L80,40 L95,80 L100,150 L90,200 L70,220 L50,180 L35,120 Z" />
+                <path id="Baja California Sur" d="M50,220 L70,230 L85,280 L90,350 L70,380 L45,360 L40,300 L45,250 Z" />
+                <path id="Sonora" d="M100,50 L180,45 L200,80 L210,150 L180,180 L140,190 L100,160 L95,100 Z" />
+                <path id="Chihuahua" d="M180,50 L280,55 L290,120 L280,200 L220,220 L180,190 L185,120 Z" />
+                <path id="Coahuila" d="M280,80 L360,85 L380,140 L360,200 L300,210 L280,160 Z" />
+                <path id="Nuevo León" d="M360,100 L420,110 L430,170 L400,210 L360,200 L365,140 Z" />
+                <path id="Tamaulipas" d="M420,120 L470,140 L480,220 L450,280 L400,260 L390,200 L410,160 Z" />
+                <path id="Sinaloa" d="M140,200 L180,195 L200,250 L190,320 L150,340 L120,290 L130,240 Z" />
+                <path id="Durango" d="M180,200 L260,210 L270,280 L240,330 L190,320 L175,260 Z" />
+                <path id="Zacatecas" d="M260,220 L320,225 L340,290 L310,340 L250,330 L245,270 Z" />
+                <path id="San Luis Potosí" d="M320,230 L390,240 L400,310 L360,360 L310,345 L305,280 Z" />
+                <path id="Nayarit" d="M150,340 L190,330 L200,380 L170,410 L140,390 Z" />
+                <path id="Aguascalientes" d="M270,330 L300,335 L305,360 L280,370 L265,355 Z" />
+                <path id="Jalisco" d="M170,380 L250,360 L280,380 L270,450 L200,470 L160,430 Z" />
+                <path id="Guanajuato" d="M280,360 L340,355 L360,400 L330,430 L290,420 L275,390 Z" />
+                <path id="Querétaro" d="M340,360 L380,365 L390,400 L365,420 L340,405 Z" />
+                <path id="Hidalgo" d="M380,370 L420,375 L430,410 L405,440 L375,425 Z" />
+                <path id="Colima" d="M180,450 L210,445 L220,480 L195,495 L175,475 Z" />
+                <path id="Michoacán" d="M210,430 L290,420 L310,470 L270,510 L210,500 L195,460 Z" />
+                <path id="Ciudad de México" d="M370,430 L395,428 L400,450 L380,460 L365,445 Z" />
+                <path id="Estado de México" d="M330,420 L370,425 L385,470 L350,500 L310,480 L320,440 Z" />
+                <path id="Tlaxcala" d="M400,435 L425,432 L430,455 L410,465 L395,450 Z" />
+                <path id="Morelos" d="M360,470 L390,465 L400,495 L375,510 L355,495 Z" />
+                <path id="Puebla" d="M400,450 L460,445 L480,510 L440,550 L390,530 L385,480 Z" />
+                <path id="Guerrero" d="M270,510 L350,500 L380,550 L340,600 L260,590 L240,550 Z" />
+                <path id="Oaxaca" d="M350,540 L450,520 L490,570 L450,620 L370,610 L340,580 Z" />
+                <path id="Veracruz" d="M420,380 L480,360 L520,420 L510,520 L460,540 L430,480 L440,420 Z" />
+                <path id="Tabasco" d="M510,480 L570,470 L590,510 L560,540 L520,530 Z" />
+                <path id="Chiapas" d="M500,540 L580,530 L620,580 L580,630 L510,620 L490,580 Z" />
+                <path id="Campeche" d="M570,450 L630,440 L650,500 L620,540 L570,520 Z" />
+                <path id="Yucatán" d="M600,380 L680,370 L700,420 L670,460 L620,450 L605,410 Z" />
+                <path id="Quintana Roo" d="M680,400 L730,390 L750,480 L720,550 L680,530 L670,460 L690,420 Z" />
+              </g>
+            </svg>`;
+            
+            document.getElementById('mexico-map').innerHTML = mexicoSVG;
+            
+            // Apply colors to each state
+            document.querySelectorAll('#mexico-states path').forEach(path => {
+                const stateName = path.id;
+                const count = stateScans[stateName] || 0;
+                const color = getHeatColor(count);
+                
+                path.style.fill = color;
+                path.style.stroke = '#fff';
+                path.style.strokeWidth = '1';
+                path.style.cursor = 'pointer';
+                path.style.transition = 'all 0.2s';
+                
+                path.onmouseenter = (e) => {
+                    path.style.opacity = '0.8';
+                    showMapTooltip(e, stateName, count);
+                };
+                path.onmouseleave = () => {
+                    path.style.opacity = '1';
+                    hideMapTooltip();
+                };
+                path.onclick = () => {
+                    alert(`${stateName}: ${count} escaneos`);
+                };
+            });
+        }
+        
+        function showMapTooltip(e, state, count) {
+            let tooltip = document.getElementById('map-tooltip');
+            if (!tooltip) {
+                tooltip = document.createElement('div');
+                tooltip.id = 'map-tooltip';
+                tooltip.className = 'tooltip';
+                document.body.appendChild(tooltip);
+            }
+            tooltip.innerHTML = `<strong>${state}</strong><br>${count} escaneos`;
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.pageX + 10) + 'px';
+            tooltip.style.top = (e.pageY - 30) + 'px';
+        }
+        
+        function hideMapTooltip() {
+            const tooltip = document.getElementById('map-tooltip');
+            if (tooltip) tooltip.style.display = 'none';
+        }
+        
+        function renderTrendChart(dailyData) {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            
+            if (trendChart) trendChart.destroy();
+            
+            // Generate sample data if none
+            const labels = [];
+            const data = [];
+            const days = parseInt(document.getElementById('period').value);
+            
+            for (let i = days - 1; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                labels.push(d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }));
+                
+                const found = dailyData.find(dd => dd.date === d.toISOString().split('T')[0]);
+                data.push(found ? found.scans : Math.floor(Math.random() * 50) + 10);
+            }
+            
+            trendChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Escaneos',
+                        data,
+                        borderColor: '#c41e3a',
+                        backgroundColor: 'rgba(196,30,58,0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, grid: { color: '#f0f0f0' } }
+                    }
+                }
+            });
+        }
+        
+        function renderAlerts() {
+            const alerts = [];
+            
+            // Promos expiring soon
+            const now = new Date();
+            const soon = new Date();
+            soon.setDate(soon.getDate() + 7);
+            
+            const expiring = promotions.filter(p => {
+                const end = new Date(p.end_date);
+                return p.active && end > now && end <= soon;
+            });
+            
+            if (expiring.length > 0) {
+                alerts.push({ icon: '⏰', text: `${expiring.length} promociones vencen en 7 días`, type: 'warning' });
+            }
+            
+            // Inactive promos
+            const inactive = promotions.filter(p => !p.active).length;
+            if (inactive > 0) {
+                alerts.push({ icon: '💤', text: `${inactive} promociones inactivas`, type: '' });
+            }
+            
+            // No promos
+            if (promotions.length === 0) {
+                alerts.push({ icon: '📢', text: 'No hay promociones creadas', type: 'danger' });
+            }
+            
+            document.getElementById('alerts-list').innerHTML = alerts.length > 0 
+                ? alerts.map(a => `<div class="alert-item ${a.type}"><span class="icon">${a.icon}</span>${a.text}</div>`).join('')
+                : '<p style="color:#999;text-align:center;padding:20px">Sin alertas</p>';
+        }
+        
+        function renderPromosSummary() {
+            const active = promotions.filter(p => p.active);
+            const now = new Date();
+            const soon = new Date();
+            soon.setDate(soon.getDate() + 7);
+            
+            const expiring = active.filter(p => new Date(p.end_date) <= soon);
+            
+            let html = `<div class="promo-mini"><span>Activas</span><span class="promo-badge active">${active.length}</span></div>`;
+            if (expiring.length > 0) {
+                html += `<div class="promo-mini"><span>Por vencer (7 días)</span><span class="promo-badge expiring">${expiring.length}</span></div>`;
+            }
+            html += `<div class="promo-mini"><span>Total</span><span>${promotions.length}</span></div>`;
+            
+            document.getElementById('promos-summary').innerHTML = html;
+        }
+        
+        // ==================== PRODUCTOS ====================
+        function loadProducts() {
+            const grid = document.getElementById('products-grid');
+            grid.innerHTML = products.map(p => `
+                <div class="product-card" onclick="openProduct(${p.id})">
+                    <div class="product-card-img" style="background-image:url('${p.image_url || ''}')"></div>
+                    <div class="product-card-body">
+                        <h4>${p.name}</h4>
+                        <p>${p.sku || ''} • $${p.base_price || 450}/m²</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function filterProducts() {
+            const search = document.getElementById('search-products').value.toLowerCase();
+            const filtered = products.filter(p => p.name.toLowerCase().includes(search));
+            document.getElementById('products-grid').innerHTML = filtered.map(p => `
+                <div class="product-card" onclick="openProduct(${p.id})">
+                    <div class="product-card-img" style="background-image:url('${p.image_url || ''}')"></div>
+                    <div class="product-card-body">
+                        <h4>${p.name}</h4>
+                        <p>${p.sku || ''} • $${p.base_price || 450}/m²</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function openProduct(id) {
+            const p = products.find(pr => pr.id === id);
+            if (p) window.open(p.url || `https://cesantoni.com.mx/producto/${p.slug}`, '_blank');
+        }
+        
+        // ==================== TIENDAS ====================
+        function loadStores() {
+            const dists = [...new Set(stores.map(s => s.distributor_name))].filter(Boolean).sort();
+            const states = [...new Set(stores.map(s => s.state))].filter(Boolean).sort();
+            
+            document.getElementById('filter-dist').innerHTML = '<option value="">Todos los distribuidores</option>' + dists.map(d => `<option>${d}</option>`).join('');
+            document.getElementById('filter-state').innerHTML = '<option value="">Todos los estados</option>' + states.map(s => `<option>${s}</option>`).join('');
+            
+            filterStores();
+        }
+        
+        function filterStores() {
+            const dist = document.getElementById('filter-dist').value;
+            const state = document.getElementById('filter-state').value;
+            
+            let filtered = stores;
+            if (dist) filtered = filtered.filter(s => s.distributor_name === dist);
+            if (state) filtered = filtered.filter(s => s.state === state);
+            
+            // Group by distributor
+            const groups = {};
+            filtered.forEach(s => {
+                const key = s.distributor_name || 'Otro';
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(s);
+            });
+            
+            document.getElementById('stores-list').innerHTML = Object.entries(groups).map(([dist, strs]) => `
+                <div class="card" style="margin-bottom:12px">
+                    <div class="card-header">
+                        <span class="card-title">${dist}</span>
+                        <span class="badge badge-success">${strs.length} tiendas</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
+                        ${strs.map(s => `<div style="padding:8px;background:#f9f9f9;border-radius:6px;font-size:0.8rem">
+                            <strong>${s.name}</strong><br>
+                            <span style="color:#888">${s.city || ''}, ${s.state || ''}</span>
+                        </div>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // ==================== QR ====================
+        function loadQRSelects() {
+            document.getElementById('qr-product').innerHTML = '<option value="">Selecciona producto</option>' + 
+                products.map(p => `<option value="${p.slug || p.sku}">${p.name}</option>`).join('');
+            document.getElementById('qr-store').innerHTML = '<option value="">Selecciona tienda</option>' + 
+                stores.map(s => `<option value="${s.slug}">${s.name} - ${s.state || ''}</option>`).join('');
+        }
+        
+        async function generateQR() {
+            const product = document.getElementById('qr-product').value;
+            const store = document.getElementById('qr-store').value;
+            
+            if (!product || !store) return alert('Selecciona producto y tienda');
+            
+            const url = `${location.origin}/p/${product}?store=${store}`;
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+            
+            document.getElementById('qr-result').innerHTML = `
+                <img src="${qrUrl}" style="margin-bottom:12px"><br>
+                <code style="font-size:0.7rem;word-break:break-all">${url}</code><br>
+                <button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="window.open('${qrUrl}')">Descargar</button>
+            `;
+        }
+        
+        // ==================== PROMOCIONES ====================
+        let promoSelected = { product: new Set(), dist: new Set(), state: new Set(), city: new Set(), store: new Set() };
+        
+        function loadPromoSection() {
+            renderPromoFilters();
+            renderPromoList();
+            
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('promo-start').value = today;
+            const next = new Date(); next.setMonth(next.getMonth() + 1);
+            document.getElementById('promo-end').value = next.toISOString().split('T')[0];
+        }
+        
+        function renderPromoFilters() {
+            // Products
+            document.getElementById('promo-products').innerHTML = products.map(p => 
+                `<div class="filter-chip2 ${promoSelected.product.has(p.id)?'selected':''}" onclick="promoToggle('product',${p.id})">${p.name}</div>`
+            ).join('');
+            
+            // Distributors
+            const dists = [...new Set(stores.map(s => s.distributor_name))].filter(Boolean).sort();
+            document.getElementById('promo-dists').innerHTML = dists.map(d => 
+                `<div class="filter-chip2 ${promoSelected.dist.has(d)?'selected':''}" onclick="promoToggle('dist','${d}')">${d}</div>`
+            ).join('');
+            
+            // States
+            let filtered = stores;
+            if (promoSelected.dist.size) filtered = filtered.filter(s => promoSelected.dist.has(s.distributor_name));
+            const states = [...new Set(filtered.map(s => s.state))].filter(Boolean).sort();
+            document.getElementById('promo-states').innerHTML = states.map(st => 
+                `<div class="filter-chip2 ${promoSelected.state.has(st)?'selected':''}" onclick="promoToggle('state','${st}')">${st}</div>`
+            ).join('') || '<span style="color:#999;font-size:0.75rem">Selecciona distribuidores</span>';
+            
+            // Cities
+            if (promoSelected.state.size) filtered = filtered.filter(s => promoSelected.state.has(s.state));
+            const cities = [...new Set(filtered.map(s => s.city))].filter(Boolean).sort();
+            document.getElementById('promo-cities').innerHTML = cities.map(c => 
+                `<div class="filter-chip2 ${promoSelected.city.has(c)?'selected':''}" onclick="promoToggle('city','${c}')">${c}</div>`
+            ).join('') || '<span style="color:#999;font-size:0.75rem">Selecciona estados</span>';
+            
+            // Stores
+            if (promoSelected.city.size) filtered = filtered.filter(s => promoSelected.city.has(s.city));
+            document.getElementById('promo-stores').innerHTML = filtered.slice(0, 50).map(s => 
+                `<div class="filter-chip2 ${promoSelected.store.has(s.id)?'selected':''}" onclick="promoToggle('store',${s.id})">${s.name}</div>`
+            ).join('') || '<span style="color:#999;font-size:0.75rem">No hay tiendas</span>';
+            
+            updatePromoCounts();
+            
+            // Manage filters
+            document.getElementById('manage-dist').innerHTML = '<option value="">Todos dist.</option>' + dists.map(d => `<option>${d}</option>`).join('');
+            document.getElementById('manage-state').innerHTML = '<option value="">Todos estados</option>' + [...new Set(stores.map(s=>s.state))].filter(Boolean).sort().map(s => `<option>${s}</option>`).join('');
+        }
+        
+        function promoToggle(type, val) {
+            promoSelected[type].has(val) ? promoSelected[type].delete(val) : promoSelected[type].add(val);
+            if (type === 'dist') { promoSelected.state.clear(); promoSelected.city.clear(); promoSelected.store.clear(); }
+            if (type === 'state') { promoSelected.city.clear(); promoSelected.store.clear(); }
+            if (type === 'city') promoSelected.store.clear();
+            renderPromoFilters();
+        }
+        
+        function promoSelectAll(type) {
+            if (type === 'product') products.forEach(p => promoSelected.product.add(p.id));
+            else if (type === 'store') getFilteredPromoStores().forEach(s => promoSelected.store.add(s.id));
+            else {
+                const items = document.querySelectorAll(`#promo-${type}s .filter-chip2`);
+                items.forEach(el => promoSelected[type].add(el.textContent.trim()));
+            }
+            renderPromoFilters();
+        }
+        
+        function promoSelectNone(type) {
+            promoSelected[type].clear();
+            if (type === 'dist') { promoSelected.state.clear(); promoSelected.city.clear(); promoSelected.store.clear(); }
+            if (type === 'state') { promoSelected.city.clear(); promoSelected.store.clear(); }
+            if (type === 'city') promoSelected.store.clear();
+            renderPromoFilters();
+        }
+        
+        function getFilteredPromoStores() {
+            let f = stores;
+            if (promoSelected.dist.size) f = f.filter(s => promoSelected.dist.has(s.distributor_name));
+            if (promoSelected.state.size) f = f.filter(s => promoSelected.state.has(s.state));
+            if (promoSelected.city.size) f = f.filter(s => promoSelected.city.has(s.city));
+            return f;
+        }
+        
+        function getSelectedPromoStoreIds() {
+            return promoSelected.store.size ? Array.from(promoSelected.store) : getFilteredPromoStores().map(s => s.id);
+        }
+        
+        function updatePromoCounts() {
+            const p = promoSelected.product.size, s = getSelectedPromoStoreIds().length;
+            document.getElementById('promo-cnt-prod').textContent = p;
+            document.getElementById('promo-cnt-store').textContent = s;
+            document.getElementById('promo-cnt-total').textContent = p * s;
+        }
+        
+        async function createPromos() {
+            const name = document.getElementById('promo-name').value;
+            const price = document.getElementById('promo-price').value;
+            const text = document.getElementById('promo-text').value;
+            const start = document.getElementById('promo-start').value;
+            const end = document.getElementById('promo-end').value;
+            
+            if (!name || !price || !start || !end) return alert('Completa los campos');
+            if (!promoSelected.product.size) return alert('Selecciona productos');
+            
+            const storeIds = getSelectedPromoStoreIds();
+            if (!storeIds.length) return alert('Selecciona tiendas');
+            
+            let created = 0;
+            for (const pid of promoSelected.product) {
+                for (const sid of storeIds) {
+                    const store = stores.find(s => s.id === sid);
+                    await fetch('/api/promotions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, product_id: pid, scope_type: 'store', scope_value: store.slug, promo_price: +price, promo_text: text, start_date: start, end_date: end })
+                    });
+                    created++;
+                }
+            }
+            
+            alert(`✅ ${created} promociones creadas`);
+            resetPromoForm();
+            promotions = await fetch('/api/promotions').then(r => r.json());
+            renderPromoList();
+        }
+        
+        function resetPromoForm() {
+            ['promo-name', 'promo-price', 'promo-text'].forEach(id => document.getElementById(id).value = '');
+            Object.keys(promoSelected).forEach(k => promoSelected[k].clear());
+            renderPromoFilters();
+        }
+        
+        function renderPromoList() {
+            const distF = document.getElementById('manage-dist').value;
+            const stateF = document.getElementById('manage-state').value;
+            
+            let filtered = promotions.filter(p => {
+                const store = stores.find(s => s.slug === p.scope_value);
+                if (distF && store?.distributor_name !== distF) return false;
+                if (stateF && store?.state !== stateF) return false;
+                return true;
+            });
+            
+            document.getElementById('promo-total-badge').innerHTML = `<span class="badge badge-success">${promotions.length} total</span>`;
+            
+            if (!filtered.length) {
+                document.getElementById('promo-list').innerHTML = '<p style="color:#999;text-align:center;padding:20px">No hay promociones</p>';
+                return;
+            }
+            
+            const groups = {};
+            filtered.forEach(p => {
+                const store = stores.find(s => s.slug === p.scope_value);
+                const key = store?.distributor_name || 'Otro';
+                if (!groups[key]) groups[key] = [];
+                groups[key].push({ ...p, store });
+            });
+            
+            document.getElementById('promo-list').innerHTML = Object.entries(groups).map(([dist, promos]) => `
+                <div class="promo-group" onclick="this.classList.toggle('open')">
+                    <div class="promo-group-header">
+                        <span><strong>${dist}</strong> <span class="badge badge-success">${promos.length}</span></span>
+                        <div>
+                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();togglePromoGroup('${dist}',true)">On</button>
+                            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();togglePromoGroup('${dist}',false)">Off</button>
+                        </div>
+                    </div>
+                    <div class="promo-group-items">
+                        ${promos.map(p => `
+                            <div class="promo-item">
+                                <div>
+                                    <strong>${p.product_name || 'Producto'}</strong>
+                                    <span class="badge ${p.active?'badge-success':'badge-danger'}">${p.active?'ON':'OFF'}</span><br>
+                                    <small style="color:#888">${p.store?.name || ''}</small>
+                                </div>
+                                <div style="display:flex;align-items:center;gap:8px">
+                                    <span style="font-weight:700;color:#c41e3a">$${p.promo_price}</span>
+                                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();window.open('/p/${p.product_sku || ''}?store=${p.scope_value}')">👁️</button>
+                                    <button class="btn btn-sm ${p.active?'btn-secondary':'btn-primary'}" onclick="event.stopPropagation();togglePromo(${p.id})">${p.active?'Off':'On'}</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function togglePromoGroup(dist, activate) {
+            const toToggle = promotions.filter(p => {
+                const store = stores.find(s => s.slug === p.scope_value);
+                return store?.distributor_name === dist && p.active !== activate;
+            });
+            for (const p of toToggle) await fetch(`/api/promotions/${p.id}/toggle`, { method: 'PUT' });
+            promotions = await fetch('/api/promotions').then(r => r.json());
+            renderPromoList();
+        }
+        
+        async function togglePromo(id) {
+            await fetch(`/api/promotions/${id}/toggle`, { method: 'PUT' });
+            promotions = await fetch('/api/promotions').then(r => r.json());
+            renderPromoList();
+        }
+        
+        // ==================== LANDINGS ====================
+        let landings = [];
+        let selectedLandingProduct = null;
+        let editingLandingId = null;
+        let qrSelectedLanding = null;
+        let qrSelected = { dist: new Set(), state: new Set(), store: new Set() };
+        
+        async function loadLandings() {
+            try {
+                landings = await fetch('/api/landings').then(r => r.json());
+            } catch(e) {
+                landings = [];
+            }
+            renderLandingsList();
+        }
+        
+        function renderLandingsList() {
+            if (!landings.length) {
+                document.getElementById('landings-list').innerHTML = `
+                    <div style="text-align:center;padding:40px;color:#888">
+                        <div style="font-size:3rem;margin-bottom:16px">📄</div>
+                        <p>No hay landings creadas aún</p>
+                        <p style="font-size:0.85rem">Haz click en "+ Crear Landing" para comenzar</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            document.getElementById('landings-list').innerHTML = `
+                <table style="width:100%;border-collapse:collapse">
+                    <thead>
+                        <tr style="border-bottom:2px solid #eee;text-align:left">
+                            <th style="padding:12px 8px;font-size:0.75rem;color:#888;text-transform:uppercase">Producto</th>
+                            <th style="padding:12px 8px;font-size:0.75rem;color:#888;text-transform:uppercase">Video</th>
+                            <th style="padding:12px 8px;font-size:0.75rem;color:#888;text-transform:uppercase">Promo</th>
+                            <th style="padding:12px 8px;font-size:0.75rem;color:#888;text-transform:uppercase">Creado</th>
+                            <th style="padding:12px 8px;font-size:0.75rem;color:#888;text-transform:uppercase">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${landings.map(l => `
+                            <tr style="border-bottom:1px solid #f0f0f0">
+                                <td style="padding:12px 8px">
+                                    <div style="display:flex;align-items:center;gap:10px">
+                                        <img src="${l.product_image || l.image_url || ''}" style="width:40px;height:40px;object-fit:cover;border-radius:4px" onerror="this.src='https://via.placeholder.com/40'">
+                                        <div>
+                                            <div style="font-weight:600">${l.title || l.product_name}</div>
+                                            <div style="font-size:0.75rem;color:#888">${l.product_sku || ''}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding:12px 8px">
+                                    ${l.video_url ? '<span style="color:#28a745">✅ Video</span>' : '<span style="color:#999">Sin video</span>'}
+                                </td>
+                                <td style="padding:12px 8px">
+                                    ${l.promo_text ? `<span class="badge" style="background:#fff3cd;color:#856404">${l.promo_text}</span>` : '-'}
+                                </td>
+                                <td style="padding:12px 8px;font-size:0.85rem;color:#666">
+                                    ${new Date(l.created_at).toLocaleDateString('es-MX')}
+                                </td>
+                                <td style="padding:12px 8px">
+                                    <div style="display:flex;gap:6px">
+                                        <button class="btn btn-sm btn-primary" onclick="openQRGenerator(${l.id})">📱 QRs</button>
+                                        <button class="btn btn-sm btn-secondary" onclick="editLanding(${l.id})">✏️</button>
+                                        <button class="btn btn-sm btn-secondary" onclick="previewLanding(${l.id})">👁️</button>
+                                        <button class="btn btn-sm btn-secondary" onclick="deleteLanding(${l.id})" style="color:#dc3545">🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+        
+        // ==================== CREAR/EDITAR LANDING ====================
+        function showCreateLanding() {
+            editingLandingId = null;
+            selectedLandingProduct = null;
+            document.getElementById('editor-title').textContent = '✨ Crear Nueva Landing';
+            document.getElementById('editor-step1').style.display = 'block';
+            document.getElementById('editor-step2').style.display = 'none';
+            document.getElementById('landing-editor').style.display = 'block';
+            document.getElementById('landing-editor').scrollIntoView({ behavior: 'smooth' });
+            renderLandingProducts();
+        }
+        
+        function closeLandingEditor() {
+            document.getElementById('landing-editor').style.display = 'none';
+            editingLandingId = null;
+            selectedLandingProduct = null;
+        }
+        
+        function renderLandingProducts() {
+            const search = document.getElementById('landing-search')?.value?.toLowerCase() || '';
+            const filtered = products.filter(p => p.name.toLowerCase().includes(search));
+            
+            document.getElementById('landing-products-grid').innerHTML = filtered.slice(0, 50).map(p => `
+                <div class="product-card" onclick="selectLandingProduct(${p.id})" style="cursor:pointer">
+                    <div class="product-card-img" style="background-image:url('${p.image_url || ''}')"></div>
+                    <div class="product-card-body">
+                        <h4>${p.name}</h4>
+                        <p style="font-size:0.8rem;color:#888">${p.sku || ''}</p>
+                    </div>
+                </div>
+            `).join('') || '<p style="color:#999;padding:20px">No hay productos</p>';
+        }
+        
+        function filterLandingProducts() { renderLandingProducts(); }
+        
+        function getPremiumDescription(name) {
+            const descriptions = [
+                `Inspirado en la elegancia atemporal de los espacios más sofisticados del mundo, ${name} transforma cada ambiente en una declaración de estilo. Su acabado magistral y textura única crean una experiencia visual que eleva cualquier proyecto arquitectónico.`,
+                `${name} representa la fusión perfecta entre artesanía tradicional e innovación tecnológica. Cada pieza es una obra maestra que aporta carácter, profundidad y un sentido de lujo incomparable a tus espacios.`,
+                `Descubre la belleza extraordinaria de ${name}. Diseñado para quienes entienden que los detalles marcan la diferencia, este porcelánico premium redefine los estándares de elegancia en pisos contemporáneos.`,
+                `${name} no es solo un piso, es una experiencia sensorial. Su diseño exclusivo y acabado impecable capturan la esencia del lujo europeo, creando ambientes que inspiran y perduran en el tiempo.`,
+                `La colección ${name} nace de la búsqueda incansable de la perfección. Cada tonalidad, cada veta, cada textura ha sido cuidadosamente seleccionada para crear espacios que hablan de refinamiento y buen gusto.`
+            ];
+            return descriptions[Math.floor(Math.random() * descriptions.length)];
+        }
+        
+        function selectLandingProduct(id) {
+            selectedLandingProduct = products.find(p => p.id === id);
+            if (!selectedLandingProduct) return;
+            
+            document.getElementById('editor-product-img').src = selectedLandingProduct.image_url || '';
+            document.getElementById('editor-product-name').textContent = selectedLandingProduct.name;
+            document.getElementById('editor-product-sku').textContent = selectedLandingProduct.sku || '';
+            
+            document.getElementById('landing-title').value = selectedLandingProduct.name;
+            document.getElementById('landing-desc').value = getPremiumDescription(selectedLandingProduct.name);
+            document.getElementById('landing-promo-text').value = '';
+            document.getElementById('landing-video').value = selectedLandingProduct.video_url || '';
+            
+            document.getElementById('editor-step1').style.display = 'none';
+            document.getElementById('editor-step2').style.display = 'block';
+            
+            updateLandingPreview();
+            
+            ['landing-title', 'landing-desc', 'landing-promo-text'].forEach(id => {
+                document.getElementById(id).oninput = updateLandingPreview;
+            });
+        }
+        
+        function backToStep1() {
+            document.getElementById('editor-step1').style.display = 'block';
+            document.getElementById('editor-step2').style.display = 'none';
+        }
+        
+        function regenerateDescription() {
+            if (selectedLandingProduct) {
+                document.getElementById('landing-desc').value = getPremiumDescription(selectedLandingProduct.name);
+                updateLandingPreview();
+            }
+        }
+        
+        function updateLandingPreview() {
+            const title = document.getElementById('landing-title').value;
+            const desc = document.getElementById('landing-desc').value;
+            const promoText = document.getElementById('landing-promo-text').value;
+            const video = document.getElementById('landing-video').value;
+            const image = selectedLandingProduct?.image_url || '';
+            
+            document.getElementById('landing-preview').innerHTML = `
+                <div style="background:#0a0a0a;color:#fff;font-family:sans-serif">
+                    ${video ? 
+                        `<video src="${video}" style="width:100%;height:120px;object-fit:cover" autoplay muted loop></video>` : 
+                        `<img src="${image}" style="width:100%;height:120px;object-fit:cover" onerror="this.style.background='#333'">`
+                    }
+                    ${promoText ? `<div style="background:#c9a227;color:#000;padding:6px;text-align:center;font-size:0.75rem;font-weight:600">${promoText}</div>` : ''}
+                    <div style="padding:12px">
+                        <div style="color:#c9a227;font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">Porcelánico Premium</div>
+                        <h3 style="font-size:1.2rem;margin-bottom:8px;font-family:Georgia,serif">${title}</h3>
+                        <p style="font-size:0.7rem;color:#999;line-height:1.4">${desc.substring(0, 120)}...</p>
+                        <button style="width:100%;margin-top:10px;padding:10px;background:#25d366;color:white;border:none;border-radius:4px;font-size:0.8rem;font-weight:600">
+                            📱 Cotizar por WhatsApp
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        async function generateVideoVeo() {
+            if (!selectedLandingProduct) return alert('Selecciona un producto primero');
+            
+            const btn = document.getElementById('btnGenVideo');
+            const status = document.getElementById('video-status');
+            const slug = selectedLandingProduct.name.toLowerCase().replace(/\s+/g, '_');
+            const expectedUrl = `/videos/${slug}.mp4`;
+            
+            btn.disabled = true;
+            btn.textContent = '⏳...';
+            status.textContent = 'Conectando con Veo 3.1...';
+            
+            try {
+                // Iniciar generación
+                const response = await fetch('/api/video/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        product_id: selectedLandingProduct.id, 
+                        product_name: selectedLandingProduct.name,
+                        product_description: selectedLandingProduct.description || 'porcelanato premium de alta calidad',
+                        image_url: selectedLandingProduct.image_url
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Error al iniciar generación');
+                
+                // Polling: verificar cada 5 seg si el video ya existe (max 3 min)
+                let attempts = 0;
+                const maxAttempts = 36; // 36 * 5 = 180 seg = 3 min
+                
+                while (attempts < maxAttempts) {
+                    attempts++;
+                    status.textContent = `Generando video con IA... (${attempts * 5}s)`;
+                    
+                    await new Promise(r => setTimeout(r, 5000));
+                    
+                    // Verificar si el video ya existe
+                    const check = await fetch(expectedUrl, { method: 'HEAD' });
+                    if (check.ok) {
+                        document.getElementById('landing-video').value = expectedUrl;
+                        status.innerHTML = '✅ <a href="' + expectedUrl + '" target="_blank">Ver video generado</a>';
+                        updateLandingPreview();
+                        return;
+                    }
+                }
+                
+                status.textContent = '⏰ Timeout - revisa la consola del servidor';
+            } catch (err) {
+                status.textContent = '❌ ' + err.message;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🎬 Generar';
+            }
+        }
+        
+        async function saveLanding() {
+            if (!selectedLandingProduct) return alert('Selecciona un producto');
+            
+            const data = {
+                product_id: selectedLandingProduct.id,
+                title: document.getElementById('landing-title').value,
+                description: document.getElementById('landing-desc').value,
+                promo_text: document.getElementById('landing-promo-text').value,
+                video_url: document.getElementById('landing-video').value,
+                image_url: selectedLandingProduct.image_url
+            };
+            
+            const url = editingLandingId ? `/api/landings/${editingLandingId}` : '/api/landings';
+            const method = editingLandingId ? 'PUT' : 'POST';
+            
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            if (res.ok) {
+                alert('✅ Landing guardada');
+                closeLandingEditor();
+                loadLandings();
+            } else {
+                alert('❌ Error al guardar');
+            }
+        }
+        
+        async function editLanding(id) {
+            const landing = landings.find(l => l.id === id);
+            if (!landing) return;
+            
+            editingLandingId = id;
+            selectedLandingProduct = products.find(p => p.id === landing.product_id);
+            
+            document.getElementById('editor-title').textContent = '✏️ Editar Landing';
+            document.getElementById('editor-product-img').src = landing.product_image || landing.image_url || '';
+            document.getElementById('editor-product-name').textContent = landing.product_name || landing.title;
+            document.getElementById('editor-product-sku').textContent = landing.product_sku || '';
+            
+            document.getElementById('landing-title').value = landing.title;
+            document.getElementById('landing-desc').value = landing.description || '';
+            document.getElementById('landing-promo-text').value = landing.promo_text || '';
+            document.getElementById('landing-video').value = landing.video_url || '';
+            
+            document.getElementById('editor-step1').style.display = 'none';
+            document.getElementById('editor-step2').style.display = 'block';
+            document.getElementById('landing-editor').style.display = 'block';
+            document.getElementById('landing-editor').scrollIntoView({ behavior: 'smooth' });
+            
+            updateLandingPreview();
+        }
+        
+        function previewLanding(id) {
+            const landing = landings.find(l => l.id === id);
+            if (!landing) return;
+            const sku = landing.product_sku || 'producto';
+            window.open(`/p/${sku}?store=cesantoni-fresnillo`, '_blank');
+        }
+        
+        async function deleteLanding(id) {
+            if (!confirm('¿Eliminar esta landing?')) return;
+            await fetch(`/api/landings/${id}`, { method: 'DELETE' });
+            loadLandings();
+        }
+        
+        function previewFullLanding() {
+            if (!selectedLandingProduct) return;
+            window.open(`/p/${selectedLandingProduct.sku}?store=cesantoni-fresnillo`, '_blank');
+        }
+        
+        // ==================== GENERADOR DE QRs ====================
+        function openQRGenerator(landingId) {
+            qrSelectedLanding = landings.find(l => l.id === landingId);
+            if (!qrSelectedLanding) return;
+            
+            qrSelected = { dist: new Set(), state: new Set(), store: new Set() };
+            document.getElementById('qr-landing-name').textContent = qrSelectedLanding.title || qrSelectedLanding.product_name;
+            document.getElementById('qr-generator').style.display = 'block';
+            document.getElementById('qr-generator').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('urls-output').style.display = 'none';
+            
+            renderQRFilters();
+        }
+        
+        function closeQRGenerator() {
+            document.getElementById('qr-generator').style.display = 'none';
+            qrSelectedLanding = null;
+        }
+        
+        function renderQRFilters() {
+            const dists = [...new Set(stores.map(s => s.distributor_name))].filter(Boolean).sort();
+            document.getElementById('qr-dists').innerHTML = dists.map(d => 
+                `<div class="filter-chip2 ${qrSelected.dist.has(d)?'selected':''}" onclick="qrToggle('dist','${d}')">${d}</div>`
+            ).join('');
+            
+            let filtered = stores;
+            if (qrSelected.dist.size) filtered = filtered.filter(s => qrSelected.dist.has(s.distributor_name));
+            
+            const states = [...new Set(filtered.map(s => s.state))].filter(Boolean).sort();
+            document.getElementById('qr-states').innerHTML = states.map(st => 
+                `<div class="filter-chip2 ${qrSelected.state.has(st)?'selected':''}" onclick="qrToggle('state','${st}')">${st}</div>`
+            ).join('') || '<span style="color:#999;font-size:0.75rem">Selecciona distribuidores</span>';
+            
+            if (qrSelected.state.size) filtered = filtered.filter(s => qrSelected.state.has(s.state));
+            
+            document.getElementById('qr-stores').innerHTML = filtered.map(s => 
+                `<div class="filter-chip2 ${qrSelected.store.has(s.id)?'selected':''}" onclick="qrToggle('store',${s.id})">${s.name}</div>`
+            ).join('') || '<span style="color:#999;font-size:0.75rem">No hay tiendas</span>';
+            
+            updateQRCount();
+        }
+        
+        function qrToggle(type, val) {
+            qrSelected[type].has(val) ? qrSelected[type].delete(val) : qrSelected[type].add(val);
+            if (type === 'dist') { qrSelected.state.clear(); qrSelected.store.clear(); }
+            if (type === 'state') qrSelected.store.clear();
+            renderQRFilters();
+        }
+        
+        function qrSelectAll(type) {
+            if (type === 'store') {
+                getQRFilteredStores().forEach(s => qrSelected.store.add(s.id));
+            } else {
+                document.querySelectorAll(`#qr-${type}s .filter-chip2`).forEach(el => {
+                    qrSelected[type].add(el.textContent.trim());
+                });
+            }
+            renderQRFilters();
+        }
+        
+        function qrSelectNone(type) {
+            qrSelected[type].clear();
+            if (type === 'dist') { qrSelected.state.clear(); qrSelected.store.clear(); }
+            if (type === 'state') qrSelected.store.clear();
+            renderQRFilters();
+        }
+        
+        function getQRFilteredStores() {
+            let f = stores;
+            if (qrSelected.dist.size) f = f.filter(s => qrSelected.dist.has(s.distributor_name));
+            if (qrSelected.state.size) f = f.filter(s => qrSelected.state.has(s.state));
+            return f;
+        }
+        
+        function getQRSelectedStores() {
+            return qrSelected.store.size ? 
+                stores.filter(s => qrSelected.store.has(s.id)) : 
+                getQRFilteredStores();
+        }
+        
+        function updateQRCount() {
+            document.getElementById('qr-count').textContent = getQRSelectedStores().length;
+        }
+        
+        function generateURLs() {
+            const selectedStores = getQRSelectedStores();
+            const sku = qrSelectedLanding.product_sku || qrSelectedLanding.title.toLowerCase().replace(/\s+/g, '-');
+            const baseUrl = window.location.origin;
+            
+            return selectedStores.map(store => ({
+                store: store.name,
+                distributor: store.distributor_name,
+                state: store.state,
+                url: `${baseUrl}/p/${sku}?store=${store.slug}`
+            }));
+        }
+        
+        function copyAllURLs() {
+            const urls = generateURLs();
+            if (!urls.length) return alert('Selecciona al menos una tienda');
+            
+            const text = urls.map(u => `${u.store}\t${u.url}`).join('\n');
+            navigator.clipboard.writeText(text);
+            
+            document.getElementById('urls-textarea').value = text;
+            document.getElementById('urls-output').style.display = 'block';
+            
+            alert(`✅ ${urls.length} URLs copiadas al portapapeles`);
+        }
+        
+        function downloadURLsCSV() {
+            const urls = generateURLs();
+            if (!urls.length) return alert('Selecciona al menos una tienda');
+            
+            const csv = 'Tienda,Distribuidor,Estado,URL\n' + 
+                urls.map(u => `"${u.store}","${u.distributor}","${u.state}","${u.url}"`).join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `qr-urls-${qrSelectedLanding.title || 'landing'}.csv`;
+            a.click();
+        }
+        
+        function downloadQRsPDF() {
+            alert('Función de PDF en desarrollo. Por ahora usa "Copiar URLs" y genera los QRs con un generador externo como qr-code-generator.com');
+        }
+        
+        // ==================== INIT ====================
+        loadAllData().then(() => loadDashboard());
+    </script>
+</body>
+</html>

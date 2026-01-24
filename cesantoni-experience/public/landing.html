@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Cesantoni Experience</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cesantoni-green: #8BC34A;
+            --cesantoni-green-dark: #689F38;
+            --cesantoni-gold: #C9A227;
+            --cesantoni-dark: #1a1a1a;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Source Sans 3', sans-serif;
+            background: #fafafa;
+            color: var(--cesantoni-dark);
+            line-height: 1.6;
+        }
+        
+        /* Header */
+        .header {
+            background: var(--cesantoni-dark);
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-family: 'Playfair Display', serif;
+            color: white;
+            font-size: 1.3rem;
+        }
+        
+        .logo span {
+            color: var(--cesantoni-green);
+            font-size: 0.7rem;
+            display: block;
+            font-family: 'Source Sans 3', sans-serif;
+            font-weight: 300;
+        }
+        
+        /* Hero */
+        .hero {
+            background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+            padding: 40px 20px;
+            text-align: center;
+            color: white;
+        }
+        
+        .hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+        }
+        
+        .hero .subtitle {
+            color: rgba(255,255,255,0.7);
+            font-size: 1.1rem;
+        }
+        
+        /* Video placeholder */
+        .video-container {
+            max-width: 600px;
+            margin: 30px auto 0;
+            background: #333;
+            border-radius: 16px;
+            aspect-ratio: 16/9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .video-placeholder {
+            text-align: center;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .video-placeholder .icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        
+        /* Content */
+        .content {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        
+        /* Promo Banner */
+        .promo-banner {
+            background: linear-gradient(135deg, var(--cesantoni-gold) 0%, #d4a832 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 20px rgba(201, 162, 39, 0.3);
+        }
+        
+        .promo-banner .discount {
+            font-size: 2.5rem;
+            font-weight: 700;
+            font-family: 'Playfair Display', serif;
+        }
+        
+        .promo-banner .text {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        /* Price Card */
+        .price-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+        
+        .price-label {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        
+        .price-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--cesantoni-dark);
+        }
+        
+        .price-unit {
+            font-size: 1rem;
+            color: #888;
+            font-weight: 400;
+        }
+        
+        /* Specs Grid */
+        .specs-section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+        
+        .specs-section h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .specs-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        
+        .spec-item {
+            padding: 12px;
+            background: #f8f8f8;
+            border-radius: 10px;
+        }
+        
+        .spec-label {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .spec-value {
+            font-weight: 600;
+            color: var(--cesantoni-dark);
+            margin-top: 4px;
+        }
+        
+        /* Store Section */
+        .store-section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+        
+        .store-section h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            margin-bottom: 16px;
+        }
+        
+        .store-info {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+        
+        .store-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--cesantoni-green);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+        
+        .store-details h3 {
+            font-size: 1.1rem;
+            margin-bottom: 4px;
+        }
+        
+        .store-details p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .store-address {
+            margin-top: 16px;
+            padding: 16px;
+            background: #f8f8f8;
+            border-radius: 10px;
+        }
+        
+        .store-address .label {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+        }
+        
+        .store-address .address {
+            margin-top: 4px;
+            font-weight: 500;
+        }
+        
+        /* Map */
+        .map-container {
+            margin-top: 16px;
+            border-radius: 12px;
+            overflow: hidden;
+            height: 200px;
+        }
+        
+        .map-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        /* WhatsApp Button */
+        .whatsapp-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            padding: 18px 24px;
+            background: #25D366;
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            margin-bottom: 16px;
+        }
+        
+        .whatsapp-btn:hover {
+            background: #1da851;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(37, 211, 102, 0.35);
+        }
+        
+        .whatsapp-btn .icon {
+            font-size: 1.4rem;
+        }
+        
+        /* Floating WhatsApp */
+        .floating-wa {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 60px;
+            height: 60px;
+            background: #25D366;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            text-decoration: none;
+            box-shadow: 0 4px 20px rgba(37, 211, 102, 0.4);
+            z-index: 100;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 30px 20px;
+            color: #888;
+            font-size: 0.85rem;
+        }
+        
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+            color: #888;
+        }
+        
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #eee;
+            border-top-color: var(--cesantoni-green);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 12px;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Error state */
+        .error {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        
+        .error h2 {
+            font-size: 4rem;
+            margin-bottom: 16px;
+        }
+        
+        .error p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="loading">
+            <div class="spinner"></div>
+            Cargando producto...
+        </div>
+    </div>
+
+    <script>
+        // =====================================================
+        // CONFIG
+        // =====================================================
+        const API = '/api';
+        
+        // Generate session ID for tracking
+        const sessionId = 'sess_' + Math.random().toString(36).substr(2, 9);
+        
+        // Parse URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        const params = {
+            tienda: urlParams.get('tienda') || '',
+            estado: urlParams.get('estado') || '',
+            ciudad: urlParams.get('ciudad') || '',
+            dir: urlParams.get('dir') || '',
+            wa: urlParams.get('wa') || '',
+            promo: urlParams.get('promo') || '',
+            precio: urlParams.get('precio') || ''
+        };
+        
+        // Get SKU from URL path
+        const pathParts = window.location.pathname.split('/');
+        const sku = pathParts[pathParts.length - 1];
+        
+        // State
+        let product = null;
+        let store = null;
+        let scanId = null;
+        
+        // =====================================================
+        // INIT
+        // =====================================================
+        async function init() {
+            try {
+                // Load product
+                const res = await fetch(`${API}/landing/${sku}`);
+                if (!res.ok) throw new Error('Producto no encontrado');
+                product = await res.json();
+                
+                // Try to find store by slug
+                if (params.tienda) {
+                    const stores = await fetch(`${API}/stores`).then(r => r.json());
+                    const [distSlug, storeSlug] = params.tienda.split('-');
+                    store = stores.find(s => 
+                        s.slug === storeSlug || 
+                        params.tienda.includes(s.slug)
+                    );
+                }
+                
+                // Track scan
+                await trackScan();
+                
+                // Render page
+                render();
+                
+            } catch (err) {
+                console.error(err);
+                renderError();
+            }
+        }
+        
+        // =====================================================
+        // TRACKING
+        // =====================================================
+        async function trackScan() {
+            try {
+                const res = await fetch(`${API}/track/scan`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        product_id: product.id,
+                        store_id: store?.id || null,
+                        session_id: sessionId,
+                        utm_source: urlParams.get('utm_source'),
+                        utm_medium: urlParams.get('utm_medium'),
+                        utm_campaign: urlParams.get('utm_campaign')
+                    })
+                });
+                const data = await res.json();
+                scanId = data.scan_id;
+                console.log('Scan tracked:', scanId);
+            } catch (err) {
+                console.error('Error tracking scan:', err);
+            }
+        }
+        
+        async function trackWhatsAppClick() {
+            try {
+                await fetch(`${API}/track/whatsapp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        scan_id: scanId,
+                        product_id: product.id,
+                        store_id: store?.id || null,
+                        session_id: sessionId,
+                        whatsapp_number: getWhatsAppNumber()
+                    })
+                });
+                console.log('WhatsApp click tracked');
+            } catch (err) {
+                console.error('Error tracking WA click:', err);
+            }
+        }
+        
+        // =====================================================
+        // HELPERS
+        // =====================================================
+        function getWhatsAppNumber() {
+            return params.wa || store?.whatsapp || '525512345678';
+        }
+        
+        function getWhatsAppURL() {
+            const number = getWhatsAppNumber();
+            const storeName = store?.name || params.tienda || 'la tienda';
+            const message = encodeURIComponent(
+                `Hola! Vi el producto ${product.name} en ${storeName} y me gustaría más información.`
+            );
+            return `https://wa.me/${number}?text=${message}`;
+        }
+        
+        function getPrice() {
+            if (params.precio) return parseFloat(params.precio);
+            return product.base_price || 0;
+        }
+        
+        function getPromoDiscount() {
+            return params.promo || store?.promo_discount || '';
+        }
+        
+        function getPromoText() {
+            return store?.promo_text || 'Promoción especial';
+        }
+        
+        function getMapURL() {
+            const address = params.dir || store?.address || '';
+            const city = params.ciudad || store?.city || '';
+            const state = params.estado || store?.state || '';
+            const query = encodeURIComponent(`${address}, ${city}, ${state}, México`);
+            return `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${query}`;
+        }
+        
+        // =====================================================
+        // RENDER
+        // =====================================================
+        function render() {
+            document.getElementById('page-title').textContent = `${product.name} | Cesantoni`;
+            
+            const promo = getPromoDiscount();
+            const price = getPrice();
+            const storeName = store?.name || decodeURIComponent(params.tienda).replace(/-/g, ' ') || 'Distribuidor Autorizado';
+            const storeCity = params.ciudad || store?.city || '';
+            const storeState = params.estado || store?.state || '';
+            const storeAddress = params.dir ? decodeURIComponent(params.dir).replace(/\+/g, ' ') : store?.address || '';
+            
+            document.getElementById('app').innerHTML = `
+                <!-- Header -->
+                <header class="header">
+                    <div class="logo">
+                        Cesantoni
+                        <span>Experience</span>
+                    </div>
+                </header>
+                
+                <!-- Hero -->
+                <section class="hero">
+                    <h1>${product.name}</h1>
+                    <p class="subtitle">${product.finish || ''} • ${product.format || ''}</p>
+                    
+                    <div class="video-container">
+                        ${product.video_url 
+                            ? `<video autoplay muted loop playsinline><source src="${product.video_url}" type="video/mp4"></video>`
+                            : `<div class="video-placeholder"><div class="icon">🎬</div><div>Video próximamente</div></div>`
+                        }
+                    </div>
+                </section>
+                
+                <!-- Content -->
+                <div class="content">
+                    ${promo ? `
+                        <div class="promo-banner">
+                            <div class="discount">${promo} OFF</div>
+                            <div class="text">${getPromoText()}</div>
+                        </div>
+                    ` : ''}
+                    
+                    <!-- Price -->
+                    <div class="price-card">
+                        <div class="price-label">Precio desde</div>
+                        <div class="price-value">
+                            $${price.toLocaleString()}
+                            <span class="price-unit">MXN / m²</span>
+                        </div>
+                        
+                        <a href="${getWhatsAppURL()}" class="whatsapp-btn" onclick="handleWhatsAppClick(event)" style="margin-top: 20px;">
+                            <span class="icon">💬</span>
+                            Cotizar por WhatsApp
+                        </a>
+                    </div>
+                    
+                    <!-- Specs -->
+                    <div class="specs-section">
+                        <h2>Especificaciones Técnicas</h2>
+                        <div class="specs-grid">
+                            <div class="spec-item">
+                                <div class="spec-label">Formato</div>
+                                <div class="spec-value">${product.format || '-'}</div>
+                            </div>
+                            <div class="spec-item">
+                                <div class="spec-label">Tipo</div>
+                                <div class="spec-value">${product.type || '-'}</div>
+                            </div>
+                            <div class="spec-item">
+                                <div class="spec-label">Acabado</div>
+                                <div class="spec-value">${product.finish || '-'}</div>
+                            </div>
+                            <div class="spec-item">
+                                <div class="spec-label">Resistencia</div>
+                                <div class="spec-value">${product.resistance || '-'}</div>
+                            </div>
+                            <div class="spec-item">
+                                <div class="spec-label">Absorción</div>
+                                <div class="spec-value">${product.water_absorption || '-'}</div>
+                            </div>
+                            <div class="spec-item">
+                                <div class="spec-label">MOHS</div>
+                                <div class="spec-value">${product.mohs || '-'}</div>
+                            </div>
+                            <div class="spec-item">
+                                <div class="spec-label">Piezas/Caja</div>
+                                <div class="spec-value">${product.pieces_per_box || '-'}</div>
+                            </div>
+                            <div class="spec-item">
+                                <div class="spec-label">m²/Caja</div>
+                                <div class="spec-value">${product.sqm_per_box || '-'}</div>
+                            </div>
+                        </div>
+                        
+                        ${product.usage ? `
+                            <div style="margin-top: 16px; padding: 16px; background: #f8f8f8; border-radius: 10px;">
+                                <div class="spec-label">Uso Recomendado</div>
+                                <div class="spec-value">${product.usage}</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <!-- Store -->
+                    <div class="store-section">
+                        <h2>Disponible en</h2>
+                        <div class="store-info">
+                            <div class="store-icon">🏪</div>
+                            <div class="store-details">
+                                <h3>${storeName}</h3>
+                                <p>${storeCity}${storeState ? `, ${storeState}` : ''}</p>
+                            </div>
+                        </div>
+                        
+                        ${storeAddress ? `
+                            <div class="store-address">
+                                <div class="label">Dirección</div>
+                                <div class="address">${storeAddress}</div>
+                            </div>
+                            
+                            <div class="map-container">
+                                <iframe src="${getMapURL()}" loading="lazy"></iframe>
+                            </div>
+                        ` : ''}
+                        
+                        <a href="${getWhatsAppURL()}" class="whatsapp-btn" onclick="handleWhatsAppClick(event)" style="margin-top: 20px;">
+                            <span class="icon">💬</span>
+                            Contactar Tienda
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <footer class="footer">
+                    <p>© 2025 Cesantoni. Todos los derechos reservados.</p>
+                    <p style="margin-top: 8px;">Precios sujetos a cambio sin previo aviso.</p>
+                </footer>
+                
+                <!-- Floating WhatsApp -->
+                <a href="${getWhatsAppURL()}" class="floating-wa" onclick="handleWhatsAppClick(event)">💬</a>
+            `;
+        }
+        
+        function renderError() {
+            document.getElementById('app').innerHTML = `
+                <header class="header">
+                    <div class="logo">
+                        Cesantoni
+                        <span>Experience</span>
+                    </div>
+                </header>
+                
+                <div class="error">
+                    <h2>🔍</h2>
+                    <h3>Producto no encontrado</h3>
+                    <p>El producto que buscas no existe o fue removido.</p>
+                </div>
+            `;
+        }
+        
+        // =====================================================
+        // EVENT HANDLERS
+        // =====================================================
+        function handleWhatsAppClick(event) {
+            // Track the click before navigating
+            trackWhatsAppClick();
+            // Don't prevent default - let the link work
+        }
+        
+        // Make function available globally
+        window.handleWhatsAppClick = handleWhatsAppClick;
+        
+        // =====================================================
+        // START
+        // =====================================================
+        init();
+    </script>
+</body>
+</html>

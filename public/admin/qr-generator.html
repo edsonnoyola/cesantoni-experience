@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generador de QRs - Cesantoni</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+    
+    /* Panel de control */
+    .control-panel {
+      background: white;
+      padding: 24px;
+      border-bottom: 1px solid #ddd;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .control-panel h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #1a1a1a;
+    }
+    .controls {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .control-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+    }
+    select, input {
+      padding: 10px 14px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      min-width: 200px;
+    }
+    select:focus, input:focus {
+      outline: none;
+      border-color: #c41e3a;
+    }
+    button {
+      padding: 10px 24px;
+      background: #c41e3a;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #a01830; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-secondary {
+      background: #333;
+    }
+    .btn-secondary:hover { background: #555; }
+    
+    /* Selección de tiendas */
+    .store-selection {
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .store-selection h2 {
+      font-size: 18px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .count-badge {
+      background: #c41e3a;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 14px;
+    }
+    .quick-actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .quick-actions button {
+      padding: 6px 14px;
+      font-size: 12px;
+      background: #666;
+    }
+    .store-filters {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .store-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 10px;
+      max-height: 400px;
+      overflow-y: auto;
+      padding: 10px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+    .store-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      background: #f9f9f9;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .store-item:hover {
+      background: #f0f0f0;
+    }
+    .store-item.selected {
+      background: #fef2f2;
+      border: 1px solid #c41e3a;
+    }
+    .store-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      min-width: 18px;
+    }
+    .store-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .store-name {
+      font-weight: 600;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .store-location {
+      font-size: 11px;
+      color: #666;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    /* Vista previa / Impresión */
+    .preview-section {
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .preview-section h2 {
+      font-size: 18px;
+      margin-bottom: 16px;
+    }
+    
+    /* QR Grid para impresión */
+    .qr-print-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    .qr-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 15px;
+      border: 1px dashed #ccc;
+      border-radius: 8px;
+    }
+    .qr-card canvas {
+      width: 120px !important;
+      height: 120px !important;
+    }
+    .qr-card .store-label {
+      margin-top: 8px;
+      font-size: 9px;
+      text-align: center;
+      color: #333;
+      font-weight: 600;
+      max-width: 140px;
+      line-height: 1.2;
+    }
+    .qr-card .city-label {
+      font-size: 8px;
+      color: #666;
+    }
+    
+    /* Print styles */
+    @media print {
+      body { background: white; }
+      .control-panel, .store-selection, .preview-section h2, .no-print { display: none !important; }
+      .qr-print-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 15px;
+        padding: 10px;
+      }
+      .qr-card {
+        border: 1px dashed #ccc;
+        padding: 10px;
+        break-inside: avoid;
+      }
+      .qr-card canvas {
+        width: 100px !important;
+        height: 100px !important;
+      }
+    }
+    
+    .hidden { display: none; }
+    
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="control-panel">
+    <h1>🏷️ Generador de QRs - Cesantoni</h1>
+    <div class="controls">
+      <div class="control-group">
+        <label>Producto</label>
+        <select id="productSelect">
+          <option value="">Cargando productos...</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>URL Base</label>
+        <input type="text" id="baseUrl" value="https://cesantoni.com" placeholder="https://cesantoni.com">
+      </div>
+      <button id="generateBtn" disabled>Generar QRs</button>
+      <button id="printBtn" class="btn-secondary hidden">🖨️ Imprimir</button>
+    </div>
+  </div>
+
+  <div class="store-selection">
+    <h2>Selecciona las tiendas <span class="count-badge" id="selectedCount">0 seleccionadas</span></h2>
+    
+    <div class="quick-actions no-print">
+      <button onclick="selectAll()">Seleccionar todas</button>
+      <button onclick="selectNone()">Deseleccionar todas</button>
+      <button onclick="selectByDistributor('Home Depot')">Solo Home Depot</button>
+      <button onclick="selectByDistributor('Cesantoni')">Solo Cesantoni</button>
+      <button onclick="selectByDistributor('Boxito')">Solo Boxito</button>
+    </div>
+    
+    <div class="store-filters no-print">
+      <input type="text" id="storeSearch" placeholder="🔍 Buscar tienda..." style="flex:1; max-width: 300px;">
+      <select id="stateFilter">
+        <option value="">Todos los estados</option>
+      </select>
+      <select id="distributorFilter">
+        <option value="">Todos los distribuidores</option>
+      </select>
+    </div>
+    
+    <div class="store-grid" id="storeGrid">
+      <div class="loading">Cargando tiendas...</div>
+    </div>
+  </div>
+
+  <div class="preview-section hidden" id="previewSection">
+    <h2 class="no-print">Vista previa para impresión</h2>
+    <div class="qr-print-grid" id="qrGrid"></div>
+  </div>
+
+  <script>
+    let products = [];
+    let stores = [];
+    let selectedStores = new Set();
+
+    // Cargar datos
+    async function loadData() {
+      try {
+        const [prodRes, storeRes] = await Promise.all([
+          fetch('/api/products'),
+          fetch('/api/stores')
+        ]);
+        products = await prodRes.json();
+        stores = await storeRes.json();
+        
+        renderProductSelect();
+        renderStoreFilters();
+        renderStoreGrid();
+      } catch (err) {
+        console.error('Error cargando datos:', err);
+      }
+    }
+
+    function renderProductSelect() {
+      const select = document.getElementById('productSelect');
+      select.innerHTML = '<option value="">-- Selecciona un producto --</option>' +
+        products.map(p => `<option value="${p.sku}">${p.sku} - ${p.name}</option>`).join('');
+      
+      select.addEventListener('change', () => {
+        document.getElementById('generateBtn').disabled = !select.value;
+      });
+    }
+
+    function renderStoreFilters() {
+      // Estados únicos
+      const states = [...new Set(stores.map(s => s.state).filter(Boolean))].sort();
+      document.getElementById('stateFilter').innerHTML = 
+        '<option value="">Todos los estados</option>' +
+        states.map(s => `<option value="${s}">${s}</option>`).join('');
+      
+      // Distribuidores únicos
+      const distributors = [...new Set(stores.map(s => s.distributor_name).filter(Boolean))].sort();
+      document.getElementById('distributorFilter').innerHTML = 
+        '<option value="">Todos los distribuidores</option>' +
+        distributors.map(d => `<option value="${d}">${d}</option>`).join('');
+      
+      // Event listeners
+      document.getElementById('storeSearch').addEventListener('input', renderStoreGrid);
+      document.getElementById('stateFilter').addEventListener('change', renderStoreGrid);
+      document.getElementById('distributorFilter').addEventListener('change', renderStoreGrid);
+    }
+
+    function renderStoreGrid() {
+      const search = document.getElementById('storeSearch').value.toLowerCase();
+      const stateFilter = document.getElementById('stateFilter').value;
+      const distFilter = document.getElementById('distributorFilter').value;
+      
+      const filtered = stores.filter(s => {
+        if (search && !s.name.toLowerCase().includes(search) && !s.city?.toLowerCase().includes(search)) return false;
+        if (stateFilter && s.state !== stateFilter) return false;
+        if (distFilter && s.distributor_name !== distFilter) return false;
+        return true;
+      });
+      
+      document.getElementById('storeGrid').innerHTML = filtered.map(s => `
+        <div class="store-item ${selectedStores.has(s.id) ? 'selected' : ''}" onclick="toggleStore(${s.id})">
+          <input type="checkbox" ${selectedStores.has(s.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleStore(${s.id})">
+          <div class="store-info">
+            <div class="store-name">${s.name}</div>
+            <div class="store-location">${s.city || ''} ${s.state || ''} • ${s.distributor_name || ''}</div>
+          </div>
+        </div>
+      `).join('') || '<div class="loading">No hay tiendas con ese filtro</div>';
+      
+      updateCount();
+    }
+
+    function toggleStore(id) {
+      if (selectedStores.has(id)) {
+        selectedStores.delete(id);
+      } else {
+        selectedStores.add(id);
+      }
+      renderStoreGrid();
+    }
+
+    function selectAll() {
+      const search = document.getElementById('storeSearch').value.toLowerCase();
+      const stateFilter = document.getElementById('stateFilter').value;
+      const distFilter = document.getElementById('distributorFilter').value;
+      
+      stores.forEach(s => {
+        if (search && !s.name.toLowerCase().includes(search) && !s.city?.toLowerCase().includes(search)) return;
+        if (stateFilter && s.state !== stateFilter) return;
+        if (distFilter && s.distributor_name !== distFilter) return;
+        selectedStores.add(s.id);
+      });
+      renderStoreGrid();
+    }
+
+    function selectNone() {
+      selectedStores.clear();
+      renderStoreGrid();
+    }
+
+    function selectByDistributor(name) {
+      selectedStores.clear();
+      stores.filter(s => s.distributor_name === name).forEach(s => selectedStores.add(s.id));
+      renderStoreGrid();
+    }
+
+    function updateCount() {
+      document.getElementById('selectedCount').textContent = `${selectedStores.size} seleccionadas`;
+    }
+
+    // Generar QRs
+    document.getElementById('generateBtn').addEventListener('click', async () => {
+      const sku = document.getElementById('productSelect').value;
+      const baseUrl = document.getElementById('baseUrl').value.replace(/\/$/, '');
+      
+      if (!sku || selectedStores.size === 0) {
+        alert('Selecciona un producto y al menos una tienda');
+        return;
+      }
+      
+      const selectedStoresList = stores.filter(s => selectedStores.has(s.id));
+      const grid = document.getElementById('qrGrid');
+      grid.innerHTML = '';
+      
+      for (const store of selectedStoresList) {
+        const url = `${baseUrl}/p/${sku}?store=${store.slug}`;
+        
+        const card = document.createElement('div');
+        card.className = 'qr-card';
+        
+        const canvas = document.createElement('canvas');
+        card.appendChild(canvas);
+        
+        const label = document.createElement('div');
+        label.className = 'store-label';
+        label.textContent = store.name;
+        card.appendChild(label);
+        
+        const cityLabel = document.createElement('div');
+        cityLabel.className = 'city-label';
+        cityLabel.textContent = `${store.city || ''} ${store.state || ''}`.trim();
+        card.appendChild(cityLabel);
+        
+        grid.appendChild(card);
+        
+        await QRCode.toCanvas(canvas, url, {
+          width: 120,
+          margin: 1,
+          color: { dark: '#000000', light: '#ffffff' }
+        });
+      }
+      
+      document.getElementById('previewSection').classList.remove('hidden');
+      document.getElementById('printBtn').classList.remove('hidden');
+    });
+
+    // Imprimir
+    document.getElementById('printBtn').addEventListener('click', () => {
+      window.print();
+    });
+
+    // Init
+    loadData();
+  </script>
+</body>
+</html>

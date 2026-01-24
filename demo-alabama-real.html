@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alabama | Cesantoni Premium</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #C9A962;
+            --gold-light: #D4BC7E;
+            --gold-dark: #A68B4B;
+            --black: #0A0A0A;
+            --charcoal: #1A1A1A;
+            --gray-dark: #2D2D2D;
+            --gray: #6B6B6B;
+            --gray-light: #9A9A9A;
+            --white: #FAFAFA;
+            --cream: #F5F3EF;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: var(--black);
+            color: var(--white);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 300;
+            letter-spacing: 0.02em;
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(180deg, rgba(10,10,10,0.95) 0%, rgba(10,10,10,0) 100%);
+            transition: all 0.4s ease;
+        }
+
+        .header.scrolled {
+            background: rgba(10,10,10,0.98);
+            backdrop-filter: blur(20px);
+        }
+
+        .logo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            font-weight: 400;
+            letter-spacing: 0.15em;
+            color: var(--gold);
+            text-decoration: none;
+        }
+
+        .logo span {
+            font-weight: 300;
+            color: var(--white);
+        }
+
+        .header-badge {
+            font-size: 0.65rem;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            color: var(--gray-light);
+            border: 1px solid var(--gray-dark);
+            padding: 8px 16px;
+        }
+
+        /* Hero con imagen del producto */
+        .hero {
+            height: 100vh;
+            min-height: 700px;
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute;
+            inset: 0;
+            background: url('http://localhost:3000/product-images/product_1.jpeg') center center;
+            background-size: cover;
+            transform: scale(1.1);
+            animation: heroZoom 20s ease-out forwards;
+        }
+
+        @keyframes heroZoom {
+            to { transform: scale(1); }
+        }
+
+        .hero-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                0deg,
+                rgba(10,10,10,1) 0%,
+                rgba(10,10,10,0.6) 40%,
+                rgba(10,10,10,0.2) 70%,
+                rgba(10,10,10,0.1) 100%
+            );
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            padding: 0 60px 80px;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .hero-tag {
+            display: inline-block;
+            font-size: 0.7rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            border: 1px solid var(--gold);
+            animation: fadeInUp 1s ease 0.3s backwards;
+        }
+
+        .hero-title {
+            font-size: clamp(3rem, 8vw, 7rem);
+            font-weight: 300;
+            line-height: 1.1;
+            margin-bottom: 25px;
+            animation: fadeInUp 1s ease 0.5s backwards;
+        }
+
+        .hero-title em {
+            font-style: italic;
+            color: var(--gold);
+        }
+
+        .hero-subtitle {
+            font-size: 1.1rem;
+            font-weight: 300;
+            color: var(--gray-light);
+            max-width: 600px;
+            line-height: 1.8;
+            animation: fadeInUp 1s ease 0.7s backwards;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            animation: fadeInUp 1s ease 1s backwards;
+        }
+
+        .scroll-indicator span {
+            font-size: 0.65rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--gray);
+        }
+
+        .scroll-line {
+            width: 1px;
+            height: 60px;
+            background: linear-gradient(180deg, var(--gold) 0%, transparent 100%);
+            animation: scrollPulse 2s ease infinite;
+        }
+
+        @keyframes scrollPulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        /* Sections */
+        section {
+            padding: 120px 40px;
+        }
+
+        .section-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-label {
+            font-size: 0.65rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 4vw, 3.5rem);
+            margin-bottom: 40px;
+            line-height: 1.2;
+        }
+
+        /* Product Image Section - NUEVA */
+        .product-showcase {
+            background: var(--charcoal);
+            padding: 80px 40px;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .product-image-main {
+            position: relative;
+            overflow: hidden;
+            aspect-ratio: 1;
+        }
+
+        .product-image-main img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.6s ease;
+        }
+
+        .product-image-main:hover img {
+            transform: scale(1.05);
+        }
+
+        .product-image-main::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border: 1px solid var(--gold);
+            transform: translate(15px, 15px);
+            pointer-events: none;
+            transition: transform 0.4s ease;
+        }
+
+        .product-image-main:hover::after {
+            transform: translate(20px, 20px);
+        }
+
+        .product-details h2 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: var(--cream);
+        }
+
+        .product-details .format {
+            font-size: 1.2rem;
+            color: var(--gold);
+            margin-bottom: 30px;
+            letter-spacing: 0.1em;
+        }
+
+        .product-details p {
+            font-size: 1rem;
+            color: var(--gray-light);
+            line-height: 1.8;
+            margin-bottom: 40px;
+        }
+
+        .product-specs-mini {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .spec-mini {
+            padding: 20px;
+            background: var(--gray-dark);
+            border-left: 3px solid var(--gold);
+        }
+
+        .spec-mini-value {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.5rem;
+            color: var(--gold);
+            margin-bottom: 5px;
+        }
+
+        .spec-mini-label {
+            font-size: 0.7rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--gray);
+        }
+
+        /* Video Section */
+        .video-section {
+            background: var(--black);
+            padding: 0;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            aspect-ratio: 16/9;
+            overflow: hidden;
+            background: var(--charcoal);
+        }
+
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--charcoal) 0%, var(--black) 100%);
+        }
+
+        .video-placeholder-icon {
+            width: 100px;
+            height: 100px;
+            border: 2px solid var(--gold);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.4s ease;
+        }
+
+        .video-placeholder-icon:hover {
+            background: var(--gold);
+            transform: scale(1.1);
+        }
+
+        .video-placeholder-icon::after {
+            content: '';
+            width: 0;
+            height: 0;
+            border-left: 24px solid var(--gold);
+            border-top: 14px solid transparent;
+            border-bottom: 14px solid transparent;
+            margin-left: 8px;
+            transition: border-color 0.4s ease;
+        }
+
+        .video-placeholder-icon:hover::after {
+            border-left-color: var(--black);
+        }
+
+        .video-placeholder p {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.3rem;
+            font-style: italic;
+            color: var(--gray);
+        }
+
+        /* Benefits */
+        .benefits {
+            background: linear-gradient(180deg, var(--black) 0%, var(--charcoal) 100%);
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        .benefit-card {
+            padding: 50px 40px;
+            background: var(--gray-dark);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s ease;
+        }
+
+        .benefit-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--gold);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.4s ease;
+        }
+
+        .benefit-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .benefit-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .benefit-icon {
+            font-size: 2.5rem;
+            margin-bottom: 25px;
+        }
+
+        .benefit-title {
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            color: var(--cream);
+        }
+
+        .benefit-text {
+            font-size: 0.9rem;
+            color: var(--gray-light);
+            line-height: 1.7;
+        }
+
+        /* Specs */
+        .specs {
+            background: var(--cream);
+            color: var(--black);
+        }
+
+        .specs .section-title {
+            color: var(--black);
+        }
+
+        .specs-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+            margin-top: 50px;
+        }
+
+        .spec-item {
+            padding: 30px;
+            background: var(--white);
+            border: 1px solid rgba(0,0,0,0.08);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .spec-item:hover {
+            border-color: var(--gold);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+        }
+
+        .spec-value {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            font-weight: 500;
+            color: var(--gold-dark);
+            margin-bottom: 8px;
+        }
+
+        .spec-label {
+            font-size: 0.7rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--gray);
+        }
+
+        /* Store */
+        .store {
+            background: var(--charcoal);
+        }
+
+        .store-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+        }
+
+        .store-info h3 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            color: var(--cream);
+        }
+
+        .store-detail {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .store-detail-icon {
+            width: 24px;
+            height: 24px;
+            color: var(--gold);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .store-detail-text {
+            font-size: 1rem;
+            color: var(--gray-light);
+            line-height: 1.6;
+        }
+
+        .store-detail-text strong {
+            display: block;
+            color: var(--white);
+            margin-bottom: 5px;
+        }
+
+        .promo-banner {
+            background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold) 100%);
+            padding: 25px 30px;
+            margin-top: 40px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .promo-banner-icon {
+            font-size: 2rem;
+        }
+
+        .promo-banner-text {
+            color: var(--black);
+        }
+
+        .promo-banner-text strong {
+            display: block;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+
+        .promo-banner-text span {
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        .store-map {
+            height: 400px;
+            background: var(--gray-dark);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .store-map iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            filter: grayscale(100%) contrast(1.1);
+        }
+
+        /* WhatsApp */
+        .whatsapp-cta {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 99;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #25D366;
+            color: white;
+            padding: 18px 30px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            box-shadow: 0 10px 40px rgba(37,211,102,0.4);
+            transition: all 0.3s ease;
+        }
+
+        .whatsapp-cta:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(37,211,102,0.5);
+        }
+
+        .whatsapp-cta svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--black);
+            padding: 60px 40px 30px;
+            text-align: center;
+        }
+
+        footer .logo {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+
+        footer p {
+            font-size: 0.75rem;
+            color: var(--gray);
+            letter-spacing: 0.1em;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .product-grid,
+            .store-grid {
+                grid-template-columns: 1fr;
+                gap: 50px;
+            }
+
+            .benefits-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .specs-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            section {
+                padding: 80px 25px;
+            }
+
+            .header {
+                padding: 15px 25px;
+            }
+
+            .hero-content {
+                padding: 0 25px 60px;
+            }
+
+            .benefits-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .product-specs-mini {
+                grid-template-columns: 1fr;
+            }
+
+            .whatsapp-cta {
+                right: 15px;
+                bottom: 15px;
+                padding: 15px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="header" id="header">
+        <a href="/" class="logo">CESANTONI <span>Premium</span></a>
+        <div class="header-badge">Colección Exclusiva</div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-bg"></div>
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <span class="hero-tag">Piso Porcelánico Premium</span>
+            <h1 class="hero-title">Alabama</h1>
+            <p class="hero-subtitle">Elegancia en madera porcelánica. 20 caras únicas que transforman cada espacio en una obra maestra del diseño contemporáneo.</p>
+        </div>
+        <div class="scroll-indicator">
+            <span>Descubre</span>
+            <div class="scroll-line"></div>
+        </div>
+    </section>
+
+    <!-- Product Showcase -->
+    <section class="product-showcase">
+        <div class="product-grid">
+            <div class="product-image-main">
+                <img src="http://localhost:3000/product-images/product_1.jpeg" alt="Alabama - Piso Porcelánico">
+            </div>
+            <div class="product-details">
+                <span class="section-label">Porcelánico Premium</span>
+                <h2>Alabama</h2>
+                <div class="format">20 × 120 cm | Acabado Mate</div>
+                <p>Inspirado en los bosques más nobles de Norteamérica, Alabama captura la esencia de la madera natural con la durabilidad superior del porcelánico. Cada pieza presenta una de 20 caras únicas, garantizando que tu espacio sea verdaderamente irrepetible.</p>
+                
+                <div class="product-specs-mini">
+                    <div class="spec-mini">
+                        <div class="spec-mini-value">PEI 4</div>
+                        <div class="spec-mini-label">Resistencia al tráfico</div>
+                    </div>
+                    <div class="spec-mini">
+                        <div class="spec-mini-value">20 Caras</div>
+                        <div class="spec-mini-label">Variación única</div>
+                    </div>
+                    <div class="spec-mini">
+                        <div class="spec-mini-value">Pasta Blanca</div>
+                        <div class="spec-mini-label">100% Porcelánico</div>
+                    </div>
+                    <div class="spec-mini">
+                        <div class="spec-mini-value">Int/Ext</div>
+                        <div class="spec-mini-label">Uso versátil</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Video -->
+    <section class="video-section">
+        <div class="video-container">
+            <div class="video-placeholder">
+                <div class="video-placeholder-icon"></div>
+                <p>Video experiencia próximamente</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefits -->
+    <section class="benefits">
+        <div class="section-container">
+            <span class="section-label">¿Por qué elegir Alabama?</span>
+            <h2 class="section-title">Excelencia en cada detalle</h2>
+            
+            <div class="benefits-grid">
+                <div class="benefit-card">
+                    <div class="benefit-icon">◈</div>
+                    <h3 class="benefit-title">Resistencia Superior</h3>
+                    <p class="benefit-text">PEI 4 garantiza durabilidad excepcional para áreas de alto tráfico. Resistente a rayones, manchas y humedad.</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">✧</div>
+                    <h3 class="benefit-title">20 Caras Únicas</h3>
+                    <p class="benefit-text">Cada pieza es diferente, creando pisos con variación natural que evitan patrones repetitivos artificiales.</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">◇</div>
+                    <h3 class="benefit-title">Garantía Premium</h3>
+                    <p class="benefit-text">Respaldado por 25 años de experiencia Cesantoni. Certificaciones internacionales de calidad.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Specs -->
+    <section class="specs">
+        <div class="section-container">
+            <span class="section-label" style="color: var(--gold-dark);">Especificaciones Técnicas</span>
+            <h2 class="section-title">La ciencia detrás de la belleza</h2>
+            
+            <div class="specs-grid">
+                <div class="spec-item">
+                    <div class="spec-value">20×120 cm</div>
+                    <div class="spec-label">Formato</div>
+                </div>
+                <div class="spec-item">
+                    <div class="spec-value">PEI 4</div>
+                    <div class="spec-label">Resistencia</div>
+                </div>
+                <div class="spec-item">
+                    <div class="spec-value">&lt;0.5%</div>
+                    <div class="spec-label">Absorción</div>
+                </div>
+                <div class="spec-item">
+                    <div class="spec-value">6-7</div>
+                    <div class="spec-label">Dureza Mohs</div>
+                </div>
+                <div class="spec-item">
+                    <div class="spec-value">5 pzas</div>
+                    <div class="spec-label">Piezas/Caja</div>
+                </div>
+                <div class="spec-item">
+                    <div class="spec-value">1.20 m²</div>
+                    <div class="spec-label">m² por Caja</div>
+                </div>
+                <div class="spec-item">
+                    <div class="spec-value">Porcelánico</div>
+                    <div class="spec-label">Tipo</div>
+                </div>
+                <div class="spec-item">
+                    <div class="spec-value">Int / Ext</div>
+                    <div class="spec-label">Uso</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Store -->
+    <section class="store">
+        <div class="section-container">
+            <div class="store-grid">
+                <div class="store-info">
+                    <span class="section-label">Disponible en</span>
+                    <h3>Cesantoni Fresnillo</h3>
+                    
+                    <div class="store-detail">
+                        <svg class="store-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        <div class="store-detail-text">
+                            <strong>Dirección</strong>
+                            Calle Parra 8, Centro, Fresnillo, Zacatecas
+                        </div>
+                    </div>
+                    
+                    <div class="store-detail">
+                        <svg class="store-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                        </svg>
+                        <div class="store-detail-text">
+                            <strong>Teléfono</strong>
+                            493 932 1234
+                        </div>
+                    </div>
+
+                    <div class="store-detail">
+                        <svg class="store-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <div class="store-detail-text">
+                            <strong>Horario</strong>
+                            Lunes a Sábado: 9:00 - 19:00<br>
+                            Domingo: 10:00 - 14:00
+                        </div>
+                    </div>
+
+                    <div class="promo-banner">
+                        <span class="promo-banner-icon">🏷️</span>
+                        <div class="promo-banner-text">
+                            <strong>20% OFF en Enero</strong>
+                            <span>En compras mayores a 50m²</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="store-map">
+                    <iframe 
+                        src="https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=Calle+Parra+8+Centro+Fresnillo+Zacatecas+Mexico"
+                        allowfullscreen>
+                    </iframe>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <a href="/" class="logo">CESANTONI <span>Premium</span></a>
+        <p>© 2026 Cesantoni. Tradición e innovación desde 1998.</p>
+    </footer>
+
+    <!-- WhatsApp -->
+    <a href="https://wa.me/524939321234?text=Hola,%20vi%20el%20piso%20Alabama%20en%20su%20showroom%20y%20me%20interesa%20más%20información" 
+       class="whatsapp-cta" 
+       target="_blank">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+        </svg>
+        Cotizar por WhatsApp
+    </a>
+
+    <script>
+        // Header scroll
+        window.addEventListener('scroll', () => {
+            const header = document.getElementById('header');
+            header.classList.toggle('scrolled', window.scrollY > 100);
+        });
+
+        // Track scan
+        fetch('/api/track/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                product_sku: 'ALABAMA-2012',
+                store_id: 1,
+                session_id: Math.random().toString(36).substr(2, 9)
+            })
+        }).catch(() => {});
+    </script>
+
+</body>
+</html>

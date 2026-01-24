@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="pageTitle">Cesantoni Premium</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --black: #0a0a0a;
+            --charcoal: #1a1a1a;
+            --gold: #c9a227;
+            --gold-dark: #a68523;
+            --cream: #f5f3ef;
+            --white: #ffffff;
+            --gray: #666;
+            --gray-light: #999;
+            --gray-dark: #2a2a2a;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--black);
+            color: var(--white);
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 25px 50px;
+            transition: all 0.4s ease;
+        }
+
+        .header.scrolled {
+            background: rgba(10,10,10,0.95);
+            padding: 15px 50px;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.6rem;
+            font-weight: 500;
+            letter-spacing: 0.15em;
+            color: var(--white);
+            text-decoration: none;
+        }
+
+        .logo span { color: var(--gold); font-weight: 400; }
+
+        .header-badge {
+            font-size: 0.7rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--gold);
+            border: 1px solid var(--gold);
+            padding: 8px 16px;
+        }
+
+        /* Hero */
+        .hero {
+            height: 100vh;
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            transform: scale(1.1);
+            animation: heroZoom 20s ease-out forwards;
+        }
+
+        @keyframes heroZoom {
+            to { transform: scale(1); }
+        }
+
+        .hero-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(10,10,10,0.3) 0%, rgba(10,10,10,0.7) 70%, rgba(10,10,10,1) 100%);
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            padding: 0 50px 100px;
+            max-width: 800px;
+        }
+
+        .hero-tag {
+            display: inline-block;
+            font-size: 0.7rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--gold);
+        }
+
+        .hero-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(4rem, 12vw, 8rem);
+            font-weight: 500;
+            line-height: 0.9;
+            margin-bottom: 30px;
+            letter-spacing: -0.02em;
+        }
+
+        .hero-subtitle {
+            font-size: 1.1rem;
+            font-weight: 300;
+            line-height: 1.8;
+            color: var(--gray-light);
+            max-width: 500px;
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 40px;
+            right: 50px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            z-index: 2;
+        }
+
+        .scroll-indicator span {
+            font-size: 0.65rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--gray);
+            writing-mode: vertical-rl;
+        }
+
+        .scroll-line {
+            width: 1px;
+            height: 60px;
+            background: linear-gradient(180deg, var(--gold) 0%, transparent 100%);
+            animation: scrollPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes scrollPulse {
+            0%, 100% { opacity: 1; transform: scaleY(1); }
+            50% { opacity: 0.5; transform: scaleY(0.8); }
+        }
+
+        /* Sections */
+        section { padding: 120px 50px; }
+
+        .section-container { max-width: 1400px; margin: 0 auto; }
+
+        .section-label {
+            display: inline-block;
+            font-size: 0.7rem;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: 15px;
+        }
+
+        .section-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 3rem;
+            font-weight: 400;
+            color: var(--cream);
+            max-width: 600px;
+        }
+
+        /* Product Showcase */
+        .product-showcase { background: var(--charcoal); }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 80px;
+            align-items: center;
+        }
+
+        .product-image-main {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .product-image-main img {
+            width: 100%;
+            height: auto;
+            display: block;
+            transition: transform 0.6s ease;
+        }
+
+        .product-image-main:hover img { transform: scale(1.03); }
+
+        .product-details h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 3.5rem;
+            font-weight: 500;
+            margin-bottom: 15px;
+            color: var(--cream);
+        }
+
+        .format {
+            font-size: 0.8rem;
+            letter-spacing: 0.15em;
+            color: var(--gold);
+            margin-bottom: 30px;
+            text-transform: uppercase;
+        }
+
+        .product-details p {
+            font-size: 1rem;
+            line-height: 1.9;
+            color: var(--gray-light);
+            margin-bottom: 40px;
+        }
+
+        .product-specs-mini {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+        }
+
+        .spec-mini {
+            padding: 20px;
+            border: 1px solid var(--gray-dark);
+            transition: all 0.3s ease;
+        }
+
+        .spec-mini:hover {
+            border-color: var(--gold);
+            background: rgba(201,162,39,0.05);
+        }
+
+        .spec-mini-value {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.4rem;
+            color: var(--gold);
+            margin-bottom: 5px;
+        }
+
+        .spec-mini-label {
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--gray);
+        }
+
+        /* Pricing Section */
+        .pricing-section {
+            background: var(--black);
+            text-align: center;
+        }
+
+        .pricing-box {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 60px;
+            border: 1px solid var(--gray-dark);
+        }
+
+        .price-original {
+            font-size: 1.2rem;
+            color: var(--gray);
+            text-decoration: line-through;
+            margin-bottom: 10px;
+        }
+
+        .price-current {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 4rem;
+            font-weight: 500;
+            color: var(--gold);
+        }
+
+        .price-unit {
+            font-size: 1.2rem;
+            color: var(--gray-light);
+            font-weight: 300;
+        }
+
+        .promo-badge-inline {
+            display: inline-block;
+            background: var(--gold);
+            color: var(--black);
+            padding: 12px 30px;
+            margin-top: 30px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .promo-dates {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: var(--gray);
+        }
+
+        /* Video */
+        .video-section {
+            background: var(--black);
+            padding: 0;
+        }
+
+        .video-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            aspect-ratio: 16/9;
+            background: var(--charcoal);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--charcoal) 0%, var(--black) 100%);
+        }
+
+        .video-placeholder-icon {
+            width: 80px;
+            height: 80px;
+            border: 2px solid var(--gold);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.4s ease;
+        }
+
+        .video-placeholder-icon:hover {
+            background: var(--gold);
+            transform: scale(1.1);
+        }
+
+        .video-placeholder-icon::after {
+            content: '';
+            width: 0;
+            height: 0;
+            border-left: 24px solid var(--gold);
+            border-top: 14px solid transparent;
+            border-bottom: 14px solid transparent;
+            margin-left: 8px;
+            transition: border-color 0.4s ease;
+        }
+
+        .video-placeholder-icon:hover::after { border-left-color: var(--black); }
+
+        .video-placeholder p {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.3rem;
+            font-style: italic;
+            color: var(--gray);
+        }
+
+        /* Benefits */
+        .benefits {
+            background: linear-gradient(180deg, var(--black) 0%, var(--charcoal) 100%);
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        .benefit-card {
+            padding: 50px 40px;
+            background: var(--gray-dark);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s ease;
+        }
+
+        .benefit-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--gold);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.4s ease;
+        }
+
+        .benefit-card:hover::before { transform: scaleX(1); }
+        .benefit-card:hover { transform: translateY(-10px); }
+
+        .benefit-icon { font-size: 2.5rem; margin-bottom: 25px; }
+        .benefit-title { font-size: 1.4rem; margin-bottom: 15px; color: var(--cream); }
+        .benefit-text { font-size: 0.9rem; color: var(--gray-light); line-height: 1.7; }
+
+        /* Specs */
+        .specs {
+            background: var(--cream);
+            color: var(--black);
+        }
+
+        .specs .section-title { color: var(--black); }
+
+        .specs-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+            margin-top: 50px;
+        }
+
+        .spec-item {
+            padding: 30px;
+            background: var(--white);
+            border: 1px solid rgba(0,0,0,0.08);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .spec-item:hover {
+            border-color: var(--gold);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+        }
+
+        .spec-value {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            font-weight: 500;
+            color: var(--gold-dark);
+            margin-bottom: 8px;
+        }
+
+        .spec-label {
+            font-size: 0.7rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--gray);
+        }
+
+        /* Store */
+        .store { background: var(--charcoal); }
+
+        .store-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+        }
+
+        .store-info h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            color: var(--cream);
+        }
+
+        .store-detail {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .store-detail-icon {
+            width: 24px;
+            height: 24px;
+            color: var(--gold);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .store-detail-text {
+            font-size: 1rem;
+            color: var(--gray-light);
+            line-height: 1.6;
+        }
+
+        .store-detail-text strong {
+            display: block;
+            color: var(--white);
+            margin-bottom: 5px;
+        }
+
+        .promo-banner {
+            background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold) 100%);
+            padding: 25px 30px;
+            margin-top: 40px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .promo-banner-icon { font-size: 2rem; }
+
+        .promo-banner-text { color: var(--black); }
+
+        .promo-banner-text strong {
+            display: block;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+
+        .promo-banner-text span {
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        .store-map {
+            height: 400px;
+            background: var(--gray-dark);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .store-map iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            filter: grayscale(100%) contrast(1.1);
+        }
+
+        /* Disclaimers */
+        .disclaimers {
+            background: var(--black);
+            padding: 60px 50px;
+        }
+
+        .disclaimers-content {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .disclaimers-title {
+            font-size: 0.7rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: 20px;
+        }
+
+        .disclaimers-text {
+            font-size: 0.8rem;
+            color: var(--gray);
+            line-height: 2;
+        }
+
+        /* WhatsApp CTA */
+        .whatsapp-cta {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 99;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #25D366;
+            color: white;
+            padding: 18px 30px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            box-shadow: 0 10px 40px rgba(37,211,102,0.4);
+            transition: all 0.3s ease;
+        }
+
+        .whatsapp-cta:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(37,211,102,0.5);
+        }
+
+        .whatsapp-cta svg { width: 28px; height: 28px; }
+
+        /* Footer */
+        footer {
+            background: var(--black);
+            padding: 60px 40px 30px;
+            text-align: center;
+            border-top: 1px solid var(--gray-dark);
+        }
+
+        footer .logo {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+
+        footer p {
+            font-size: 0.75rem;
+            color: var(--gray);
+            letter-spacing: 0.1em;
+        }
+
+        /* Loading */
+        .loading {
+            position: fixed;
+            inset: 0;
+            background: var(--black);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .loading.hidden { display: none; }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--gray-dark);
+            border-top-color: var(--gold);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading p {
+            font-size: 0.8rem;
+            color: var(--gray);
+            letter-spacing: 0.1em;
+        }
+
+        /* Error */
+        .error-page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .error-page h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+
+        .error-page p { color: var(--gray); }
+
+        .hidden { display: none !important; }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .product-grid, .store-grid {
+                grid-template-columns: 1fr;
+                gap: 50px;
+            }
+            .benefits-grid { grid-template-columns: repeat(2, 1fr); }
+            .specs-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            section { padding: 80px 25px; }
+            .header { padding: 15px 25px; }
+            .hero-content { padding: 0 25px 60px; }
+            .benefits-grid { grid-template-columns: 1fr; }
+            .product-specs-mini { grid-template-columns: 1fr; }
+            .whatsapp-cta {
+                right: 15px;
+                bottom: 15px;
+                padding: 15px 20px;
+            }
+            .pricing-box { padding: 40px 25px; }
+            .price-current { font-size: 3rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Cargando experiencia...</p>
+    </div>
+
+    <!-- Error -->
+    <div class="error-page hidden" id="error">
+        <h1>Producto no encontrado</h1>
+        <p>El producto que buscas no está disponible.</p>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" class="hidden">
+        <!-- Header -->
+        <header class="header" id="header">
+            <a href="/" class="logo"><img src="/images/logo-cesantoni.png" alt="Cesantoni" style="height: 40px; width: auto;"></a>
+            <div class="header-badge" id="headerBadge">Colección Exclusiva</div>
+        </header>
+
+        <!-- Hero -->
+        <section class="hero">
+            <div class="hero-bg" id="heroBg"></div>
+            <div class="hero-overlay"></div>
+            <div class="hero-content">
+                <span class="hero-tag" id="heroTag">Piso Porcelánico Premium</span>
+                <h1 class="hero-title" id="heroTitle">Producto</h1>
+                <p class="hero-subtitle" id="heroSubtitle">Descripción del producto.</p>
+            </div>
+            <div class="scroll-indicator">
+                <span>Descubre</span>
+                <div class="scroll-line"></div>
+            </div>
+        </section>
+
+        <!-- Product Showcase -->
+        <section class="product-showcase">
+            <div class="product-grid">
+                <div class="product-image-main">
+                    <img id="productImage" src="" alt="">
+                </div>
+                <div class="product-details">
+                    <span class="section-label" id="productCategory">Porcelánico Premium</span>
+                    <h2 id="productName">Producto</h2>
+                    <div class="format" id="productFormat">Formato | Acabado</div>
+                    <p id="productDescription">Descripción del producto.</p>
+                    
+                    <div class="product-specs-mini" id="specsMinigrid"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pricing -->
+        <section class="pricing-section" id="pricingSection">
+            <div class="pricing-box">
+                <span class="section-label">Precio Especial</span>
+                <div class="price-original hidden" id="priceOriginal">$000</div>
+                <div class="price-current">
+                    <span id="priceAmount">$000</span>
+                    <span class="price-unit">/m²</span>
+                </div>
+                <div class="promo-badge-inline hidden" id="promoBadge">🔥 OFERTA ESPECIAL</div>
+                <div class="promo-dates hidden" id="promoDates">Válido hasta...</div>
+            </div>
+        </section>
+
+        <!-- Video -->
+        <section class="video-section" id="videoSection">
+            <div class="video-container">
+                <video id="productVideo" class="hidden" controls playsinline></video>
+                <div class="video-placeholder" id="videoPlaceholder">
+                    <div class="video-placeholder-icon"></div>
+                    <p>Video experiencia próximamente</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Benefits -->
+        <section class="benefits">
+            <div class="section-container">
+                <span class="section-label">¿Por qué elegir este producto?</span>
+                <h2 class="section-title">Excelencia en cada detalle</h2>
+                
+                <div class="benefits-grid">
+                    <div class="benefit-card">
+                        <div class="benefit-icon">◈</div>
+                        <h3 class="benefit-title">Resistencia Superior</h3>
+                        <p class="benefit-text">Garantiza durabilidad excepcional para áreas de alto tráfico. Resistente a rayones, manchas y humedad.</p>
+                    </div>
+                    <div class="benefit-card">
+                        <div class="benefit-icon">✧</div>
+                        <h3 class="benefit-title">Diseño Único</h3>
+                        <p class="benefit-text">Cada pieza presenta variaciones naturales que crean espacios verdaderamente irrepetibles.</p>
+                    </div>
+                    <div class="benefit-card">
+                        <div class="benefit-icon">◇</div>
+                        <h3 class="benefit-title">Garantía Premium</h3>
+                        <p class="benefit-text">Respaldado por años de experiencia Cesantoni. Certificaciones internacionales de calidad.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Specs -->
+        <section class="specs">
+            <div class="section-container">
+                <span class="section-label" style="color: var(--gold-dark);">Especificaciones Técnicas</span>
+                <h2 class="section-title">La ciencia detrás de la belleza</h2>
+                
+                <div class="specs-grid" id="specsGrid"></div>
+            </div>
+        </section>
+
+        <!-- Store -->
+        <section class="store" id="storeSection">
+            <div class="section-container">
+                <div class="store-grid">
+                    <div class="store-info">
+                        <span class="section-label">Disponible en</span>
+                        <h3 id="storeName">Tienda</h3>
+                        
+                        <div class="store-detail">
+                            <svg class="store-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <div class="store-detail-text">
+                                <strong>Dirección</strong>
+                                <span id="storeAddress">Dirección de la tienda</span>
+                            </div>
+                        </div>
+                        
+                        <div class="store-detail" id="storePhoneSection">
+                            <svg class="store-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                            </svg>
+                            <div class="store-detail-text">
+                                <strong>Teléfono</strong>
+                                <span id="storePhone">000 000 0000</span>
+                            </div>
+                        </div>
+
+                        <div class="promo-banner hidden" id="storePromoBanner">
+                            <span class="promo-banner-icon">🏷️</span>
+                            <div class="promo-banner-text">
+                                <strong id="storePromoTitle">Promoción Especial</strong>
+                                <span id="storePromoText">Detalles de la promoción</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="store-map" id="storeMap">
+                        <iframe id="mapIframe" allowfullscreen></iframe>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Disclaimers -->
+        <section class="disclaimers">
+            <div class="disclaimers-content">
+                <h4 class="disclaimers-title">Información Importante</h4>
+                <p class="disclaimers-text">
+                    Precio por metro cuadrado (m²). No incluye instalación.<br>
+                    Precios sujetos a cambio sin previo aviso.<br>
+                    Consulta disponibilidad en tienda antes de comprar.<br>
+                    <span id="disclaimerPromo" class="hidden">Promoción válida solo en tiendas participantes.<br></span>
+                    Imágenes de referencia. El color real puede variar.
+                </p>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <a href="/" class="logo"><img src="/images/logo-cesantoni.png" alt="Cesantoni" style="height: 35px; width: auto;"></a>
+            <p>© 2026 Cesantoni. Tradición e innovación desde 1998.</p>
+        </footer>
+
+        <!-- WhatsApp -->
+        <a id="whatsappBtn" href="#" class="whatsapp-cta" target="_blank">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+            </svg>
+            Cotizar por WhatsApp
+        </a>
+    </div>
+
+    <script>
+        // Get URL params
+        const path = window.location.pathname;
+        const sku = path.split('/p/')[1]?.split('?')[0];
+        const urlParams = new URLSearchParams(window.location.search);
+        const storeSlug = urlParams.get('store');
+
+        async function loadProduct() {
+            if (!sku) {
+                showError();
+                return;
+            }
+
+            try {
+                // Build API URL
+                let url = `/api/promotions/for-product/${sku}?`;
+                
+                // Get store info
+                let store = null;
+                if (storeSlug) {
+                    const storeRes = await fetch(`/api/stores?slug=${storeSlug}`);
+                    const stores = await storeRes.json();
+                    store = stores.find(s => s.slug === storeSlug);
+                    if (store) {
+                        url += `store_slug=${storeSlug}&`;
+                        url += `state=${encodeURIComponent(store.state || '')}&`;
+                        url += `distributor=${encodeURIComponent(store.distributor_name || '')}`;
+                    }
+                }
+
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Producto no encontrado');
+
+                const data = await response.json();
+                const { product, promotion, final_price, has_promotion } = data;
+
+                renderProduct(product, promotion, final_price, has_promotion, store);
+                trackScan(product.id, store?.id);
+
+            } catch (err) {
+                console.error('Error:', err);
+                showError();
+            }
+        }
+
+        function renderProduct(product, promotion, finalPrice, hasPromo, store) {
+            // Page title
+            document.getElementById('pageTitle').textContent = `${product.name} | Cesantoni Premium`;
+
+            // Hero
+            const heroImg = product.image_url || 'https://via.placeholder.com/1920x1080?text=' + encodeURIComponent(product.name);
+            document.getElementById('heroBg').style.backgroundImage = `url('${heroImg}')`;
+            document.getElementById('heroTag').textContent = product.category || 'Piso Porcelánico Premium';
+            document.getElementById('heroTitle').textContent = product.name;
+            document.getElementById('heroSubtitle').textContent = product.description || 
+                `Elegancia y durabilidad premium. Transforma cada espacio en una obra maestra del diseño contemporáneo.`;
+
+            // Product showcase
+            document.getElementById('productImage').src = heroImg;
+            document.getElementById('productImage').alt = product.name;
+            document.getElementById('productCategory').textContent = product.category || 'Porcelánico Premium';
+            document.getElementById('productName').textContent = product.name;
+            document.getElementById('productFormat').textContent = 
+                `${product.format || '60×60 cm'} | ${product.finish || 'Acabado Mate'}`;
+            document.getElementById('productDescription').textContent = product.description ||
+                `Inspirado en los diseños más elegantes, este piso captura la esencia de la sofisticación con la durabilidad superior del porcelánico.`;
+
+            // Mini specs
+            const miniSpecs = [
+                { value: product.resistance || 'PEI 4', label: 'Resistencia' },
+                { value: product.pieces_per_box ? `${product.pieces_per_box} pzas` : '5 pzas', label: 'Piezas/Caja' },
+                { value: product.type || 'Porcelánico', label: 'Tipo' },
+                { value: product.usage || 'Int/Ext', label: 'Uso' }
+            ];
+            document.getElementById('specsMinigrid').innerHTML = miniSpecs.map(s => `
+                <div class="spec-mini">
+                    <div class="spec-mini-value">${s.value}</div>
+                    <div class="spec-mini-label">${s.label}</div>
+                </div>
+            `).join('');
+
+            // Pricing
+            document.getElementById('priceAmount').textContent = `$${formatPrice(finalPrice)}`;
+            
+            if (hasPromo && promotion) {
+                document.getElementById('priceOriginal').textContent = `$${formatPrice(product.base_price)} /m²`;
+                document.getElementById('priceOriginal').classList.remove('hidden');
+                document.getElementById('promoBadge').textContent = promotion.promo_text || '🔥 OFERTA ESPECIAL';
+                document.getElementById('promoBadge').classList.remove('hidden');
+                
+                const startDate = new Date(promotion.start_date).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+                const endDate = new Date(promotion.end_date).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+                document.getElementById('promoDates').textContent = `Válido del ${startDate} al ${endDate}`;
+                document.getElementById('promoDates').classList.remove('hidden');
+                
+                document.getElementById('headerBadge').textContent = promotion.promo_text || 'Promoción Especial';
+                document.getElementById('disclaimerPromo').classList.remove('hidden');
+            }
+
+            // Video
+            if (product.video_url) {
+                document.getElementById('videoPlaceholder').classList.add('hidden');
+                document.getElementById('productVideo').classList.remove('hidden');
+                document.getElementById('productVideo').src = product.video_url;
+            }
+
+            // Full specs
+            const specs = [
+                { value: product.format || '60×60 cm', label: 'Formato' },
+                { value: product.resistance || 'PEI 4', label: 'Resistencia' },
+                { value: product.water_absorption || '<0.5%', label: 'Absorción' },
+                { value: product.mohs || '6-7', label: 'Dureza Mohs' },
+                { value: product.pieces_per_box || '5 pzas', label: 'Piezas/Caja' },
+                { value: product.sqm_per_box ? `${product.sqm_per_box} m²` : '1.20 m²', label: 'm² por Caja' },
+                { value: product.type || 'Porcelánico', label: 'Tipo' },
+                { value: product.usage || 'Int / Ext', label: 'Uso' }
+            ];
+            document.getElementById('specsGrid').innerHTML = specs.map(s => `
+                <div class="spec-item">
+                    <div class="spec-value">${s.value}</div>
+                    <div class="spec-label">${s.label}</div>
+                </div>
+            `).join('');
+
+            // Store
+            if (store) {
+                document.getElementById('storeName').textContent = store.name;
+                document.getElementById('storeAddress').textContent = 
+                    `${store.address || ''}, ${store.city || ''}, ${store.state || ''}`;
+                document.getElementById('storePhone').textContent = store.phone || store.whatsapp || '';
+                
+                if (!store.phone && !store.whatsapp) {
+                    document.getElementById('storePhoneSection').classList.add('hidden');
+                }
+
+                // Map
+                const mapQuery = encodeURIComponent(`${store.address || ''} ${store.city || ''} ${store.state || ''} Mexico`);
+                document.getElementById('mapIframe').src = 
+                    `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${mapQuery}`;
+
+                // Store promo banner
+                if (hasPromo && promotion) {
+                    document.getElementById('storePromoBanner').classList.remove('hidden');
+                    document.getElementById('storePromoTitle').textContent = promotion.promo_text || promotion.name;
+                    document.getElementById('storePromoText').textContent = `Precio especial: $${formatPrice(finalPrice)}/m²`;
+                }
+            } else {
+                document.getElementById('storeSection').classList.add('hidden');
+            }
+
+            // WhatsApp
+            const whatsappNumber = store?.whatsapp || store?.phone || '5215512345678';
+            const whatsappMsg = encodeURIComponent(
+                `¡Hola! Me interesa el piso ${product.name}` +
+                (hasPromo ? ` con la promoción ${promotion.promo_text || promotion.name}` : '') +
+                (store ? ` que vi en ${store.name}` : '') +
+                `. ¿Podrían darme más información?`
+            );
+            document.getElementById('whatsappBtn').href = `https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${whatsappMsg}`;
+
+            // Show content
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('mainContent').classList.remove('hidden');
+        }
+
+        function formatPrice(price) {
+            return Number(price).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        }
+
+        function showError() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('error').classList.remove('hidden');
+        }
+
+        async function trackScan(productId, storeId) {
+            try {
+                await fetch('/api/scans', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        product_id: productId,
+                        store_id: storeId,
+                        referrer: document.referrer,
+                        user_agent: navigator.userAgent,
+                        utm_source: urlParams.get('utm_source'),
+                        utm_medium: urlParams.get('utm_medium'),
+                        utm_campaign: urlParams.get('utm_campaign')
+                    })
+                });
+            } catch (e) {
+                console.log('Tracking error:', e);
+            }
+        }
+
+        // Header scroll effect
+        window.addEventListener('scroll', () => {
+            const header = document.getElementById('header');
+            if (header) header.classList.toggle('scrolled', window.scrollY > 100);
+        });
+
+        // Init
+        loadProduct();
+    </script>
+</body>
+</html>

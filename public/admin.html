@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cesantoni Experience - Admin</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #f5f3ef; min-height: 100vh; }
+    
+    .header { background: #111; padding: 20px 40px; border-bottom: 1px solid #222; display: flex; justify-content: space-between; align-items: center; }
+    .logo { font-size: 1.5rem; font-weight: 600; color: #C9A962; }
+    
+    .container { max-width: 1200px; margin: 0 auto; padding: 40px; }
+    
+    .card { background: #111; border-radius: 12px; padding: 30px; margin-bottom: 30px; border: 1px solid #222; }
+    .card h2 { color: #C9A962; margin-bottom: 20px; font-size: 1.3rem; }
+    
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .form-group { margin-bottom: 20px; }
+    .form-group.full { grid-column: span 2; }
+    label { display: block; margin-bottom: 8px; color: #888; font-size: 0.9rem; }
+    input, textarea, select { width: 100%; padding: 12px 16px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #f5f3ef; font-size: 1rem; }
+    input:focus, textarea:focus { outline: none; border-color: #C9A962; }
+    textarea { resize: vertical; min-height: 100px; }
+    
+    .btn { background: #C9A962; color: #0a0a0a; padding: 14px 30px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+    .btn:hover { background: #f5f3ef; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary { background: transparent; border: 1px solid #C9A962; color: #C9A962; }
+    
+    .status { padding: 15px 20px; border-radius: 8px; margin-top: 20px; display: none; }
+    .status.show { display: block; }
+    .status.loading { background: #1a1a1a; border: 1px solid #C9A962; }
+    .status.success { background: #1a3a1a; border: 1px solid #4a4; }
+    .status.error { background: #3a1a1a; border: 1px solid #a44; }
+    
+    .results { margin-top: 30px; }
+    .result-item { background: #1a1a1a; padding: 15px 20px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .result-item a { color: #C9A962; text-decoration: none; }
+    .result-item a:hover { text-decoration: underline; }
+    
+    .tabs { display: flex; gap: 10px; margin-bottom: 30px; }
+    .tab { padding: 12px 24px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; cursor: pointer; transition: all 0.3s; }
+    .tab.active { background: #C9A962; color: #0a0a0a; border-color: #C9A962; }
+    
+    .log { background: #0a0a0a; border: 1px solid #333; border-radius: 8px; padding: 15px; font-family: monospace; font-size: 0.85rem; max-height: 300px; overflow-y: auto; margin-top: 20px; }
+    .log-entry { padding: 5px 0; border-bottom: 1px solid #1a1a1a; }
+    .log-entry.success { color: #4a4; }
+    .log-entry.error { color: #a44; }
+    
+    @media (max-width: 768px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full { grid-column: span 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">CESANTONI Experience</div>
+    <div style="color: #666;">Panel de Administración</div>
+  </div>
+
+  <div class="container">
+    <div class="tabs">
+      <div class="tab active" onclick="showTab('create')">Crear Landing</div>
+      <div class="tab" onclick="showTab('list')">Ver Landings</div>
+    </div>
+
+    <div id="create-tab">
+      <div class="card">
+        <h2>🎬 Generar Landing con Video</h2>
+        <form id="landing-form">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Nombre del Producto *</label>
+              <input type="text" id="productName" placeholder="Ej: Alabama" required>
+            </div>
+            <div class="form-group">
+              <label>Imagen del Producto (URL)</label>
+              <input type="text" id="productImage" placeholder="/product-images/alabama.jpg">
+            </div>
+            <div class="form-group full">
+              <label>Descripción del Producto *</label>
+              <textarea id="productDescription" placeholder="Porcelánico efecto madera con 20 caras únicas..." required></textarea>
+            </div>
+            <div class="form-group">
+              <label>Nombre de Tienda</label>
+              <input type="text" id="storeName" placeholder="Cesantoni Fresnillo">
+            </div>
+            <div class="form-group">
+              <label>Dirección</label>
+              <input type="text" id="storeAddress" placeholder="Av. Principal #123">
+            </div>
+            <div class="form-group">
+              <label>Teléfono</label>
+              <input type="text" id="storePhone" placeholder="(493) 123-4567">
+            </div>
+            <div class="form-group">
+              <label>WhatsApp (solo números)</label>
+              <input type="text" id="storeWhatsApp" placeholder="524931234567">
+            </div>
+          </div>
+          
+          <h3 style="color: #C9A962; margin: 30px 0 20px;">Especificaciones Técnicas</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Formato</label>
+              <input type="text" id="specFormato" placeholder="20x120 cm">
+            </div>
+            <div class="form-group">
+              <label>Acabado</label>
+              <input type="text" id="specAcabado" placeholder="Mate Natural">
+            </div>
+            <div class="form-group">
+              <label>Uso</label>
+              <input type="text" id="specUso" placeholder="Piso y Muro">
+            </div>
+            <div class="form-group">
+              <label>Caras / Diseños</label>
+              <input type="text" id="specCaras" placeholder="20 Diseños">
+            </div>
+          </div>
+
+          <div style="margin-top: 30px; display: flex; gap: 15px;">
+            <button type="submit" class="btn" id="submitBtn">🚀 Generar Landing + Video</button>
+            <button type="button" class="btn btn-secondary" onclick="generateLandingOnly()">📄 Solo Landing (si video existe)</button>
+          </div>
+        </form>
+
+        <div id="status" class="status"></div>
+        <div id="log" class="log" style="display: none;"></div>
+      </div>
+    </div>
+
+    <div id="list-tab" style="display: none;">
+      <div class="card">
+        <h2>📁 Landings Generadas</h2>
+        <div id="landings-list" class="results">Cargando...</div>
+      </div>
+      <div class="card">
+        <h2>🎥 Videos Generados</h2>
+        <div id="videos-list" class="results">Cargando...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelector(`.tab[onclick="showTab('${tab}')"]`).classList.add('active');
+      document.getElementById('create-tab').style.display = tab === 'create' ? 'block' : 'none';
+      document.getElementById('list-tab').style.display = tab === 'list' ? 'block' : 'none';
+      if (tab === 'list') loadLists();
+    }
+
+    function addLog(message, type = '') {
+      const log = document.getElementById('log');
+      log.style.display = 'block';
+      const entry = document.createElement('div');
+      entry.className = 'log-entry ' + type;
+      entry.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = 'status show ' + type;
+    }
+
+    function getFormData() {
+      return {
+        productName: document.getElementById('productName').value,
+        productDescription: document.getElementById('productDescription').value,
+        productImage: document.getElementById('productImage').value || '/product-images/default.jpg',
+        storeName: document.getElementById('storeName').value,
+        storeAddress: document.getElementById('storeAddress').value,
+        storePhone: document.getElementById('storePhone').value,
+        storeWhatsApp: document.getElementById('storeWhatsApp').value,
+        specs: [
+          { label: 'Formato', value: document.getElementById('specFormato').value || '20x120 cm' },
+          { label: 'Acabado', value: document.getElementById('specAcabado').value || 'Mate Natural' },
+          { label: 'Uso', value: document.getElementById('specUso').value || 'Piso y Muro' },
+          { label: 'Caras', value: document.getElementById('specCaras').value || '20 Diseños' }
+        ]
+      };
+    }
+
+    document.getElementById('landing-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      document.getElementById('log').innerHTML = '';
+      
+      const data = getFormData();
+      showStatus('🎬 Iniciando generación de video... (3-5 minutos)', 'loading');
+      addLog('Enviando solicitud de video...');
+
+      try {
+        const res = await fetch('/generate-video', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        addLog('Video en proceso: ' + result.slug, 'success');
+        
+        // Esperar y generar landing
+        showStatus('⏳ Video generándose... Generando landing mientras tanto...', 'loading');
+        
+        const landingRes = await fetch('/generate-landing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const landingResult = await landingRes.json();
+        
+        addLog('Landing generada: ' + landingResult.url, 'success');
+        showStatus('✅ Landing lista! El video se está procesando en segundo plano.', 'success');
+        
+        setTimeout(() => {
+          addLog('Puedes ver la landing en: ' + landingResult.url);
+          addLog('El video aparecerá automáticamente cuando esté listo (~3-5 min)');
+        }, 1000);
+
+      } catch (err) {
+        showStatus('❌ Error: ' + err.message, 'error');
+        addLog('Error: ' + err.message, 'error');
+      }
+      
+      btn.disabled = false;
+    });
+
+    async function generateLandingOnly() {
+      const data = getFormData();
+      showStatus('📄 Generando landing...', 'loading');
+      
+      try {
+        const res = await fetch('/generate-landing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        showStatus('✅ Landing lista: ' + result.url, 'success');
+        addLog('Landing generada: ' + result.url, 'success');
+      } catch (err) {
+        showStatus('❌ Error: ' + err.message, 'error');
+      }
+    }
+
+    async function loadLists() {
+      try {
+        const [landingsRes, videosRes] = await Promise.all([
+          fetch('/api/landings'),
+          fetch('/api/videos')
+        ]);
+        const landings = await landingsRes.json();
+        const videos = await videosRes.json();
+
+        document.getElementById('landings-list').innerHTML = landings.length 
+          ? landings.map(l => `<div class="result-item"><span>${l.name}</span><a href="${l.url}" target="_blank">Abrir ↗</a></div>`).join('')
+          : '<p style="color: #666;">No hay landings generadas</p>';
+
+        document.getElementById('videos-list').innerHTML = videos.length
+          ? videos.map(v => `<div class="result-item"><span>${v.name}</span><a href="${v.url}" target="_blank">Ver ↗</a></div>`).join('')
+          : '<p style="color: #666;">No hay videos generados</p>';
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>

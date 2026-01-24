@@ -1,0 +1,19 @@
+<svg width="300" height="80" viewBox="0 0 300 80" xmlns="http://www.w3.org/2000/svg">
+  <text x="50%" y="40%" 
+        dominant-baseline="middle" text-anchor="middle" 
+        fill="#ffffff" 
+        font-family="Arial, Helvetica, sans-serif" 
+        font-weight="bold" 
+        font-size="36" 
+        letter-spacing="2">
+    CESANTONI
+  </text>
+  <text x="50%" y="75%" 
+        dominant-baseline="middle" text-anchor="middle" 
+        fill="#ffffff" 
+        font-family="Arial, Helvetica, sans-serif" 
+        font-size="10" 
+        letter-spacing="2">
+    PORCELANATO PREMIUM
+  </text>
+</svg>

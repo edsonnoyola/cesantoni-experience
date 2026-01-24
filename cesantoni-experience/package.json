@@ -1,0 +1,16 @@
+{
+  "name": "cesantoni-experience",
+  "version": "1.0.0",
+  "description": "Sistema de tracking QR para showrooms Cesantoni",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "sql.js": "^1.10.0",
+    "cors": "^2.8.5",
+    "qrcode": "^1.5.3"
+  }
+}

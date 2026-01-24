@@ -1,0 +1,594 @@
+{
+  "date": "2026-01-24T05:17:48.711Z",
+  "summary": {
+    "total": 105,
+    "correct": 8,
+    "updated": 97,
+    "notFound": 0
+  },
+  "updates": [
+    {
+      "name": "ALABAMA",
+      "sku": "CES-ALABAMA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BLENWOOD_Fumo_HD-1024x724.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_ALABAMA_Sala_2_HD-scaled.jpg"
+    },
+    {
+      "name": "AMBERWOOD",
+      "sku": "CES-AMBERWOOD",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_LIGHTWOOD_Sala_Sillon_HD-3-932x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_AMBERWOOD_Estancia_HD-1-scaled.jpg"
+    },
+    {
+      "name": "ANDREA",
+      "sku": "CES-ANDREA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/SD_CUORI-1024x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_ANDREA_HD-scaled-1-e1729717122159.jpeg"
+    },
+    {
+      "name": "ARANZA",
+      "sku": "CES-ARANZA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Amb_Bardi_bano-1024x922.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_MONTECARLO_SALA_HD.png"
+    },
+    {
+      "name": "ARDEM",
+      "sku": "CES-ARDEM",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_VOLTERRA-1024x778.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/SD_Render_ARDEM_30x60_muro-scaled.jpg"
+    },
+    {
+      "name": "ASTOR",
+      "sku": "CES-ASTOR",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/3142_CESANTONI_DENVER_HQ-1024x723-1.webp",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/render_astor_web-scaled.jpg"
+    },
+    {
+      "name": "ATIS",
+      "sku": "CES-ATIS",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/RENDER_KIEL_GRAY_60X120CMMURO_MAUI-1-1-1024x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_ATIS_Grigio_Edimburgo_Pearl_Rose_Bano-1-scaled.jpg"
+    },
+    {
+      "name": "BASTILLE",
+      "sku": "CES-BASTILLE",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_MARCONI_Bano-1024x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BASTILLE_Dark_Sala_HD-1-scaled.jpg"
+    },
+    {
+      "name": "BENTO",
+      "sku": "CES-BENTO",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_SERENI_Timberland_Cenital_HD-2-768x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BENTO_Gray_Hexagono.png"
+    },
+    {
+      "name": "BLENDWOOD",
+      "sku": "CES-BLENDWOOD",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_ALABAMA_Sala_2_HD-1024x758.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BLENDWOOD_Canela_LEIGHTON_Light_60x60_HD-scaled.jpg"
+    },
+    {
+      "name": "BOTEV",
+      "sku": "CES-BOTEV",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_GAUDI_terraza-scaled-1-819x1024.jpeg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BOTEV_Taupe_Detalle_HD-1-1024x725.jpg"
+    },
+    {
+      "name": "BRITTON",
+      "sku": "CES-BRITTON",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_Bento_TobaccoGreen-1024x853.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BRITTON_Dark_Recamara_Cenital_HD-1.jpg"
+    },
+    {
+      "name": "Belmonte",
+      "sku": "CES-BELMONTE",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_CELLE_BLANC_RGB-769x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BELMONTE_Bano_HD.png"
+    },
+    {
+      "name": "Bianco Magenta",
+      "sku": "CES-BIANCO-MAGENTA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_LIVIA_Mate_Lobby-2-1024x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/RENDER_BIANCO_MAGENTA_60X120_PULIDO-scaled.jpg"
+    },
+    {
+      "name": "Bianco Quartz",
+      "sku": "CES-BIANCO-QUARTZ",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/AMBIENTE-TRAVALI-745x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/RENDER_BIANCO_QUARTZ_80X160CMCABO_ZEN_WHITE__80X160CM-scaled-e1740501017176.jpg"
+    },
+    {
+      "name": "Botticelli",
+      "sku": "CES-BOTTICELLI",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BOTTURA_Latte_Sala_HD-819x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BOTICELLI_Ban%CC%83o_Top_HD.jpg"
+    },
+    {
+      "name": "Bottura Latte",
+      "sku": "CES-BOTTURA-LATTE",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_NAPOLI_Exterior_HD_2-1024x919.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BOTTURA_Latte_Sala_HD-819x1024.jpg"
+    },
+    {
+      "name": "CALAJAN",
+      "sku": "CES-CALAJAN",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_CANNON_WOOD_HD-1-1024x723.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_CALAJAN_HD.jpg"
+    },
+    {
+      "name": "CANNON WOOD",
+      "sku": "CES-CANNON-WOOD",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_CALAJAN_HD-1024x1024.jpeg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_CANNON_WOOD_HD-1.jpg"
+    },
+    {
+      "name": "CARAVITA",
+      "sku": "CES-CARAVITA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BASTILLE_Dark_Sala_HD.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_CARAVITA_Gold_Sala_HD-1-scaled.jpg"
+    },
+    {
+      "name": "CASABLANCA",
+      "sku": "CES-CASABLANCA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BRUNI_Sala_HD-1024x865.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_CASABLANCA_Cocina_HD.jpg"
+    },
+    {
+      "name": "CHARLOT",
+      "sku": "CES-CHARLOT",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/SD_CESANTONI_EDIMBURGO-AMBAR_HQ-1-1024x724.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_CHARLOT_Blanco_Mate_Barra_Detalle_HD-1-scaled.jpg"
+    },
+    {
+      "name": "CORAL SHELL",
+      "sku": "CES-CORAL-SHELL",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_CARAVITA_Gold_Sala_MateHD-1-1024x853.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_CORAL_SHELL_Beige_Burconi_Recamara_HD-768x1024.png"
+    },
+    {
+      "name": "Cabo",
+      "sku": "CES-CABO",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_Samperi_Pulido_Woodland_Bano-1024x746.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/RENDER_CABO_MIST80X160CMCABO_ZEN_WHITE__80X160CM-scaled.jpg"
+    },
+    {
+      "name": "Calacatta Black",
+      "sku": "CES-CALACATTA-BLACK",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render-RYOKAN_Lobby_portada-1024x717.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/RENDER1_CALACATTA_BLACK60X120CM-scaled.jpg"
+    },
+    {
+      "name": "Celle Blanc",
+      "sku": "CES-CELLE-BLANC",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_Samperi_Pulido_Woodland_Bano-1024x746.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_CELLE_BLANC_RGB.jpg"
+    },
+    {
+      "name": "Cotto Loreto",
+      "sku": "CES-COTTO-LORETO",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/SD_CESANTONI_EDIMBURGO-AMBAR_HQ-1-1024x724.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_COTTO_LORETO_Beige_Terracota_Cocina_HD-1-scaled.jpg"
+    },
+    {
+      "name": "DECKER",
+      "sku": "CES-DECKER",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_ALABAMA_Sala_2_HD-1024x758.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_DECKER_Detalle_HD-2-1024x723.jpg"
+    },
+    {
+      "name": "DENVER",
+      "sku": "CES-DENVER",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_ALABAMA_Sala_2_HD-1024x758.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_DENVER_Comedor_Cenital_HD-1-scaled.jpg"
+    },
+    {
+      "name": "Domain",
+      "sku": "CES-DOMAIN",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BRUNI_Sala_HD-1024x865.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_DOMAIN_Gray.jpg"
+    },
+    {
+      "name": "EDIMBURGO",
+      "sku": "CES-EDIMBURGO",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/RENDER_IBIERIA_CHARLOT_BLANCO_MATE_30X75CM-819x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_Edimburgo_Taupe_Brillante_Detalle-scaled.jpg"
+    },
+    {
+      "name": "ELKWOOD",
+      "sku": "CES-ELKWOOD",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_CALAJAN_HD-1024x1024.jpeg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_ELKWOOD_Detalle_HD-1-1024x717.jpg"
+    },
+    {
+      "name": "FIORE",
+      "sku": "CES-FIORE",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Britton_dark_recamara-819x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_FIORE_Recamara_HD-1-scaled.jpg"
+    },
+    {
+      "name": "FRATTINO",
+      "sku": "CES-FRATTINO",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_VALENTINO_Gold_Sala3_Detalle_HD-1024x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_FRATTINO_Conceptual_HD-1-scaled.jpg"
+    },
+    {
+      "name": "FRAU",
+      "sku": "CES-FRAU",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_Padova_Sala_Portada-1024x546.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_FRAU_NOUVELLE_HD-scaled.jpg"
+    },
+    {
+      "name": "Fiorentino",
+      "sku": "CES-FIORENTINO",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_NAPA_HD-1024x870.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/RENDER_FIORENTINO_PLATA_60X120CM_SALA_-scaled.jpg"
+    },
+    {
+      "name": "Fontana",
+      "sku": "CES-FONTANA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_PANGEA_Sand.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_FONTANA_Ban%CC%83o_RGB.jpg"
+    },
+    {
+      "name": "GAUDI",
+      "sku": "CES-GAUDI",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BOTEV_Marfil_Detalle_HD-1024x723.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_GAUDI_terraza-scaled.jpg"
+    },
+    {
+      "name": "Giardino",
+      "sku": "CES-GIARDINO",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BOTICELLI_Baño_HD-819x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_GIARDINO_Comedor_Top_HD-819x1024.jpg"
+    },
+    {
+      "name": "HANOVER",
+      "sku": "CES-HANOVER",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/3142_CESANTONI_DENVER_HQ-1024x723-1.webp",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_HANOVER_Detalle_HD.jpg"
+    },
+    {
+      "name": "HARLOW",
+      "sku": "CES-HARLOW",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Woodland_sala-1024x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_HARLOW_Sala_Perspectiva_HD-1-scaled.jpg"
+    },
+    {
+      "name": "HELSINKI",
+      "sku": "CES-HELSINKI",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BOTEV_Marfil_Detalle_HD-1024x723.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_HELSINKI_HD-1-1024x722.jpg"
+    },
+    {
+      "name": "KIEL",
+      "sku": "CES-KIEL",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_LEIGHTON_Gray_HD-1-1024x717.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_KIEL_cocina-scaled.jpg"
+    },
+    {
+      "name": "Kampala",
+      "sku": "CES-KAMPALA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_PIEVE.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_KAMPALA_Credenza_HD.jpg"
+    },
+    {
+      "name": "Kingston",
+      "sku": "CES-KINGSTON",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/SILVERSTONE_exterior-1024x725.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_KINGSTON_Bone_Exyterior_HD.png"
+    },
+    {
+      "name": "LANZ",
+      "sku": "CES-LANZ",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_HELSINKI_Detalle_HD_retoque-1024x722.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_LANZ_sala_recorte-scaled.jpg"
+    },
+    {
+      "name": "LEIGHTON",
+      "sku": "CES-LEIGHTON",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/RENDER_KIEL_GRAY_60X120CMMURO_MAUI-1-1-1024x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_LEIGHTON_Gray_HD-1-scaled.jpg"
+    },
+    {
+      "name": "LEMEK",
+      "sku": "CES-LEMEK",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_LANZ_sala_recorte-1024x990.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_LEMEK_final-scaled.jpg"
+    },
+    {
+      "name": "LIGHTWOOD",
+      "sku": "CES-LIGHTWOOD",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Woodland_sala-1024x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_LIGHTWOOD_Conceptual_HD-2.jpg"
+    },
+    {
+      "name": "LIVIA",
+      "sku": "CES-LIVIA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_LIVIA_Mate_Lobby-2-1024x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_LIVIA_Pulido_Lobby-scaled.jpg"
+    },
+    {
+      "name": "Legacy Wood",
+      "sku": "CES-LEGACY-WOOD",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_AMBERWOOD_Sala_Closeup_HD-1-1-819x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/RENDER__LEGACY_WOOD_26X160_CABO_CLAY_80X160_TERRAZA.jpg"
+    },
+    {
+      "name": "Light Sandwood",
+      "sku": "CES-LIGHT-SANDWOOD",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Woodland_sala-1024x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/RENDER_LIGHT_SANDWOOD_26X160_MUTINA_PERLINO_80X160_COCINA.jpg"
+    },
+    {
+      "name": "MARCONI",
+      "sku": "CES-MARCONI",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BASTILLE_Dark_Sala_HD.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_MARCONI_Bano-scaled.jpg"
+    },
+    {
+      "name": "MARTEL GRAY",
+      "sku": "CES-MARTEL-GRAY",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BOTEV_Marfil_Detalle_HD-1024x723.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_MARTEL_GRAY_Detalle_HD.jpg"
+    },
+    {
+      "name": "MEMPHIS",
+      "sku": "CES-MEMPHIS",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_ALABAMA_Sala_2_HD-1024x758.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_MEMPHIS_HD-1024x723.jpg"
+    },
+    {
+      "name": "MILENA",
+      "sku": "CES-MILENA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Amb_Burconi_restaurante-887x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_DAYTONA_Azul_Blanco_Bano_HD.jpg"
+    },
+    {
+      "name": "MONCLER",
+      "sku": "CES-MONCLER",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_MILANO_Sala_HD_Portada-1024x610.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_MONCLER_Sala_HD-scaled.jpg"
+    },
+    {
+      "name": "MONTE CARLO",
+      "sku": "CES-MONTE-CARLO",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Aranza_detalle_baja-1.jpeg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_MONTE_CARLO_Sala-2-scaled.jpg"
+    },
+    {
+      "name": "Mare",
+      "sku": "CES-MARE",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_CASABLANCA_Comprimido-1-1024x720.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Renders_MARE_Bano_CloseUp_HD-819x1024.png"
+    },
+    {
+      "name": "Mazarello",
+      "sku": "CES-MAZARELLO",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BRUNI_Sala_HD-1024x865.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_MAZARELLO_Sala_Top_HD-1024x819.jpg"
+    },
+    {
+      "name": "Merlot Wood",
+      "sku": "CES-MERLOT-WOOD",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_AMBERWOOD_Sala_Closeup_HD-1-1-819x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_MERLOT_WOOD_Media-e1740497316490.jpg"
+    },
+    {
+      "name": "NAPA",
+      "sku": "CES-NAPA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_MARTEL_GRAY_Detalle_HD-1024x768.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_NAPA_HD-1024x870.jpg"
+    },
+    {
+      "name": "NEBRASKA",
+      "sku": "CES-NEBRASKA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_MEMPHIS_COCINA_HD-1024x723.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_NEBRASKA_Detalle_HD-1-1024x723.jpg"
+    },
+    {
+      "name": "NEKK",
+      "sku": "CES-NEKK",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_DECKER_HD-1024x723.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_NEKK_Sala_HD-scaled.jpg"
+    },
+    {
+      "name": "NOUVELLE",
+      "sku": "CES-NOUVELLE",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_NAPA_HD-1024x870.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_FRAU_NOUVELLE_HD-scaled.jpg"
+    },
+    {
+      "name": "Napoli",
+      "sku": "CES-NAPOLI",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_BRUNI_Sala_HD-1024x865.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_NAPOLI_Exterior_HD_2-scaled.jpg"
+    },
+    {
+      "name": "Nobu",
+      "sku": "CES-NOBU",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_PIATRA_DUNA_Comprimido-1024x720.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_NOBU_GRIS_Sala_HD.png"
+    },
+    {
+      "name": "PADOVA",
+      "sku": "CES-PADOVA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_FRAU_recamara-1-1024x651.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_PADOVA_Agencia_HD-scaled.jpg"
+    },
+    {
+      "name": "PIAMONT",
+      "sku": "CES-PIAMONT",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_HELSINKI_Detalle_HD_retoque-1024x722.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_PIAMONT_Gris_45x90_HD.jpg"
+    },
+    {
+      "name": "PIATRA",
+      "sku": "CES-PIATRA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_CASABLANCA_Comprimido-1-1024x720.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_PIATRA_COFFEE_Sala_Cenital_HD.jpg"
+    },
+    {
+      "name": "Pangea",
+      "sku": "CES-PANGEA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_FONTANA_Baño_RGB.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_PANGEA_Sand.jpg"
+    },
+    {
+      "name": "Península Oxford",
+      "sku": "CES-PENÍNSULA-OXFOR",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_CELLE_BLANC_RGB-769x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_PENINSULA_OXFORD_CloseUp_HD.png"
+    },
+    {
+      "name": "Piave",
+      "sku": "CES-PIAVE",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_PANGEA_Sand.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_PIEVE.jpg"
+    },
+    {
+      "name": "Quarzo di Siena",
+      "sku": "CES-QUARZO-DI-SIENA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_LIVIA_Mate_Lobby-2-1024x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/RENDER_QUARZO-DI-SIENA_60X120_PULIDO.jpg"
+    },
+    {
+      "name": "RIVERWOOD",
+      "sku": "CES-RIVERWOOD",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_ALABAMA_Sala_2_HD-1024x758.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_RIVERWOOD_Cocina_Cenital_HD-scaled.jpg"
+    },
+    {
+      "name": "Ravelo",
+      "sku": "CES-RAVELO",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_GIARDINO_Comedor_HD-819x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_RAVELO_Cocina_Top_HD-819x1024.jpg"
+    },
+    {
+      "name": "Riviera",
+      "sku": "CES-RIVIERA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Rendet_PENINSULA_OXFORD_.Bar_HD-1024x819.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_RIVIERA_Recamara_HD-2-scaled.jpg"
+    },
+    {
+      "name": "Romagni",
+      "sku": "CES-ROMAGNI",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_CASABLANCA_Comprimido-1024x720.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_ROMAGNI_80x160cm_HD.jpg"
+    },
+    {
+      "name": "SAMPERI",
+      "sku": "CES-SAMPERI",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Amb_Burconi_restaurante-887x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_SAMPERI_Sala-Comedor_RGB_HD-scaled.jpg"
+    },
+    {
+      "name": "SANTO TOMAS",
+      "sku": "CES-SANTO-TOMAS",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_LEVICATO_Sala_mesa-1024x819.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_SANTO_TOMAS_HD.jpg"
+    },
+    {
+      "name": "SERENI",
+      "sku": "CES-SERENI",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_Bento_TobaccoGreen-1024x853.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_SERENI_Amberwood_Sala_Credenza_HD-1-scaled.jpg"
+    },
+    {
+      "name": "SILVERSTONE",
+      "sku": "CES-SILVERSTONE",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/RENDER_FRATTINO_HD-1024x723.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_SILVERSTONE_Oficina_HD-scaled.jpg"
+    },
+    {
+      "name": "STOCKTON",
+      "sku": "CES-STOCKTON",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/3142_CESANTONI_DENVER_HQ-1024x723-1.webp",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_STOCKTON_HD-1024x723.jpg"
+    },
+    {
+      "name": "Santorini",
+      "sku": "CES-SANTORINI",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_LEVICATO_Sala_mesa-1024x819.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_SANTORINI_Bano_HD-scaled.jpg"
+    },
+    {
+      "name": "Sterling Black",
+      "sku": "CES-STERLING-BLACK",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_PIATRA_DUNA_Comprimido-1024x720.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Logo-Cesantoni.png"
+    },
+    {
+      "name": "Sunset Maple",
+      "sku": "CES-SUNSET-MAPLE",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_MEMPHIS_COCINA_HD-1024x723.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_SUNSET_MAPLE_HD-1024x931.png"
+    },
+    {
+      "name": "TERRAZO",
+      "sku": "CES-TERRAZO",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_Bento_TobaccoGreen-1024x853.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_TERRAZO_Bano_HD-1-scaled.jpg"
+    },
+    {
+      "name": "TIMBERLAND",
+      "sku": "CES-TIMBERLAND",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Woodland_sala-1024x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_TIMBERLAND_Mesa_Closeup_HD-1-1-scaled.jpg"
+    },
+    {
+      "name": "TRAVALI",
+      "sku": "CES-TRAVALI",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Aranza_detalle_baja-1.jpeg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_TRAVALI_Comedor_HD-scaled.jpg"
+    },
+    {
+      "name": "TRENTON",
+      "sku": "CES-TRENTON",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_FRAU_recamara-1-1024x651.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_TRENTON_Silver_HD-scaled.jpg"
+    },
+    {
+      "name": "VALENTINO",
+      "sku": "CES-VALENTINO",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/RENDER_FRATTINO_HD-1024x723.png",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_VALENTINO_Gold_Sala3_Detalle_HD-scaled.jpg"
+    },
+    {
+      "name": "VALENZI",
+      "sku": "CES-VALENZI",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_LEVICATO_Sala_mesa-1024x819.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_VALENZI_HD-scaled.jpg"
+    },
+    {
+      "name": "VELETA",
+      "sku": "CES-VELETA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/AMBIENTE-TRAVALI-745x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_VELETA_Sala_HD-scaled.jpg"
+    },
+    {
+      "name": "VERMONT",
+      "sku": "CES-VERMONT",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_NEKK_Sala_HD-1024x723.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_VERMONT_HD-scaled.jpg"
+    },
+    {
+      "name": "VOLTERRA",
+      "sku": "CES-VOLTERRA",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/SD_MYLO_ALTA-1-981x1024.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_VOLTERRA-scaled.jpg"
+    },
+    {
+      "name": "Verttoni",
+      "sku": "CES-VERTTONI",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_MAZARELLO_Sala_HD-1024x819.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_VERTTONI_Sala_Top_HD-819x1024.png"
+    },
+    {
+      "name": "ZADAR",
+      "sku": "CES-ZADAR",
+      "oldImage": "https://www.cesantoni.com.mx/wp-content/uploads/Render_LEVICATO_Sala_mesa-1024x819.jpg",
+      "newImage": "https://www.cesantoni.com.mx/wp-content/uploads/RENDER-ZADAR-BANO_ajustada-scaled.jpg"
+    }
+  ],
+  "notFound": []
+}

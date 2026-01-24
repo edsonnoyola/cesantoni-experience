@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cesantoni Experience - CRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        :root { --green: #8BC34A; --green-dark: #689F38; --gold: #C9A227; --dark: #1a1a1a; --gray: #f5f5f5; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Source Sans 3', sans-serif; background: var(--gray); color: var(--dark); min-height: 100vh; }
+        
+        .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 240px; background: var(--dark); padding: 20px 0; z-index: 100; }
+        .logo { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        .logo h1 { font-family: 'Playfair Display', serif; color: white; font-size: 1.4rem; }
+        .logo span { color: var(--green); font-size: 0.8rem; }
+        .nav-item { display: flex; align-items: center; gap: 10px; padding: 12px 20px; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.3s; border-left: 3px solid transparent; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: white; }
+        .nav-item.active { background: rgba(139,195,74,0.15); color: var(--green); border-left-color: var(--green); }
+        
+        .main { margin-left: 240px; padding: 24px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .header h2 { font-family: 'Playfair Display', serif; font-size: 1.8rem; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .stat-card .label { font-size: 0.8rem; color: #888; margin-bottom: 4px; }
+        .stat-card .value { font-size: 2rem; font-weight: 700; }
+        
+        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s; border: none; }
+        .btn-primary { background: var(--green); color: white; }
+        .btn-primary:hover { background: var(--green-dark); }
+        .btn-secondary { background: white; color: var(--dark); border: 1px solid #ddd; }
+        
+        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 20px; }
+        .card h3 { font-family: 'Playfair Display', serif; font-size: 1.1rem; margin-bottom: 16px; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #f0f0f0; }
+        th { font-weight: 600; color: #888; font-size: 0.75rem; text-transform: uppercase; }
+        
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        .filters { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .filter-chip { padding: 8px 16px; background: white; border: 1px solid #ddd; border-radius: 20px; font-size: 0.85rem; cursor: pointer; }
+        .filter-chip:hover, .filter-chip.active { background: var(--green); color: white; border-color: var(--green); }
+        
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+        .product-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s; }
+        .product-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        .product-card .thumb { height: 160px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .product-card .thumb canvas { max-width: 100%; max-height: 100%; object-fit: cover; }
+        .product-card .thumb .loading { color: #aaa; font-size: 0.8rem; }
+        .product-card .info { padding: 14px; }
+        .product-card .name { font-weight: 600; font-size: 0.95rem; margin-bottom: 2px; }
+        .product-card .sku { font-size: 0.75rem; color: #888; }
+        .product-card .meta { display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.8rem; color: #666; }
+        .product-card .badge { background: rgba(139,195,74,0.15); color: var(--green); padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem; }
+        .form-input, .form-select { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; }
+        .form-input:focus, .form-select:focus { outline: none; border-color: var(--green); }
+        
+        .qr-result { text-align: center; padding: 24px; background: #f8f8f8; border-radius: 12px; margin-top: 16px; }
+        .qr-result img { max-width: 200px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .qr-url { margin-top: 12px; padding: 10px; background: white; border-radius: 6px; font-family: monospace; font-size: 0.75rem; word-break: break-all; }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 12px; padding: 24px; max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #888; }
+        
+        .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
+        .search-box input { flex: 1; padding: 10px 16px; border: 1px solid #ddd; border-radius: 8px; }
+        
+        .pdf-preview { width: 100%; height: 400px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 16px; }
+    </style>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <h1>Cesantoni</h1>
+            <span>Experience CRM</span>
+        </div>
+        <div class="nav-item active" onclick="showPage('dashboard')">📊 Dashboard</div>
+        <div class="nav-item" onclick="showPage('productos')">🏷️ Bodega de Fichas</div>
+        <div class="nav-item" onclick="showPage('distribuidores')">🏪 Distribuidores</div>
+        <div class="nav-item" onclick="showPage('qr')">📱 Generar QR</div>
+    </nav>
+    
+    <main class="main">
+        <!-- Dashboard -->
+        <div id="page-dashboard" class="page active">
+            <div class="header">
+                <h2>Dashboard</h2>
+                <select class="form-select" style="width:150px" id="period" onchange="loadDashboard()">
+                    <option value="7">7 días</option>
+                    <option value="30" selected>30 días</option>
+                    <option value="90">90 días</option>
+                </select>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="label">Escaneos</div><div class="value" id="stat-scans">-</div></div>
+                <div class="stat-card"><div class="label">Tiendas</div><div class="value" id="stat-stores">-</div></div>
+                <div class="stat-card"><div class="label">Productos</div><div class="value" id="stat-products">-</div></div>
+                <div class="stat-card"><div class="label">Conversión</div><div class="value" id="stat-conversion">-</div></div>
+            </div>
+            <div class="grid-2">
+                <div class="card"><h3>🏆 Top Productos</h3><table><thead><tr><th>Producto</th><th style="text-align:right">Escaneos</th></tr></thead><tbody id="top-products"></tbody></table></div>
+                <div class="card"><h3>📍 Top Estados</h3><table><thead><tr><th>Estado</th><th style="text-align:right">Escaneos</th></tr></thead><tbody id="top-states"></tbody></table></div>
+            </div>
+        </div>
+        
+        <!-- Productos -->
+        <div id="page-productos" class="page">
+            <div class="header"><h2>Bodega de Fichas</h2><span id="product-count"></span></div>
+            <div class="search-box"><input type="text" id="search-products" placeholder="Buscar producto..." onkeyup="filterProducts()"></div>
+            <div class="filters" id="category-filters"></div>
+            <div class="products-grid" id="products-grid"></div>
+        </div>
+        
+        <!-- Distribuidores -->
+        <div id="page-distribuidores" class="page">
+            <div class="header"><h2>Distribuidores</h2><button class="btn btn-primary" onclick="openModal('add-store')">+ Agregar Tienda</button></div>
+            <div id="distributors-list"></div>
+        </div>
+        
+        <!-- QR -->
+        <div id="page-qr" class="page">
+            <div class="header"><h2>Generador de QR</h2></div>
+            <div class="card" style="max-width:500px">
+                <div class="form-group"><label class="form-label">Producto</label><select class="form-select" id="qr-product"></select></div>
+                <div class="form-group"><label class="form-label">Tienda</label><select class="form-select" id="qr-store"></select></div>
+                <button class="btn btn-primary" onclick="generateQR()" style="width:100%">📱 Generar QR</button>
+                <div id="qr-result" style="display:none"><div class="qr-result"><img id="qr-image" src=""><div class="qr-url" id="qr-url"></div><button class="btn btn-secondary" onclick="downloadQR()" style="margin-top:12px">⬇️ Descargar</button></div></div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Modal Tienda -->
+    <div class="modal" id="modal-add-store">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Agregar Tienda</h3><button class="modal-close" onclick="closeModal('add-store')">&times;</button></div>
+            <div class="form-group"><label class="form-label">Distribuidor</label><select class="form-select" id="store-distributor"></select></div>
+            <div class="form-group"><label class="form-label">Nombre</label><input type="text" class="form-input" id="store-name"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="form-group"><label class="form-label">Estado</label><input type="text" class="form-input" id="store-state"></div>
+                <div class="form-group"><label class="form-label">Ciudad</label><input type="text" class="form-input" id="store-city"></div>
+            </div>
+            <div class="form-group"><label class="form-label">Dirección</label><input type="text" class="form-input" id="store-address"></div>
+            <div class="form-group"><label class="form-label">WhatsApp</label><input type="text" class="form-input" id="store-whatsapp"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="form-group"><label class="form-label">Promo</label><input type="text" class="form-input" id="store-promo"></div>
+                <div class="form-group"><label class="form-label">Descuento</label><input type="text" class="form-input" id="store-discount"></div>
+            </div>
+            <button class="btn btn-primary" onclick="saveStore()" style="width:100%">Guardar</button>
+        </div>
+    </div>
+    
+    <!-- Modal Producto -->
+    <div class="modal" id="modal-product">
+        <div class="modal-content" style="max-width:800px">
+            <div class="modal-header"><h3 id="modal-product-name">Producto</h3><button class="modal-close" onclick="closeModal('product')">&times;</button></div>
+            <div id="modal-product-content"></div>
+        </div>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        
+        const API = '/api';
+        let allProducts = [];
+        let currentCategory = 'all';
+        
+        function showPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(`page-${page}`).classList.add('active');
+            event.currentTarget.classList.add('active');
+            if (page === 'dashboard') loadDashboard();
+            if (page === 'productos') loadProducts();
+            if (page === 'distribuidores') loadDistributors();
+            if (page === 'qr') loadQRSelects();
+        }
+        
+        async function loadDashboard() {
+            const days = document.getElementById('period').value;
+            try {
+                const data = await fetch(`${API}/analytics/overview?days=${days}`).then(r => r.json());
+                document.getElementById('stat-scans').textContent = data.total_scans?.toLocaleString() || '0';
+                document.getElementById('stat-stores').textContent = data.total_stores || '0';
+                document.getElementById('stat-products').textContent = data.total_products || '0';
+                document.getElementById('stat-conversion').textContent = (data.conversion_rate || 0) + '%';
+                
+                const products = await fetch(`${API}/analytics/by-product?days=${days}&limit=5`).then(r => r.json());
+                document.getElementById('top-products').innerHTML = products.map(p => `<tr><td>${p.name}</td><td style="text-align:right">${p.scans}</td></tr>`).join('') || '<tr><td colspan="2">Sin datos</td></tr>';
+                
+                const states = await fetch(`${API}/analytics/by-state?days=${days}`).then(r => r.json());
+                document.getElementById('top-states').innerHTML = states.slice(0,5).map(s => `<tr><td>${s.state}</td><td style="text-align:right">${s.scans}</td></tr>`).join('') || '<tr><td colspan="2">Sin datos</td></tr>';
+            } catch (e) { console.error(e); }
+        }
+        
+        async function loadProducts() {
+            try {
+                allProducts = await fetch(`${API}/products`).then(r => r.json());
+                document.getElementById('product-count').textContent = `${allProducts.length} productos`;
+                
+                const cats = [...new Set(allProducts.map(p => p.category).filter(Boolean))];
+                document.getElementById('category-filters').innerHTML = `
+                    <div class="filter-chip active" onclick="setCategory('all', this)">Todos</div>
+                    ${cats.map(c => `<div class="filter-chip" onclick="setCategory('${c}', this)">${c}</div>`).join('')}
+                `;
+                renderProducts(allProducts);
+            } catch (e) { console.error(e); }
+        }
+        
+        function renderProducts(products) {
+            document.getElementById('products-grid').innerHTML = products.map(p => `
+                <div class="product-card" onclick="viewProduct(${p.id})">
+                    <div class="thumb" id="thumb-${p.id}">
+                        <span class="loading">Cargando...</span>
+                    </div>
+                    <div class="info">
+                        <div class="name">${p.name}</div>
+                        <div class="sku">${p.sku}</div>
+                        <div class="meta">
+                            <span class="badge">${p.category || 'Sin categoría'}</span>
+                            ${p.format || ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Cargar thumbnails de PDFs
+            products.forEach(p => {
+                if (p.pdf_url) {
+                    loadPdfThumbnail(p.id, p.pdf_url);
+                }
+            });
+        }
+        
+        async function loadPdfThumbnail(productId, pdfUrl) {
+            try {
+                const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
+                const page = await pdf.getPage(1);
+                
+                const scale = 0.5;
+                const viewport = page.getViewport({ scale });
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                
+                await page.render({
+                    canvasContext: canvas.getContext('2d'),
+                    viewport: viewport
+                }).promise;
+                
+                const thumbEl = document.getElementById(`thumb-${productId}`);
+                if (thumbEl) {
+                    thumbEl.innerHTML = '';
+                    thumbEl.appendChild(canvas);
+                }
+            } catch (e) {
+                console.error(`Error loading PDF for ${productId}:`, e);
+            }
+        }
+        
+        function setCategory(cat, el) {
+            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            currentCategory = cat;
+            filterProducts();
+        }
+        
+        function filterProducts() {
+            const search = document.getElementById('search-products').value.toLowerCase();
+            let filtered = allProducts;
+            if (currentCategory !== 'all') filtered = filtered.filter(p => p.category === currentCategory);
+            if (search) filtered = filtered.filter(p => p.name.toLowerCase().includes(search) || p.sku.toLowerCase().includes(search));
+            renderProducts(filtered);
+        }
+        
+        function viewProduct(id) {
+            const p = allProducts.find(x => x.id === id);
+            if (!p) return;
+            
+            document.getElementById('modal-product-name').textContent = p.name;
+            document.getElementById('modal-product-content').innerHTML = `
+                ${p.pdf_url ? `<iframe src="${p.pdf_url}" class="pdf-preview"></iframe>` : ''}
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+                    <div><strong>SKU:</strong> ${p.sku}</div>
+                    <div><strong>Categoría:</strong> ${p.category || '-'}</div>
+                    <div><strong>Formato:</strong> ${p.format || '-'}</div>
+                    <div><strong>Acabado:</strong> ${p.finish || '-'}</div>
+                </div>
+                ${p.pdf_url ? `<a href="${p.pdf_url}" target="_blank" class="btn btn-primary" style="width:100%;justify-content:center">📄 Abrir PDF en nueva pestaña</a>` : ''}
+            `;
+            openModal('product');
+        }
+        
+        async function loadDistributors() {
+            try {
+                const distributors = await fetch(`${API}/distributors`).then(r => r.json());
+                const stores = await fetch(`${API}/stores`).then(r => r.json());
+                const byDist = {};
+                stores.forEach(s => { if (!byDist[s.distributor_id]) byDist[s.distributor_id] = []; byDist[s.distributor_id].push(s); });
+                
+                document.getElementById('distributors-list').innerHTML = distributors.map(d => `
+                    <div class="card">
+                        <h3>${d.name} <span style="font-weight:normal;color:#888">(${d.store_count || 0} tiendas)</span></h3>
+                        <table>
+                            <thead><tr><th>Tienda</th><th>Estado</th><th>Ciudad</th><th>WhatsApp</th></tr></thead>
+                            <tbody>${(byDist[d.id] || []).map(s => `<tr><td><strong>${s.name}</strong></td><td>${s.state}</td><td>${s.city}</td><td>${s.whatsapp || '-'}</td></tr>`).join('')}</tbody>
+                        </table>
+                    </div>
+                `).join('');
+                
+                document.getElementById('store-distributor').innerHTML = distributors.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+            } catch (e) { console.error(e); }
+        }
+        
+        async function loadQRSelects() {
+            try {
+                const products = await fetch(`${API}/products`).then(r => r.json());
+                const stores = await fetch(`${API}/stores`).then(r => r.json());
+                document.getElementById('qr-product').innerHTML = `<option value="">Selecciona producto...</option>` + products.map(p => `<option value="${p.id}">${p.name} (${p.sku})</option>`).join('');
+                document.getElementById('qr-store').innerHTML = `<option value="">Selecciona tienda...</option>` + stores.map(s => `<option value="${s.id}">${s.distributor_name} - ${s.name}</option>`).join('');
+            } catch (e) { console.error(e); }
+        }
+        
+        let currentQR = null;
+        async function generateQR() {
+            const productId = document.getElementById('qr-product').value;
+            const storeId = document.getElementById('qr-store').value;
+            if (!productId || !storeId) return alert('Selecciona producto y tienda');
+            
+            try {
+                const result = await fetch(`${API}/qr/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ product_id: parseInt(productId), store_id: parseInt(storeId) })
+                }).then(r => r.json());
+                
+                currentQR = result;
+                document.getElementById('qr-image').src = result.qr_data;
+                document.getElementById('qr-url').textContent = result.url;
+                document.getElementById('qr-result').style.display = 'block';
+            } catch (e) { console.error(e); alert('Error generando QR'); }
+        }
+        
+        function downloadQR() {
+            if (!currentQR) return;
+            const link = document.createElement('a');
+            link.download = `qr-${currentQR.product}-${currentQR.store}.png`;
+            link.href = currentQR.qr_data;
+            link.click();
+        }
+        
+        async function saveStore() {
+            const data = {
+                distributor_id: parseInt(document.getElementById('store-distributor').value),
+                name: document.getElementById('store-name').value,
+                slug: document.getElementById('store-name').value.toLowerCase().replace(/\s+/g, '-'),
+                state: document.getElementById('store-state').value,
+                city: document.getElementById('store-city').value,
+                address: document.getElementById('store-address').value,
+                whatsapp: document.getElementById('store-whatsapp').value,
+                promo_text: document.getElementById('store-promo').value,
+                promo_discount: document.getElementById('store-discount').value
+            };
+            try {
+                await fetch(`${API}/stores`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                closeModal('add-store');
+                loadDistributors();
+            } catch (e) { console.error(e); }
+        }
+        
+        function openModal(name) { document.getElementById(`modal-${name}`).classList.add('active'); }
+        function closeModal(name) { document.getElementById(`modal-${name}`).classList.remove('active'); }
+        
+        loadDashboard();
+    </script>
+</body>
+</html>

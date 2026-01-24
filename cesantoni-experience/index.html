@@ -1,0 +1,2471 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cesantoni Experience - CRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+        :root {
+            --cesantoni-green: #8BC34A;
+            --cesantoni-dark: #1a1a1a;
+            --cesantoni-gold: #C9A227;
+            --cesantoni-cream: #F5F3EF;
+        }
+        
+        * { box-sizing: border-box; }
+        
+        body {
+            font-family: 'Source Sans 3', sans-serif;
+            background: var(--cesantoni-cream);
+            margin: 0;
+            min-height: 100vh;
+        }
+        
+        .font-display { font-family: 'Playfair Display', serif; }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 100%);
+            min-height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            padding: 0;
+            z-index: 100;
+        }
+        
+        .sidebar-logo {
+            padding: 30px 25px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-logo h1 {
+            color: var(--cesantoni-green);
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            margin: 0;
+            letter-spacing: 2px;
+        }
+        
+        .sidebar-logo span {
+            color: rgba(255,255,255,0.5);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+        
+        .nav-section {
+            padding: 20px 0;
+        }
+        
+        .nav-section-title {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 0 25px;
+            margin-bottom: 10px;
+        }
+        
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 25px;
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .nav-item:hover {
+            background: rgba(255,255,255,0.05);
+            color: white;
+        }
+        
+        .nav-item.active {
+            background: rgba(139, 195, 74, 0.1);
+            color: var(--cesantoni-green);
+            border-left-color: var(--cesantoni-green);
+        }
+        
+        .nav-item svg {
+            width: 20px;
+            height: 20px;
+            opacity: 0.8;
+        }
+        
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            padding: 30px 40px;
+            min-height: 100vh;
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .page-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            color: var(--cesantoni-dark);
+            margin: 0;
+        }
+        
+        .page-subtitle {
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        /* Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card .icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+        
+        .stat-card .icon.green { background: rgba(139, 195, 74, 0.15); color: var(--cesantoni-green); }
+        .stat-card .icon.gold { background: rgba(201, 162, 39, 0.15); color: var(--cesantoni-gold); }
+        .stat-card .icon.dark { background: rgba(26, 26, 26, 0.1); color: var(--cesantoni-dark); }
+        .stat-card .icon.blue { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+        
+        .stat-card .value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--cesantoni-dark);
+            line-height: 1;
+        }
+        
+        .stat-card .label {
+            color: #888;
+            font-size: 0.9rem;
+            margin-top: 8px;
+        }
+        
+        .stat-card .trend {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.8rem;
+            margin-top: 12px;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+        
+        .stat-card .trend.up { background: rgba(34, 197, 94, 0.1); color: #16a34a; }
+        .stat-card .trend.down { background: rgba(239, 68, 68, 0.1); color: #dc2626; }
+        
+        /* Table */
+        .data-table {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            overflow: hidden;
+        }
+        
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .table-header h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            margin: 0;
+            color: var(--cesantoni-dark);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            text-align: left;
+            padding: 14px 24px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            background: #fafafa;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 16px 24px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #333;
+        }
+        
+        tr:hover td {
+            background: rgba(139, 195, 74, 0.03);
+        }
+        
+        .product-cell {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .product-thumb {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            background: #eee;
+            object-fit: cover;
+        }
+        
+        .product-name {
+            font-weight: 600;
+            color: var(--cesantoni-dark);
+        }
+        
+        .product-sku {
+            font-size: 0.8rem;
+            color: #999;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .badge.active { background: rgba(34, 197, 94, 0.1); color: #16a34a; }
+        .badge.pending { background: rgba(234, 179, 8, 0.1); color: #ca8a04; }
+        
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary {
+            background: var(--cesantoni-green);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #7cb342;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(139, 195, 74, 0.4);
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: var(--cesantoni-dark);
+            border: 1px solid #ddd;
+        }
+        
+        .btn-secondary:hover {
+            border-color: var(--cesantoni-green);
+            color: var(--cesantoni-green);
+        }
+        
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: var(--cesantoni-dark);
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e5e5;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--cesantoni-green);
+            box-shadow: 0 0 0 4px rgba(139, 195, 74, 0.1);
+        }
+        
+        .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e5e5;
+            border-radius: 10px;
+            font-size: 1rem;
+            background: white;
+            cursor: pointer;
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal {
+            background: white;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal-overlay.active .modal {
+            transform: scale(1);
+        }
+        
+        .modal-header {
+            padding: 24px 30px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h2 {
+            font-family: 'Playfair Display', serif;
+            margin: 0;
+            color: var(--cesantoni-dark);
+        }
+        
+        .modal-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: #f0f0f0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-close:hover {
+            background: #e0e0e0;
+        }
+        
+        .modal-body {
+            padding: 30px;
+        }
+        
+        /* Grid layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        
+        /* Page sections */
+        .page-section {
+            display: none;
+        }
+        
+        .page-section.active {
+            display: block;
+        }
+        
+        /* Fichas Grid */
+        .fichas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+        }
+        
+        .ficha-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .ficha-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+        }
+        
+        .ficha-card img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+        }
+        
+        .ficha-card-body {
+            padding: 20px;
+        }
+        
+        .ficha-card h4 {
+            margin: 0 0 8px 0;
+            font-family: 'Playfair Display', serif;
+            color: var(--cesantoni-dark);
+        }
+        
+        .ficha-card p {
+            margin: 0;
+            color: #888;
+            font-size: 0.9rem;
+        }
+        
+        .ficha-card .tags {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .ficha-card .tag {
+            padding: 4px 10px;
+            background: #f0f0f0;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: #666;
+        }
+        
+        /* Search bar */
+        .search-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .search-input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+        
+        .search-input-wrapper svg {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 14px 16px 14px 48px;
+            border: 2px solid #e5e5e5;
+            border-radius: 12px;
+            font-size: 1rem;
+            background: white;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: var(--cesantoni-green);
+        }
+        
+        /* Filter chips */
+        .filter-chips {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+        
+        .filter-chip {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .filter-chip:hover,
+        .filter-chip.active {
+            border-color: var(--cesantoni-green);
+            background: rgba(139, 195, 74, 0.1);
+            color: var(--cesantoni-green);
+        }
+        
+        /* QR Preview */
+        .qr-preview {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        }
+        
+        .qr-preview canvas {
+            margin: 20px auto;
+            display: block;
+        }
+        
+        /* Landing Preview */
+        .landing-preview {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        }
+        
+        .landing-preview-header {
+            background: #f0f0f0;
+            padding: 10px 16px;
+            display: flex;
+            gap: 6px;
+        }
+        
+        .landing-preview-header span {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ddd;
+        }
+        
+        .landing-preview-content {
+            height: 400px;
+            overflow-y: auto;
+        }
+        
+        .landing-preview iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            background: #f0f0f0;
+            padding: 4px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            background: white;
+            color: var(--cesantoni-dark);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        /* Video generation */
+        .video-gen-card {
+            background: linear-gradient(135deg, var(--cesantoni-dark) 0%, #3d3d3d 100%);
+            border-radius: 16px;
+            padding: 30px;
+            color: white;
+            margin-bottom: 24px;
+        }
+        
+        .video-gen-card h3 {
+            font-family: 'Playfair Display', serif;
+            margin: 0 0 10px 0;
+            font-size: 1.4rem;
+        }
+        
+        .video-gen-card p {
+            opacity: 0.7;
+            margin: 0 0 20px 0;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 16px;
+        }
+        
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--cesantoni-green);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        
+        /* Chart placeholder */
+        .chart-container {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            margin-bottom: 24px;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .chart-header h3 {
+            font-family: 'Playfair Display', serif;
+            margin: 0;
+            color: var(--cesantoni-dark);
+        }
+        
+        .chart-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+            height: 200px;
+            padding: 20px 0;
+        }
+        
+        .chart-bar {
+            flex: 1;
+            background: linear-gradient(180deg, var(--cesantoni-green) 0%, rgba(139, 195, 74, 0.6) 100%);
+            border-radius: 8px 8px 0 0;
+            position: relative;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .chart-bar:hover {
+            background: var(--cesantoni-green);
+        }
+        
+        .chart-bar-label {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            color: #888;
+            white-space: nowrap;
+        }
+        
+        .chart-bar-value {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--cesantoni-dark);
+        }
+        
+        /* Distributor card */
+        .distributor-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            transition: all 0.3s ease;
+        }
+        
+        .distributor-card:hover {
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        }
+        
+        .distributor-card h4 {
+            margin: 0 0 4px 0;
+            font-family: 'Playfair Display', serif;
+            color: var(--cesantoni-dark);
+        }
+        
+        .distributor-card .location {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 16px;
+        }
+        
+        .distributor-card .stats {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .distributor-card .stat {
+            text-align: center;
+        }
+        
+        .distributor-card .stat-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--cesantoni-green);
+        }
+        
+        .distributor-card .stat-label {
+            font-size: 0.75rem;
+            color: #888;
+        }
+        
+        /* ===================== */
+        /* HEAT MAP DE MÉXICO   */
+        /* ===================== */
+        
+        .mexico-map-container {
+            position: relative;
+            background: #fafafa;
+            border-radius: 16px;
+            padding: 20px;
+        }
+        
+        .mexico-map {
+            width: 100%;
+            height: auto;
+        }
+        
+        .mexico-map .state {
+            fill: #e8f5e9;
+            stroke: #fff;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .mexico-map .state:hover {
+            fill: #81c784;
+            transform: scale(1.02);
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+        }
+        
+        .mexico-map .state.selected {
+            fill: #43a047;
+            stroke: #2e7d32;
+            stroke-width: 3;
+        }
+        
+        /* Heat levels */
+        .mexico-map .state.heat-1 { fill: #e8f5e9; }
+        .mexico-map .state.heat-2 { fill: #a5d6a7; }
+        .mexico-map .state.heat-3 { fill: #66bb6a; }
+        .mexico-map .state.heat-4 { fill: #43a047; }
+        .mexico-map .state.heat-5 { fill: #2e7d32; }
+        
+        .mexico-map .state.hot {
+            fill: #43a047;
+        }
+        
+        .mexico-map .state.hottest {
+            fill: #2e7d32;
+        }
+        
+        /* Legend */
+        .map-legend {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: #666;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        /* Map view buttons */
+        .map-view-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .map-view-btn:hover {
+            border-color: var(--cesantoni-green);
+            color: var(--cesantoni-green);
+        }
+        
+        .map-view-btn.active {
+            background: var(--cesantoni-green);
+            color: white;
+            border-color: var(--cesantoni-green);
+        }
+        
+        /* Detail panel */
+        .map-detail-panel {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .detail-header h4 {
+            margin: 0;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.2rem;
+            color: var(--cesantoni-dark);
+        }
+        
+        .detail-badge {
+            background: rgba(139, 195, 74, 0.15);
+            color: var(--cesantoni-green);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .detail-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .detail-stat {
+            text-align: center;
+            padding: 12px 8px;
+            background: #f8f8f8;
+            border-radius: 10px;
+        }
+        
+        .detail-stat-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--cesantoni-dark);
+        }
+        
+        .detail-stat-label {
+            font-size: 0.7rem;
+            color: #888;
+            margin-top: 4px;
+        }
+        
+        .detail-list h5 {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin: 0 0 12px 0;
+        }
+        
+        .detail-list-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .detail-list-item:last-child {
+            border-bottom: none;
+        }
+        
+        .list-rank {
+            width: 24px;
+            height: 24px;
+            background: var(--cesantoni-green);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        
+        .list-info {
+            flex: 1;
+        }
+        
+        .list-name {
+            font-weight: 600;
+            color: var(--cesantoni-dark);
+            font-size: 0.9rem;
+        }
+        
+        .list-meta {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 2px;
+        }
+        
+        .list-trend {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        
+        .list-trend.up {
+            background: rgba(34, 197, 94, 0.1);
+            color: #16a34a;
+        }
+        
+        .list-trend.down {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+        }
+        
+        /* Tooltip for map */
+        .map-tooltip {
+            position: absolute;
+            background: var(--cesantoni-dark);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .map-tooltip.visible {
+            opacity: 1;
+        }
+        
+        .map-tooltip .tooltip-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .map-tooltip .tooltip-value {
+            color: var(--cesantoni-green);
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-logo">
+            <h1>CESANTONI</h1>
+            <span>Experience CRM</span>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-section-title">Principal</div>
+            <div class="nav-item active" onclick="showPage('dashboard')">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                Dashboard
+            </div>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-section-title">Catálogo</div>
+            <div class="nav-item" onclick="showPage('fichas')">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                Bodega de Fichas
+            </div>
+            <div class="nav-item" onclick="showPage('landing')">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                Generar Landing
+            </div>
+            <div class="nav-item" onclick="showPage('videos')">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Generar Videos
+            </div>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-section-title">Distribución</div>
+            <div class="nav-item" onclick="showPage('distribuidores')">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Distribuidores
+            </div>
+            <div class="nav-item" onclick="showPage('qr')">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                </svg>
+                Generar QR
+            </div>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-section-title">Configuración</div>
+            <div class="nav-item" onclick="showPage('settings')">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Configuración
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- DASHBOARD -->
+        <section id="page-dashboard" class="page-section active">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Dashboard</h1>
+                    <p class="page-subtitle">Resumen de actividad en tiempo real</p>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <select class="form-select" style="width: 180px;">
+                        <option>Últimos 7 días</option>
+                        <option>Últimos 30 días</option>
+                        <option>Este mes</option>
+                        <option>Este año</option>
+                    </select>
+                    <button class="btn btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Exportar
+                    </button>
+                </div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="icon green">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                    </div>
+                    <div class="value">12,847</div>
+                    <div class="label">Escaneos Totales</div>
+                    <div class="trend up">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                        +23.5%
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="icon gold">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                    </div>
+                    <div class="value">48</div>
+                    <div class="label">Distribuidores Activos</div>
+                    <div class="trend up">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                        +4 nuevos
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="icon dark">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <div class="value">187</div>
+                    <div class="label">Fichas Activas</div>
+                    <div class="trend up">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                        +12 esta semana
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="icon blue">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                    </div>
+                    <div class="value">2,341</div>
+                    <div class="label">Clicks WhatsApp</div>
+                    <div class="trend up">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                        18.2% conversión
+                    </div>
+                </div>
+            </div>
+            
+            <!-- HEAT MAP DE MÉXICO -->
+            <div class="chart-container" style="margin-bottom: 24px;">
+                <div class="chart-header">
+                    <h3>🗺️ Mapa de Calor - Escaneos por Región</h3>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="map-view-btn active" onclick="setMapView('estado')">Por Estado</button>
+                        <button class="map-view-btn" onclick="setMapView('distribuidor')">Por Distribuidor</button>
+                        <button class="map-view-btn" onclick="setMapView('tienda')">Por Tienda</button>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 320px; gap: 24px; margin-top: 20px;">
+                    <!-- SVG Map of Mexico -->
+                    <div class="mexico-map-container">
+                        <svg viewBox="0 0 800 500" class="mexico-map" id="mexico-map">
+                            <!-- Estados de México - SVG paths simplificados -->
+                            <g id="map-states">
+                                <!-- Baja California -->
+                                <path id="BCN" class="state" d="M25,50 L60,45 L75,120 L65,180 L40,200 L20,150 Z" data-state="Baja California" data-scans="892" data-stores="3"/>
+                                <!-- Baja California Sur -->
+                                <path id="BCS" class="state" d="M40,200 L65,180 L80,250 L70,320 L45,340 L30,280 Z" data-state="Baja California Sur" data-scans="456" data-stores="2"/>
+                                <!-- Sonora -->
+                                <path id="SON" class="state" d="M60,45 L150,35 L180,100 L160,170 L75,120 Z" data-state="Sonora" data-scans="1245" data-stores="5"/>
+                                <!-- Chihuahua -->
+                                <path id="CHH" class="state" d="M150,35 L250,30 L270,120 L240,200 L180,100 Z" data-state="Chihuahua" data-scans="987" data-stores="4"/>
+                                <!-- Coahuila -->
+                                <path id="COA" class="state" d="M250,30 L340,40 L350,130 L300,180 L270,120 Z" data-state="Coahuila" data-scans="756" data-stores="3"/>
+                                <!-- Nuevo León -->
+                                <path id="NLE" class="state hot" d="M340,40 L400,60 L410,150 L350,130 Z" data-state="Nuevo León" data-scans="2891" data-stores="12"/>
+                                <!-- Tamaulipas -->
+                                <path id="TAM" class="state" d="M400,60 L450,80 L460,200 L410,150 Z" data-state="Tamaulipas" data-scans="1123" data-stores="6"/>
+                                <!-- Sinaloa -->
+                                <path id="SIN" class="state" d="M75,120 L160,170 L170,260 L100,300 L80,250 Z" data-state="Sinaloa" data-scans="678" data-stores="4"/>
+                                <!-- Durango -->
+                                <path id="DUR" class="state" d="M160,170 L240,200 L250,280 L170,260 Z" data-state="Durango" data-scans="543" data-stores="3"/>
+                                <!-- Zacatecas -->
+                                <path id="ZAC" class="state" d="M240,200 L300,180 L320,270 L250,280 Z" data-state="Zacatecas" data-scans="412" data-stores="2"/>
+                                <!-- San Luis Potosí -->
+                                <path id="SLP" class="state" d="M300,180 L350,130 L380,220 L320,270 Z" data-state="San Luis Potosí" data-scans="634" data-stores="4"/>
+                                <!-- Nayarit -->
+                                <path id="NAY" class="state" d="M100,300 L170,260 L180,320 L120,340 Z" data-state="Nayarit" data-scans="321" data-stores="2"/>
+                                <!-- Aguascalientes -->
+                                <path id="AGU" class="state" d="M250,280 L280,275 L285,305 L255,310 Z" data-state="Aguascalientes" data-scans="289" data-stores="2"/>
+                                <!-- Jalisco -->
+                                <path id="JAL" class="state hot" d="M120,340 L180,320 L250,280 L255,310 L240,380 L160,400 Z" data-state="Jalisco" data-scans="3456" data-stores="18"/>
+                                <!-- Guanajuato -->
+                                <path id="GUA" class="state" d="M285,305 L340,290 L350,340 L300,355 Z" data-state="Guanajuato" data-scans="876" data-stores="5"/>
+                                <!-- Querétaro -->
+                                <path id="QUE" class="state" d="M340,290 L380,280 L385,320 L350,340 Z" data-state="Querétaro" data-scans="1234" data-stores="7"/>
+                                <!-- Hidalgo -->
+                                <path id="HID" class="state" d="M380,280 L420,270 L425,310 L385,320 Z" data-state="Hidalgo" data-scans="567" data-stores="3"/>
+                                <!-- Colima -->
+                                <path id="COL" class="state" d="M160,400 L190,390 L195,420 L165,425 Z" data-state="Colima" data-scans="234" data-stores="2"/>
+                                <!-- Michoacán -->
+                                <path id="MIC" class="state" d="M190,390 L240,380 L300,355 L310,410 L250,440 L195,420 Z" data-state="Michoacán" data-scans="789" data-stores="5"/>
+                                <!-- Estado de México -->
+                                <path id="MEX" class="state" d="M350,340 L385,320 L400,360 L370,380 Z" data-state="Estado de México" data-scans="1876" data-stores="9"/>
+                                <!-- CDMX -->
+                                <path id="CMX" class="state hottest" d="M370,360 L390,355 L395,380 L375,385 Z" data-state="CDMX" data-scans="4521" data-stores="24"/>
+                                <!-- Tlaxcala -->
+                                <path id="TLA" class="state" d="M420,340 L440,335 L442,355 L422,358 Z" data-state="Tlaxcala" data-scans="198" data-stores="1"/>
+                                <!-- Puebla -->
+                                <path id="PUE" class="state" d="M400,360 L450,340 L470,400 L420,420 Z" data-state="Puebla" data-scans="1456" data-stores="8"/>
+                                <!-- Morelos -->
+                                <path id="MOR" class="state" d="M370,380 L400,360 L405,400 L375,410 Z" data-state="Morelos" data-scans="567" data-stores="3"/>
+                                <!-- Guerrero -->
+                                <path id="GRO" class="state" d="M250,440 L310,410 L370,380 L375,410 L340,470 L280,480 Z" data-state="Guerrero" data-scans="654" data-stores="4"/>
+                                <!-- Veracruz -->
+                                <path id="VER" class="state" d="M420,270 L480,250 L520,350 L470,400 L425,310 Z" data-state="Veracruz" data-scans="1678" data-stores="9"/>
+                                <!-- Oaxaca -->
+                                <path id="OAX" class="state" d="M340,470 L420,420 L470,400 L490,460 L420,490 Z" data-state="Oaxaca" data-scans="543" data-stores="4"/>
+                                <!-- Tabasco -->
+                                <path id="TAB" class="state" d="M520,350 L580,340 L590,380 L540,390 Z" data-state="Tabasco" data-scans="432" data-stores="3"/>
+                                <!-- Chiapas -->
+                                <path id="CHP" class="state" d="M490,460 L540,390 L590,380 L600,450 L550,480 Z" data-state="Chiapas" data-scans="678" data-stores="4"/>
+                                <!-- Campeche -->
+                                <path id="CAM" class="state" d="M580,340 L640,300 L660,360 L620,380 L590,380 Z" data-state="Campeche" data-scans="321" data-stores="2"/>
+                                <!-- Yucatán -->
+                                <path id="YUC" class="state" d="M640,300 L720,280 L730,340 L660,360 Z" data-state="Yucatán" data-scans="876" data-stores="5"/>
+                                <!-- Quintana Roo -->
+                                <path id="ROO" class="state" d="M720,280 L770,290 L780,400 L730,340 Z" data-state="Quintana Roo" data-scans="1234" data-stores="7"/>
+                            </g>
+                        </svg>
+                        
+                        <!-- Leyenda -->
+                        <div class="map-legend">
+                            <div class="legend-item">
+                                <span class="legend-color" style="background: #e8f5e9;"></span>
+                                <span>0 - 500</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-color" style="background: #a5d6a7;"></span>
+                                <span>500 - 1,000</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-color" style="background: #66bb6a;"></span>
+                                <span>1,000 - 2,000</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-color" style="background: #43a047;"></span>
+                                <span>2,000 - 3,500</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-color" style="background: #2e7d32;"></span>
+                                <span>3,500+</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Panel de detalle -->
+                    <div class="map-detail-panel" id="map-detail-panel">
+                        <div class="detail-header">
+                            <h4 id="detail-title">Selecciona un estado</h4>
+                            <span class="detail-badge" id="detail-badge">Nacional</span>
+                        </div>
+                        
+                        <div class="detail-stats" id="detail-stats">
+                            <div class="detail-stat">
+                                <div class="detail-stat-value" id="detail-scans">12,847</div>
+                                <div class="detail-stat-label">Escaneos Totales</div>
+                            </div>
+                            <div class="detail-stat">
+                                <div class="detail-stat-value" id="detail-stores">48</div>
+                                <div class="detail-stat-label">Tiendas</div>
+                            </div>
+                            <div class="detail-stat">
+                                <div class="detail-stat-value" id="detail-conversion">18.2%</div>
+                                <div class="detail-stat-label">Conversión</div>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-list" id="detail-list">
+                            <h5>Top Tiendas</h5>
+                            <div class="detail-list-item">
+                                <span class="list-rank">1</span>
+                                <div class="list-info">
+                                    <div class="list-name">Interceramic Polanco</div>
+                                    <div class="list-meta">CDMX • 1,234 escaneos</div>
+                                </div>
+                                <span class="list-trend up">+23%</span>
+                            </div>
+                            <div class="detail-list-item">
+                                <span class="list-rank">2</span>
+                                <div class="list-info">
+                                    <div class="list-name">Home Depot Santa Fe</div>
+                                    <div class="list-meta">CDMX • 987 escaneos</div>
+                                </div>
+                                <span class="list-trend up">+18%</span>
+                            </div>
+                            <div class="detail-list-item">
+                                <span class="list-rank">3</span>
+                                <div class="list-info">
+                                    <div class="list-name">Porcelanite GDL</div>
+                                    <div class="list-meta">Jalisco • 876 escaneos</div>
+                                </div>
+                                <span class="list-trend up">+31%</span>
+                            </div>
+                            <div class="detail-list-item">
+                                <span class="list-rank">4</span>
+                                <div class="list-info">
+                                    <div class="list-name">Lamosa MTY</div>
+                                    <div class="list-meta">Nuevo León • 654 escaneos</div>
+                                </div>
+                                <span class="list-trend down">-5%</span>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 16px;" onclick="drillDown()">
+                            Ver Detalle Completo →
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid-2" style="margin-bottom: 24px;">
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>Escaneos por Día</h3>
+                        <select class="form-select" style="width: 140px; padding: 8px 12px;">
+                            <option>Esta semana</option>
+                            <option>Este mes</option>
+                        </select>
+                    </div>
+                    <div class="chart-bars" style="padding-bottom: 40px;">
+                        <div class="chart-bar" style="height: 60%;">
+                            <span class="chart-bar-value">847</span>
+                            <span class="chart-bar-label">Lun</span>
+                        </div>
+                        <div class="chart-bar" style="height: 85%;">
+                            <span class="chart-bar-value">1,234</span>
+                            <span class="chart-bar-label">Mar</span>
+                        </div>
+                        <div class="chart-bar" style="height: 70%;">
+                            <span class="chart-bar-value">956</span>
+                            <span class="chart-bar-label">Mie</span>
+                        </div>
+                        <div class="chart-bar" style="height: 95%;">
+                            <span class="chart-bar-value">1,567</span>
+                            <span class="chart-bar-label">Jue</span>
+                        </div>
+                        <div class="chart-bar" style="height: 100%;">
+                            <span class="chart-bar-value">1,892</span>
+                            <span class="chart-bar-label">Vie</span>
+                        </div>
+                        <div class="chart-bar" style="height: 120%;">
+                            <span class="chart-bar-value">2,456</span>
+                            <span class="chart-bar-label">Sab</span>
+                        </div>
+                        <div class="chart-bar" style="height: 90%;">
+                            <span class="chart-bar-value">1,895</span>
+                            <span class="chart-bar-label">Dom</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>Top 5 Productos</h3>
+                        <button class="btn btn-secondary" style="padding: 8px 16px;">Ver todos</button>
+                    </div>
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <div class="product-cell">
+                                        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #d4c4b0, #a89888); border-radius: 8px;"></div>
+                                        <div>
+                                            <div class="product-name">Volterra</div>
+                                            <div class="product-sku">Piedra Estructurado</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="text-align: right; font-weight: 600;">2,456</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="product-cell">
+                                        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #f5f5f5, #e0e0e0); border-radius: 8px;"></div>
+                                        <div>
+                                            <div class="product-name">Carrara Blanco</div>
+                                            <div class="product-sku">Mármol Pulido</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="text-align: right; font-weight: 600;">1,892</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="product-cell">
+                                        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #2d2d2d, #4a4a4a); border-radius: 8px;"></div>
+                                        <div>
+                                            <div class="product-name">Nero Marquina</div>
+                                            <div class="product-sku">Mármol Negro</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="text-align: right; font-weight: 600;">1,234</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="product-cell">
+                                        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #c9a227, #d4af37); border-radius: 8px;"></div>
+                                        <div>
+                                            <div class="product-name">Travertino Gold</div>
+                                            <div class="product-sku">Piedra Natural</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="text-align: right; font-weight: 600;">987</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="data-table">
+                <div class="table-header">
+                    <h3>Actividad Reciente</h3>
+                    <button class="btn btn-secondary">Ver todo</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Distribuidor</th>
+                            <th>Ubicación</th>
+                            <th>Hora</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <div class="product-cell">
+                                    <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #d4c4b0, #a89888); border-radius: 8px;"></div>
+                                    <div>
+                                        <div class="product-name">Volterra</div>
+                                        <div class="product-sku">30x60cm</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>Interceramic GDL</td>
+                            <td>Guadalajara, JAL</td>
+                            <td>Hace 2 min</td>
+                            <td><span class="badge active">WhatsApp</span></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="product-cell">
+                                    <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #f5f5f5, #e0e0e0); border-radius: 8px;"></div>
+                                    <div>
+                                        <div class="product-name">Carrara Blanco</div>
+                                        <div class="product-sku">60x120cm</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>Home Depot Polanco</td>
+                            <td>CDMX</td>
+                            <td>Hace 5 min</td>
+                            <td><span class="badge pending">Escaneo</span></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="product-cell">
+                                    <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #2d2d2d, #4a4a4a); border-radius: 8px;"></div>
+                                    <div>
+                                        <div class="product-name">Nero Marquina</div>
+                                        <div class="product-sku">45x90cm</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>Porcelanite MTY</td>
+                            <td>Monterrey, NL</td>
+                            <td>Hace 8 min</td>
+                            <td><span class="badge active">WhatsApp</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- BODEGA DE FICHAS -->
+        <section id="page-fichas" class="page-section">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Bodega de Fichas</h1>
+                    <p class="page-subtitle">187 fichas técnicas disponibles</p>
+                </div>
+                <button class="btn btn-primary" onclick="openModal('upload-modal')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Subir Fichas
+                </button>
+            </div>
+            
+            <div class="search-bar">
+                <div class="search-input-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text" class="search-input" placeholder="Buscar por nombre, SKU, colección...">
+                </div>
+                <button class="btn btn-secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    Filtros
+                </button>
+            </div>
+            
+            <div class="filter-chips">
+                <span class="filter-chip active">Todos</span>
+                <span class="filter-chip">Muro</span>
+                <span class="filter-chip">Piso</span>
+                <span class="filter-chip">Exterior</span>
+                <span class="filter-chip">Pasta Blanca</span>
+                <span class="filter-chip">Porcelanato</span>
+                <span class="filter-chip">Piedra Natural</span>
+            </div>
+            
+            <div class="fichas-grid" id="fichas-grid">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </section>
+
+        <!-- GENERAR LANDING -->
+        <section id="page-landing" class="page-section">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Generar Landing Page</h1>
+                    <p class="page-subtitle">Crea páginas de producto con tracking automático</p>
+                </div>
+            </div>
+            
+            <div class="grid-2">
+                <div>
+                    <div class="stat-card" style="margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 20px 0; font-family: 'Playfair Display', serif;">Configuración</h3>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Seleccionar Producto</label>
+                            <select class="form-select" id="landing-product">
+                                <option value="">-- Selecciona un producto --</option>
+                                <option value="volterra">Volterra - Piedra Estructurado</option>
+                                <option value="carrara">Carrara Blanco - Mármol Pulido</option>
+                                <option value="nero">Nero Marquina - Mármol Negro</option>
+                                <option value="travertino">Travertino Gold - Piedra Natural</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Precio (opcional)</label>
+                            <input type="text" class="form-input" placeholder="$549 MXN / m²" id="landing-price">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Promoción Activa</label>
+                            <input type="text" class="form-input" placeholder="20% de descuento en enero" id="landing-promo">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">WhatsApp de Contacto</label>
+                            <input type="text" class="form-input" placeholder="+52 33 1234 5678" id="landing-whatsapp">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Video del Producto</label>
+                            <select class="form-select" id="landing-video">
+                                <option value="">Sin video</option>
+                                <option value="generated">Video generado con IA</option>
+                                <option value="custom">URL personalizada</option>
+                            </select>
+                        </div>
+                        
+                        <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="generateLanding()">
+                            Generar Landing Page
+                        </button>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="landing-preview">
+                        <div class="landing-preview-header">
+                            <span style="background: #ff5f57;"></span>
+                            <span style="background: #ffbd2e;"></span>
+                            <span style="background: #28c840;"></span>
+                        </div>
+                        <div class="landing-preview-content" id="landing-preview">
+                            <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #999;">
+                                <div style="text-align: center;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="margin: 0 auto 16px; opacity: 0.5;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
+                                    <p>Selecciona un producto para ver la vista previa</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- GENERAR VIDEOS -->
+        <section id="page-videos" class="page-section">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Generar Videos con IA</h1>
+                    <p class="page-subtitle">Videos cinematográficos con Veo 3</p>
+                </div>
+            </div>
+            
+            <div class="video-gen-card">
+                <h3>🎬 Generación Automática de Videos</h3>
+                <p>Genera videos cinematográficos profesionales para tus fichas técnicas usando Veo 3 de Google.</p>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn" style="background: var(--cesantoni-green); color: white;" onclick="openVideoGenerator()">
+                        Generar Videos en Batch
+                    </button>
+                    <button class="btn" style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);">
+                        Configurar Veo 3 API
+                    </button>
+                </div>
+            </div>
+            
+            <div class="grid-3">
+                <div class="stat-card">
+                    <div class="icon green">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <div class="value">45</div>
+                    <div class="label">Videos Generados</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="icon gold">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="value">12</div>
+                    <div class="label">En Proceso</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="icon dark">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div class="value">143</div>
+                    <div class="label">Pendientes</div>
+                </div>
+            </div>
+            
+            <div class="data-table" style="margin-top: 24px;">
+                <div class="table-header">
+                    <h3>Cola de Generación</h3>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-secondary">Pausar Todo</button>
+                        <button class="btn btn-primary">Agregar a Cola</button>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Estado</th>
+                            <th>Progreso</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <div class="product-cell">
+                                    <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #d4c4b0, #a89888); border-radius: 8px;"></div>
+                                    <div>
+                                        <div class="product-name">Volterra</div>
+                                        <div class="product-sku">Generando con Veo 3...</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="badge" style="background: rgba(59, 130, 246, 0.1); color: #3B82F6;">Procesando</span></td>
+                            <td>
+                                <div style="width: 150px;">
+                                    <div class="progress-bar">
+                                        <div class="progress-bar-fill" style="width: 67%;"></div>
+                                    </div>
+                                    <span style="font-size: 0.8rem; color: #888;">67%</span>
+                                </div>
+                            </td>
+                            <td>
+                                <button class="btn btn-secondary" style="padding: 6px 12px;">Cancelar</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="product-cell">
+                                    <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #f5f5f5, #e0e0e0); border-radius: 8px;"></div>
+                                    <div>
+                                        <div class="product-name">Carrara Blanco</div>
+                                        <div class="product-sku">En cola de espera</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="badge pending">En Cola</span></td>
+                            <td>
+                                <div style="width: 150px;">
+                                    <div class="progress-bar">
+                                        <div class="progress-bar-fill" style="width: 0%;"></div>
+                                    </div>
+                                    <span style="font-size: 0.8rem; color: #888;">Esperando...</span>
+                                </div>
+                            </td>
+                            <td>
+                                <button class="btn btn-secondary" style="padding: 6px 12px;">Priorizar</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- DISTRIBUIDORES -->
+        <section id="page-distribuidores" class="page-section">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Distribuidores</h1>
+                    <p class="page-subtitle">Gestiona tus puntos de venta y showrooms</p>
+                </div>
+                <button class="btn btn-primary" onclick="openModal('distributor-modal')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Agregar Distribuidor
+                </button>
+            </div>
+            
+            <div class="tabs">
+                <button class="tab active">Por Estado</button>
+                <button class="tab">Por Ciudad</button>
+                <button class="tab">Por Tipo</button>
+            </div>
+            
+            <div class="search-bar">
+                <div class="search-input-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text" class="search-input" placeholder="Buscar distribuidor...">
+                </div>
+                <select class="form-select" style="width: 180px;">
+                    <option>Todos los estados</option>
+                    <option>Jalisco</option>
+                    <option>CDMX</option>
+                    <option>Nuevo León</option>
+                    <option>Querétaro</option>
+                </select>
+            </div>
+            
+            <div class="grid-3" id="distributors-grid">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </section>
+
+        <!-- GENERAR QR -->
+        <section id="page-qr" class="page-section">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Generador de QR</h1>
+                    <p class="page-subtitle">Crea códigos QR con tracking por tienda</p>
+                </div>
+            </div>
+            
+            <div class="grid-2">
+                <div>
+                    <div class="stat-card">
+                        <h3 style="margin: 0 0 20px 0; font-family: 'Playfair Display', serif;">Configuración del QR</h3>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Producto</label>
+                            <select class="form-select" id="qr-product">
+                                <option value="">-- Selecciona un producto --</option>
+                                <option value="volterra">Volterra - Piedra Estructurado</option>
+                                <option value="carrara">Carrara Blanco - Mármol Pulido</option>
+                                <option value="nero">Nero Marquina - Mármol Negro</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Distribuidor</label>
+                            <select class="form-select" id="qr-distributor">
+                                <option value="">-- Selecciona un distribuidor --</option>
+                                <option value="interceramic-gdl">Interceramic GDL</option>
+                                <option value="home-depot-polanco">Home Depot Polanco</option>
+                                <option value="porcelanite-mty">Porcelanite MTY</option>
+                            </select>
+                        </div>
+                        
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Estado</label>
+                                <input type="text" class="form-input" placeholder="Jalisco" id="qr-state">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Ciudad</label>
+                                <input type="text" class="form-input" placeholder="Guadalajara" id="qr-city">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Dirección de la Tienda</label>
+                            <input type="text" class="form-input" placeholder="Av. Vallarta #1234, Col. Centro" id="qr-address">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">WhatsApp</label>
+                            <input type="text" class="form-input" placeholder="+52 33 1234 5678" id="qr-whatsapp">
+                        </div>
+                        
+                        <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="generateQR()">
+                            Generar QR
+                        </button>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="qr-preview" id="qr-result">
+                        <h3 style="margin: 0 0 10px 0; font-family: 'Playfair Display', serif;">Vista Previa</h3>
+                        <p style="color: #888; margin: 0;">Configura los parámetros para generar el QR</p>
+                        <div id="qr-canvas" style="margin: 30px auto; width: 200px; height: 200px; background: #f0f0f0; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #999;">
+                            QR
+                        </div>
+                        <div id="qr-url" style="font-size: 0.8rem; color: #888; word-break: break-all; padding: 12px; background: #f5f5f5; border-radius: 8px; display: none;"></div>
+                        <div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px;">
+                            <button class="btn btn-secondary" id="download-qr-btn" style="display: none;" onclick="downloadQR()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Descargar PNG
+                            </button>
+                            <button class="btn btn-secondary" id="copy-url-btn" style="display: none;" onclick="copyURL()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                                Copiar URL
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card" style="margin-top: 20px;">
+                        <h4 style="margin: 0 0 12px 0;">Batch: Generar QRs Masivos</h4>
+                        <p style="color: #888; margin: 0 0 16px 0; font-size: 0.9rem;">Genera QRs para múltiples productos y distribuidores a la vez.</p>
+                        <button class="btn btn-secondary" style="width: 100%; justify-content: center;">
+                            Generar QRs en Batch
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CONFIGURACIÓN -->
+        <section id="page-settings" class="page-section">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Configuración</h1>
+                    <p class="page-subtitle">Ajustes del sistema</p>
+                </div>
+            </div>
+            
+            <div class="grid-2">
+                <div class="stat-card">
+                    <h3 style="margin: 0 0 20px 0; font-family: 'Playfair Display', serif;">API de Veo 3</h3>
+                    <div class="form-group">
+                        <label class="form-label">API Key de Vertex AI</label>
+                        <input type="password" class="form-input" placeholder="AIza..." value="••••••••••••••••">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Proyecto de GCP</label>
+                        <input type="text" class="form-input" placeholder="cesantoni-experience" value="cesantoni-exp-prod">
+                    </div>
+                    <button class="btn btn-primary">Guardar Configuración</button>
+                </div>
+                
+                <div class="stat-card">
+                    <h3 style="margin: 0 0 20px 0; font-family: 'Playfair Display', serif;">Dominio de Landing Pages</h3>
+                    <div class="form-group">
+                        <label class="form-label">URL Base</label>
+                        <input type="text" class="form-input" placeholder="https://experience.cesantoni.com" value="https://exp.cesantoni.com.mx">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Google Analytics ID</label>
+                        <input type="text" class="form-input" placeholder="G-XXXXXXXXXX" value="G-CESANTONI01">
+                    </div>
+                    <button class="btn btn-primary">Guardar Configuración</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="upload-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Subir Fichas Técnicas</h2>
+                <button class="modal-close" onclick="closeModal('upload-modal')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div style="border: 2px dashed #ddd; border-radius: 16px; padding: 60px 40px; text-align: center; cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.borderColor='#8BC34A'" onmouseout="this.style.borderColor='#ddd'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="#999" style="margin: 0 auto 16px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <p style="margin: 0 0 8px 0; font-weight: 600; color: #333;">Arrastra tus PDFs aquí</p>
+                    <p style="margin: 0; color: #888; font-size: 0.9rem;">o haz clic para seleccionar archivos</p>
+                </div>
+                <div style="margin-top: 20px; display: flex; gap: 12px;">
+                    <button class="btn btn-secondary" style="flex: 1; justify-content: center;">Importar desde Drive</button>
+                    <button class="btn btn-primary" style="flex: 1; justify-content: center;">Subir Archivos</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="distributor-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Agregar Distribuidor</h2>
+                <button class="modal-close" onclick="closeModal('distributor-modal')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Nombre del Distribuidor</label>
+                        <input type="text" class="form-input" placeholder="Interceramic">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tipo</label>
+                        <select class="form-select">
+                            <option>Tienda Especializada</option>
+                            <option>Home Center</option>
+                            <option>Showroom</option>
+                            <option>Distribuidor Mayorista</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Estado</label>
+                        <input type="text" class="form-input" placeholder="Jalisco">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ciudad</label>
+                        <input type="text" class="form-input" placeholder="Guadalajara">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Dirección</label>
+                    <input type="text" class="form-input" placeholder="Av. Vallarta #1234, Col. Centro">
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">WhatsApp</label>
+                        <input type="text" class="form-input" placeholder="+52 33 1234 5678">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-input" placeholder="contacto@tienda.com">
+                    </div>
+                </div>
+                <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 10px;">Guardar Distribuidor</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample data
+        const fichas = [
+            { id: 'volterra', name: 'Volterra', type: 'Piedra Estructurado', format: '30x60cm', tags: ['Muro', 'Interior', 'Pasta Blanca'], image: 'linear-gradient(135deg, #d4c4b0, #a89888)' },
+            { id: 'carrara', name: 'Carrara Blanco', type: 'Mármol Pulido', format: '60x120cm', tags: ['Piso', 'Muro', 'Porcelanato'], image: 'linear-gradient(135deg, #f5f5f5, #e0e0e0)' },
+            { id: 'nero', name: 'Nero Marquina', type: 'Mármol Negro', format: '45x90cm', tags: ['Piso', 'Interior', 'Porcelanato'], image: 'linear-gradient(135deg, #2d2d2d, #4a4a4a)' },
+            { id: 'travertino', name: 'Travertino Gold', type: 'Piedra Natural', format: '60x60cm', tags: ['Piso', 'Exterior', 'Piedra Natural'], image: 'linear-gradient(135deg, #c9a227, #d4af37)' },
+            { id: 'onyx', name: 'Onyx Honey', type: 'Ónix Dorado', format: '80x160cm', tags: ['Muro', 'Interior', 'Porcelanato'], image: 'linear-gradient(135deg, #d4a574, #e8c89e)' },
+            { id: 'emperador', name: 'Emperador Dark', type: 'Mármol Marrón', format: '60x120cm', tags: ['Piso', 'Interior', 'Porcelanato'], image: 'linear-gradient(135deg, #4a3728, #6b5344)' },
+        ];
+        
+        const distributors = [
+            { name: 'Interceramic GDL', location: 'Guadalajara, Jalisco', type: 'Tienda Especializada', scans: 2456, whatsapp: 847 },
+            { name: 'Home Depot Polanco', location: 'CDMX', type: 'Home Center', scans: 1892, whatsapp: 423 },
+            { name: 'Porcelanite MTY', location: 'Monterrey, NL', type: 'Showroom', scans: 1567, whatsapp: 312 },
+            { name: 'Lamosa Querétaro', location: 'Querétaro, QRO', type: 'Distribuidor', scans: 1234, whatsapp: 256 },
+            { name: 'Vitromex Puebla', location: 'Puebla, PUE', type: 'Showroom', scans: 987, whatsapp: 198 },
+            { name: 'Daltile Cancún', location: 'Cancún, QROO', type: 'Tienda Especializada', scans: 756, whatsapp: 167 },
+        ];
+        
+        // Navigation
+        function showPage(pageId) {
+            document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            document.getElementById('page-' + pageId).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+        
+        // Modals
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+        
+        // Render fichas
+        function renderFichas() {
+            const grid = document.getElementById('fichas-grid');
+            grid.innerHTML = fichas.map(f => `
+                <div class="ficha-card" onclick="selectFicha('${f.id}')">
+                    <div style="width: 100%; height: 180px; background: ${f.image};"></div>
+                    <div class="ficha-card-body">
+                        <h4>${f.name}</h4>
+                        <p>${f.type} • ${f.format}</p>
+                        <div class="tags">
+                            ${f.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Render distributors
+        function renderDistributors() {
+            const grid = document.getElementById('distributors-grid');
+            grid.innerHTML = distributors.map(d => `
+                <div class="distributor-card">
+                    <h4>${d.name}</h4>
+                    <div class="location">${d.location} • ${d.type}</div>
+                    <div class="stats">
+                        <div class="stat">
+                            <div class="stat-value">${d.scans.toLocaleString()}</div>
+                            <div class="stat-label">Escaneos</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">${d.whatsapp}</div>
+                            <div class="stat-label">WhatsApp</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">${Math.round(d.whatsapp/d.scans*100)}%</div>
+                            <div class="stat-label">Conversión</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // QR Generator
+        let currentQRUrl = '';
+        
+        function generateQR() {
+            const product = document.getElementById('qr-product').value;
+            const distributor = document.getElementById('qr-distributor').value;
+            const state = document.getElementById('qr-state').value;
+            const city = document.getElementById('qr-city').value;
+            const address = document.getElementById('qr-address').value;
+            const whatsapp = document.getElementById('qr-whatsapp').value;
+            
+            if (!product || !distributor) {
+                alert('Selecciona un producto y distribuidor');
+                return;
+            }
+            
+            // Build URL with params
+            const baseUrl = 'https://exp.cesantoni.com.mx';
+            const params = new URLSearchParams({
+                tienda: distributor,
+                estado: state,
+                ciudad: city,
+                dir: address,
+                wa: whatsapp.replace(/\D/g, '')
+            });
+            
+            currentQRUrl = `${baseUrl}/p/${product}?${params.toString()}`;
+            
+            // Generate QR
+            const canvas = document.getElementById('qr-canvas');
+            canvas.innerHTML = '';
+            
+            QRCode.toCanvas(canvas, currentQRUrl, {
+                width: 200,
+                margin: 2,
+                color: {
+                    dark: '#1a1a1a',
+                    light: '#ffffff'
+                }
+            }, function(error) {
+                if (error) console.error(error);
+            });
+            
+            // Show URL and buttons
+            document.getElementById('qr-url').style.display = 'block';
+            document.getElementById('qr-url').textContent = currentQRUrl;
+            document.getElementById('download-qr-btn').style.display = 'inline-flex';
+            document.getElementById('copy-url-btn').style.display = 'inline-flex';
+        }
+        
+        function downloadQR() {
+            const canvas = document.querySelector('#qr-canvas canvas');
+            if (canvas) {
+                const link = document.createElement('a');
+                link.download = 'cesantoni-qr.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            }
+        }
+        
+        function copyURL() {
+            navigator.clipboard.writeText(currentQRUrl);
+            alert('URL copiada al portapapeles');
+        }
+        
+        // Landing generator
+        function generateLanding() {
+            const product = document.getElementById('landing-product').value;
+            if (!product) {
+                alert('Selecciona un producto');
+                return;
+            }
+            
+            const price = document.getElementById('landing-price').value;
+            const promo = document.getElementById('landing-promo').value;
+            const whatsapp = document.getElementById('landing-whatsapp').value;
+            
+            const ficha = fichas.find(f => f.id === product);
+            
+            const preview = document.getElementById('landing-preview');
+            preview.innerHTML = `
+                <div style="background: ${ficha.image}; height: 200px;"></div>
+                <div style="padding: 24px;">
+                    <h2 style="font-family: 'Playfair Display', serif; margin: 0 0 8px 0;">${ficha.name}</h2>
+                    <p style="color: #888; margin: 0 0 16px 0;">${ficha.type} • ${ficha.format}</p>
+                    ${price ? `<div style="font-size: 1.5rem; font-weight: 700; color: #8BC34A; margin-bottom: 12px;">${price}</div>` : ''}
+                    ${promo ? `<div style="background: #fff3cd; color: #856404; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.9rem;">🎉 ${promo}</div>` : ''}
+                    <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                        <div style="font-weight: 600; margin-bottom: 8px;">Especificaciones</div>
+                        <div style="font-size: 0.9rem; color: #666;">
+                            <div>Formato: ${ficha.format}</div>
+                            <div>Tipo: ${ficha.type}</div>
+                            <div>Uso: ${ficha.tags.join(', ')}</div>
+                        </div>
+                    </div>
+                    ${whatsapp ? `<button style="width: 100%; padding: 14px; background: #25D366; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">💬 Contactar por WhatsApp</button>` : ''}
+                </div>
+            `;
+        }
+        
+        function openVideoGenerator() {
+            alert('Función de generación batch de videos con Veo 3. Requiere configurar API Key de Vertex AI en Configuración.');
+        }
+        
+        // Init
+        renderFichas();
+        renderDistributors();
+        initMexicoMap();
+        
+        // =====================
+        // HEAT MAP DE MÉXICO
+        // =====================
+        
+        const stateData = {
+            'CDMX': { scans: 4521, stores: 24, conversion: 22.3, topStores: [
+                { name: 'Interceramic Polanco', scans: 1234, trend: 23 },
+                { name: 'Home Depot Santa Fe', scans: 987, trend: 18 },
+                { name: 'Porcelanite Pedregal', scans: 654, trend: 12 },
+                { name: 'Lamosa Insurgentes', scans: 543, trend: -3 }
+            ]},
+            'Jalisco': { scans: 3456, stores: 18, conversion: 19.8, topStores: [
+                { name: 'Porcelanite GDL Centro', scans: 876, trend: 31 },
+                { name: 'Interceramic Zapopan', scans: 654, trend: 15 },
+                { name: 'Home Depot Guadalajara', scans: 543, trend: 8 },
+                { name: 'Vitromex Plaza del Sol', scans: 432, trend: 22 }
+            ]},
+            'Nuevo León': { scans: 2891, stores: 12, conversion: 21.5, topStores: [
+                { name: 'Lamosa San Pedro', scans: 765, trend: 28 },
+                { name: 'Interceramic Valle', scans: 654, trend: 15 },
+                { name: 'Home Depot Monterrey', scans: 543, trend: 11 },
+                { name: 'Porcelanite Cumbres', scans: 432, trend: -5 }
+            ]},
+            'Estado de México': { scans: 1876, stores: 9, conversion: 17.2, topStores: [
+                { name: 'Home Depot Satélite', scans: 543, trend: 19 },
+                { name: 'Interceramic Toluca', scans: 432, trend: 8 },
+                { name: 'Porcelanite Metepec', scans: 321, trend: 25 },
+                { name: 'Lamosa Ecatepec', scans: 234, trend: -2 }
+            ]},
+            'Veracruz': { scans: 1678, stores: 9, conversion: 16.4, topStores: [
+                { name: 'Interceramic Veracruz', scans: 456, trend: 14 },
+                { name: 'Home Depot Xalapa', scans: 387, trend: 21 },
+                { name: 'Porcelanite Boca', scans: 298, trend: 7 },
+                { name: 'Lamosa Coatzacoalcos', scans: 234, trend: 3 }
+            ]},
+            'Puebla': { scans: 1456, stores: 8, conversion: 18.1, topStores: [
+                { name: 'Interceramic Angelópolis', scans: 432, trend: 17 },
+                { name: 'Home Depot Puebla', scans: 356, trend: 9 },
+                { name: 'Porcelanite Centro', scans: 287, trend: 23 },
+                { name: 'Vitromex Cholula', scans: 198, trend: 5 }
+            ]},
+            'Sonora': { scans: 1245, stores: 5, conversion: 15.8, topStores: [
+                { name: 'Interceramic Hermosillo', scans: 398, trend: 12 },
+                { name: 'Home Depot Obregón', scans: 312, trend: 8 },
+                { name: 'Porcelanite Nogales', scans: 234, trend: 18 },
+                { name: 'Lamosa Guaymas', scans: 156, trend: -1 }
+            ]},
+            'Quintana Roo': { scans: 1234, stores: 7, conversion: 24.6, topStores: [
+                { name: 'Interceramic Cancún', scans: 456, trend: 34 },
+                { name: 'Home Depot Playa', scans: 345, trend: 28 },
+                { name: 'Porcelanite Riviera', scans: 234, trend: 19 },
+                { name: 'Daltile Tulum', scans: 123, trend: 45 }
+            ]},
+            'Querétaro': { scans: 1234, stores: 7, conversion: 20.2, topStores: [
+                { name: 'Interceramic Juriquilla', scans: 387, trend: 22 },
+                { name: 'Home Depot Querétaro', scans: 298, trend: 14 },
+                { name: 'Porcelanite Centro', scans: 234, trend: 9 },
+                { name: 'Lamosa El Marqués', scans: 178, trend: 31 }
+            ]},
+            'Tamaulipas': { scans: 1123, stores: 6, conversion: 14.9, topStores: [
+                { name: 'Interceramic Tampico', scans: 345, trend: 11 },
+                { name: 'Home Depot Reynosa', scans: 287, trend: 7 },
+                { name: 'Porcelanite Victoria', scans: 198, trend: 15 },
+                { name: 'Lamosa Matamoros', scans: 156, trend: -4 }
+            ]},
+            'Chihuahua': { scans: 987, stores: 4, conversion: 16.7, topStores: [
+                { name: 'Interceramic Chihuahua', scans: 321, trend: 13 },
+                { name: 'Home Depot Juárez', scans: 276, trend: 8 },
+                { name: 'Porcelanite Delicias', scans: 198, trend: 21 },
+                { name: 'Lamosa Cuauhtémoc', scans: 123, trend: 4 }
+            ]},
+            'Baja California': { scans: 892, stores: 3, conversion: 18.9, topStores: [
+                { name: 'Interceramic Tijuana', scans: 356, trend: 26 },
+                { name: 'Home Depot Mexicali', scans: 287, trend: 15 },
+                { name: 'Porcelanite Ensenada', scans: 156, trend: 9 },
+                { name: 'Daltile Rosarito', scans: 93, trend: 32 }
+            ]},
+            'Yucatán': { scans: 876, stores: 5, conversion: 19.4, topStores: [
+                { name: 'Interceramic Mérida', scans: 345, trend: 18 },
+                { name: 'Home Depot Altabrisa', scans: 234, trend: 12 },
+                { name: 'Porcelanite Norte', scans: 156, trend: 27 },
+                { name: 'Lamosa Progreso', scans: 98, trend: 8 }
+            ]},
+            'Guanajuato': { scans: 876, stores: 5, conversion: 17.3, topStores: [
+                { name: 'Interceramic León', scans: 298, trend: 14 },
+                { name: 'Home Depot Irapuato', scans: 234, trend: 9 },
+                { name: 'Porcelanite Celaya', scans: 178, trend: 22 },
+                { name: 'Lamosa Salamanca', scans: 112, trend: 5 }
+            ]},
+            'Michoacán': { scans: 789, stores: 5, conversion: 15.2, topStores: [
+                { name: 'Interceramic Morelia', scans: 276, trend: 11 },
+                { name: 'Home Depot Uruapan', scans: 198, trend: 7 },
+                { name: 'Porcelanite Zamora', scans: 156, trend: 18 },
+                { name: 'Lamosa Lázaro', scans: 98, trend: 3 }
+            ]}
+        };
+        
+        let currentMapView = 'estado';
+        let selectedState = null;
+        
+        function initMexicoMap() {
+            const states = document.querySelectorAll('.mexico-map .state');
+            const tooltip = createTooltip();
+            
+            states.forEach(state => {
+                // Hover effect
+                state.addEventListener('mouseenter', (e) => {
+                    const stateName = state.dataset.state;
+                    const data = stateData[stateName] || { scans: parseInt(state.dataset.scans) || 0, stores: parseInt(state.dataset.stores) || 0 };
+                    
+                    tooltip.innerHTML = `
+                        <div class="tooltip-title">${stateName}</div>
+                        <div><span class="tooltip-value">${data.scans.toLocaleString()}</span> escaneos</div>
+                        <div>${data.stores} tiendas</div>
+                    `;
+                    tooltip.classList.add('visible');
+                    
+                    const rect = state.getBoundingClientRect();
+                    const mapContainer = document.querySelector('.mexico-map-container');
+                    const mapRect = mapContainer.getBoundingClientRect();
+                    
+                    tooltip.style.left = (rect.left - mapRect.left + rect.width/2 - 60) + 'px';
+                    tooltip.style.top = (rect.top - mapRect.top - 70) + 'px';
+                });
+                
+                state.addEventListener('mouseleave', () => {
+                    tooltip.classList.remove('visible');
+                });
+                
+                // Click to select
+                state.addEventListener('click', () => {
+                    selectState(state.dataset.state);
+                });
+            });
+            
+            // Apply heat colors
+            applyHeatColors();
+        }
+        
+        function createTooltip() {
+            let tooltip = document.querySelector('.map-tooltip');
+            if (!tooltip) {
+                tooltip = document.createElement('div');
+                tooltip.className = 'map-tooltip';
+                document.querySelector('.mexico-map-container').appendChild(tooltip);
+            }
+            return tooltip;
+        }
+        
+        function applyHeatColors() {
+            const states = document.querySelectorAll('.mexico-map .state');
+            
+            states.forEach(state => {
+                const stateName = state.dataset.state;
+                const data = stateData[stateName];
+                const scans = data ? data.scans : parseInt(state.dataset.scans) || 0;
+                
+                // Remove existing heat classes
+                state.classList.remove('heat-1', 'heat-2', 'heat-3', 'heat-4', 'heat-5', 'hot', 'hottest');
+                
+                // Apply heat class based on scans
+                if (scans >= 3500) {
+                    state.classList.add('heat-5');
+                } else if (scans >= 2000) {
+                    state.classList.add('heat-4');
+                } else if (scans >= 1000) {
+                    state.classList.add('heat-3');
+                } else if (scans >= 500) {
+                    state.classList.add('heat-2');
+                } else {
+                    state.classList.add('heat-1');
+                }
+            });
+        }
+        
+        function selectState(stateName) {
+            // Update selected state visually
+            document.querySelectorAll('.mexico-map .state').forEach(s => s.classList.remove('selected'));
+            const stateEl = document.querySelector(`.mexico-map .state[data-state="${stateName}"]`);
+            if (stateEl) stateEl.classList.add('selected');
+            
+            selectedState = stateName;
+            
+            // Update detail panel
+            const data = stateData[stateName];
+            if (data) {
+                document.getElementById('detail-title').textContent = stateName;
+                document.getElementById('detail-badge').textContent = currentMapView === 'estado' ? 'Estado' : 'Región';
+                document.getElementById('detail-scans').textContent = data.scans.toLocaleString();
+                document.getElementById('detail-stores').textContent = data.stores;
+                document.getElementById('detail-conversion').textContent = data.conversion + '%';
+                
+                // Update top stores list
+                const listHtml = data.topStores.map((store, i) => `
+                    <div class="detail-list-item">
+                        <span class="list-rank">${i + 1}</span>
+                        <div class="list-info">
+                            <div class="list-name">${store.name}</div>
+                            <div class="list-meta">${stateName} • ${store.scans.toLocaleString()} escaneos</div>
+                        </div>
+                        <span class="list-trend ${store.trend >= 0 ? 'up' : 'down'}">${store.trend >= 0 ? '+' : ''}${store.trend}%</span>
+                    </div>
+                `).join('');
+                
+                document.querySelector('.detail-list').innerHTML = `<h5>Top Tiendas en ${stateName}</h5>` + listHtml;
+            }
+        }
+        
+        function setMapView(view) {
+            currentMapView = view;
+            
+            // Update buttons
+            document.querySelectorAll('.map-view-btn').forEach(btn => btn.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            
+            // Update detail panel title based on view
+            if (!selectedState) {
+                document.getElementById('detail-title').textContent = 
+                    view === 'estado' ? 'Vista Nacional' : 
+                    view === 'distribuidor' ? 'Por Distribuidor' : 'Por Tienda';
+            }
+            
+            // Could filter/recolor map based on view
+            console.log('Map view changed to:', view);
+        }
+        
+        function drillDown() {
+            if (selectedState) {
+                // Navigate to distributors page filtered by state
+                showPage('distribuidores');
+                // Could add state filter here
+                alert(`Mostrando distribuidores de ${selectedState}`);
+            }
+        }
+        
+        // Close modal on overlay click
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    overlay.classList.remove('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
