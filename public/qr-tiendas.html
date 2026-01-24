@@ -1172,49 +1172,70 @@
 
         // Preview QRs
         async function previewQRs() {
-            if (!selectedProduct || selectedStores.size === 0) return;
-
-            const grid = document.getElementById('qrPreviewGrid');
-            grid.innerHTML = '';
-
-            const selectedStoresList = stores.filter(s => selectedStores.has(s.id)).slice(0, 12);
-
-            for (const store of selectedStoresList) {
-                const url = `${BASE_URL}/p/${selectedProduct.sku}?store=${store.slug}`;
-                
-                const card = document.createElement('div');
-                card.className = 'qr-preview-card';
-                
-                const canvas = document.createElement('canvas');
-                card.appendChild(canvas);
-                
-                const storeName = document.createElement('div');
-                storeName.className = 'qr-store-name';
-                storeName.textContent = store.name;
-                card.appendChild(storeName);
-                
-                const productName = document.createElement('div');
-                productName.className = 'qr-product-name';
-                productName.textContent = selectedProduct.name;
-                card.appendChild(productName);
-                
-                grid.appendChild(card);
-                
-                await QRCode.toCanvas(canvas, url, {
-                    width: 150,
-                    margin: 1,
-                    color: { dark: '#000000', light: '#ffffff' }
-                });
+            console.log('previewQRs called', selectedProduct, selectedStores.size);
+            if (!selectedProduct || selectedStores.size === 0) {
+                alert('Selecciona un producto y al menos una tienda');
+                return;
             }
 
-            if (selectedStores.size > 12) {
-                const more = document.createElement('div');
-                more.className = 'qr-preview-card';
-                more.innerHTML = `<div style="padding: 3rem; color: #666;">+${selectedStores.size - 12} más...</div>`;
-                grid.appendChild(more);
-            }
+            try {
+                const grid = document.getElementById('qrPreviewGrid');
+                grid.innerHTML = '<p style="color:#888">Generando previews...</p>';
 
-            document.getElementById('previewModal').classList.add('active');
+                const selectedStoresList = stores.filter(s => selectedStores.has(s.id)).slice(0, 12);
+                grid.innerHTML = '';
+
+                for (const store of selectedStoresList) {
+                    const url = `${BASE_URL}/p/${selectedProduct.sku}?store=${store.slug}`;
+                    
+                    const card = document.createElement('div');
+                    card.className = 'qr-preview-card';
+                    
+                    const canvas = document.createElement('canvas');
+                    card.appendChild(canvas);
+                    
+                    const storeName = document.createElement('div');
+                    storeName.className = 'qr-store-name';
+                    storeName.textContent = store.name;
+                    card.appendChild(storeName);
+                    
+                    const productName = document.createElement('div');
+                    productName.className = 'qr-product-name';
+                    productName.textContent = selectedProduct.name;
+                    card.appendChild(productName);
+                    
+                    grid.appendChild(card);
+                    
+                    // Generar QR
+                    if (typeof QRCode !== 'undefined') {
+                        await QRCode.toCanvas(canvas, url, {
+                            width: 150,
+                            margin: 1,
+                            color: { dark: '#000000', light: '#ffffff' }
+                        });
+                    } else {
+                        canvas.style.background = '#ddd';
+                        canvas.width = 150;
+                        canvas.height = 150;
+                        const ctx = canvas.getContext('2d');
+                        ctx.fillStyle = '#666';
+                        ctx.font = '12px Arial';
+                        ctx.fillText('QR: ' + store.slug, 10, 75);
+                    }
+                }
+
+                if (selectedStores.size > 12) {
+                    const more = document.createElement('div');
+                    more.className = 'qr-preview-card';
+                    more.innerHTML = `<div style="padding: 3rem; color: #666;">+${selectedStores.size - 12} más...</div>`;
+                    grid.appendChild(more);
+                }
+
+                document.getElementById('previewModal').classList.add('active');
+            } catch (err) {
+                console.error('Error en previewQRs:', err);
+                alert('Error generando preview: ' + err.message);
+            }
         }
 
         function closePreview() {
@@ -1223,10 +1244,21 @@
 
         // Generate PDF
         async function generatePDF() {
-            if (!selectedProduct || selectedStores.size === 0) return;
+            console.log('generatePDF called', selectedProduct, selectedStores.size);
+            if (!selectedProduct || selectedStores.size === 0) {
+                alert('Selecciona un producto y al menos una tienda');
+                return;
+            }
 
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('p', 'mm', 'letter');
+            try {
+                // Verificar librería jsPDF
+                if (typeof window.jspdf === 'undefined') {
+                    alert('Error: Librería jsPDF no cargada. Recarga la página.');
+                    return;
+                }
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('p', 'mm', 'letter');
             
             const selectedStoresList = stores.filter(s => selectedStores.has(s.id));
             const qrsPerPage = 6;
@@ -1261,6 +1293,11 @@
                 // Generate QR
                 const url = `${BASE_URL}/p/${selectedProduct.sku}?store=${store.slug}`;
                 const canvas = document.createElement('canvas');
+                
+                if (typeof QRCode === 'undefined') {
+                    throw new Error('Librería QRCode no cargada');
+                }
+                
                 await QRCode.toCanvas(canvas, url, { width: 200, margin: 1 });
                 const qrDataUrl = canvas.toDataURL('image/png');
 
@@ -1299,6 +1336,12 @@
             progress.classList.remove('active');
             showToast(`✅ PDF generado: ${totalQRs} QRs`);
             closePreview();
+            
+            } catch (err) {
+                console.error('Error en generatePDF:', err);
+                document.getElementById('progressContainer').classList.remove('active');
+                alert('Error generando PDF: ' + err.message);
+            }
         }
 
         // Download CSV
