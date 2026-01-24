@@ -1,0 +1,24 @@
+{
+  "name": "cesantoni-experience",
+  "version": "2.1.0",
+  "description": "Sistema QR + Landing Pages + Video AI para Cesantoni",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@google/genai": "^0.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
+    "express": "^4.18.2",
+    "qrcode": "^1.5.3",
+    "sql.js": "^1.8.0"
+  },
+  "keywords": ["cesantoni", "qr", "landing", "ceramic"],
+  "author": "Marketing TDI",
+  "license": "ISC"
+}
