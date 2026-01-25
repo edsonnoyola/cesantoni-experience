@@ -93,32 +93,36 @@
     /* Product grid */
     .products-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-      gap: 10px;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
     }
     .product-card {
       background: #222;
       border-radius: 8px;
       overflow: hidden;
-      cursor: pointer;
       transition: all 0.2s;
       position: relative;
       border: 2px solid transparent;
     }
     .product-card:hover { border-color: #444; }
     .product-card.selected { border-color: #c9a227; background: #2a2a1a; }
+    .product-card .img-container {
+      position: relative;
+      cursor: pointer;
+    }
     .product-card img {
       width: 100%;
-      height: 80px;
+      height: 100px;
       object-fit: cover;
     }
     .product-card .name {
       padding: 8px;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 600;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      cursor: pointer;
     }
     .product-card .check {
       position: absolute;
@@ -145,6 +149,30 @@
       border-radius: 4px;
       font-size: 9px;
     }
+    .product-card .actions {
+      display: flex;
+      gap: 4px;
+      padding: 6px 8px;
+      background: #1a1a1a;
+      border-top: 1px solid #333;
+    }
+    .product-card .actions button {
+      flex: 1;
+      padding: 5px 2px;
+      border: none;
+      border-radius: 4px;
+      font-size: 9px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .product-card .actions .btn-preview { background: #333; color: #fff; }
+    .product-card .actions .btn-preview:hover { background: #444; }
+    .product-card .actions .btn-video { background: #1a472a; color: #4ade80; }
+    .product-card .actions .btn-video:hover { background: #1a5a2a; }
+    .product-card .actions .btn-generate { background: #4a3a1a; color: #c9a227; }
+    .product-card .actions .btn-generate:hover { background: #5a4a2a; }
+    .product-card .actions .btn-edit { background: #1a3a4a; color: #60a5fa; }
+    .product-card .actions .btn-edit:hover { background: #1a4a5a; }
     
     /* Store list */
     .store-item {
@@ -473,11 +501,21 @@ function renderProducts() {
   const grid = document.getElementById('productsGrid');
   
   grid.innerHTML = filtered.map(p => `
-    <div class="product-card ${selectedProducts.has(p.id) ? 'selected' : ''}" onclick="toggleProduct(${p.id})">
-      ${p.video_url ? '<span class="video-badge">▶</span>' : ''}
-      <div class="check">✓</div>
-      <img src="${p.image_url || '/placeholder.jpg'}" alt="${p.name}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%2280%22><rect fill=%22%23333%22 width=%22100%22 height=%2280%22/></svg>'">
-      <div class="name">${p.name}</div>
+    <div class="product-card ${selectedProducts.has(p.id) ? 'selected' : ''}" data-id="${p.id}">
+      <div class="img-container" onclick="toggleProduct(${p.id})">
+        ${p.video_url ? '<span class="video-badge">▶</span>' : ''}
+        <div class="check">✓</div>
+        <img src="${p.image_url || '/placeholder.jpg'}" alt="${p.name}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%2280%22><rect fill=%22%23333%22 width=%22100%22 height=%2280%22/></svg>'">
+      </div>
+      <div class="name" onclick="toggleProduct(${p.id})">${p.name}</div>
+      <div class="actions">
+        <button class="btn-preview" onclick="event.stopPropagation(); window.open('/p/${p.sku}', '_blank')" title="Ver landing">👁️</button>
+        ${p.video_url 
+          ? `<button class="btn-video" onclick="event.stopPropagation(); window.open('${p.video_url}', '_blank')" title="Ver video">▶️</button>`
+          : `<button class="btn-generate" onclick="event.stopPropagation(); generateVideo(${p.id}, '${p.name}', '${p.image_url}')" title="Generar video">🎬</button>`
+        }
+        <button class="btn-edit" onclick="event.stopPropagation(); window.open('/productos-edit.html?id=${p.id}', '_blank')" title="Editar">✏️</button>
+      </div>
     </div>
   `).join('');
   
@@ -707,6 +745,42 @@ function showToast(msg) {
   toast.textContent = msg;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+async function generateVideo(productId, productName, imageUrl) {
+  if (!confirm(`¿Generar video para ${productName}?`)) return;
+  
+  showToast(`🎬 Generando video para ${productName}...`);
+  
+  // Obtener descripción del producto
+  const product = products.find(p => p.id === productId);
+  const description = product?.description || `${productName}. Piso cerámico de alta calidad Cesantoni. Perfecto para transformar cualquier espacio con elegancia y durabilidad.`;
+  
+  try {
+    const res = await fetch('/api/video/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        product_id: productId,
+        product_name: productName,
+        product_description: description,
+        image_url: imageUrl
+      })
+    });
+    
+    const data = await res.json();
+    if (data.video_url) {
+      showToast(`✅ Video generado: ${productName}`);
+      // Actualizar producto en memoria
+      const prod = products.find(p => p.id === productId);
+      if (prod) prod.video_url = data.video_url;
+      renderProducts();
+    } else {
+      showToast(`⏳ Video en proceso, revisa en unos minutos`);
+    }
+  } catch (err) {
+    showToast(`❌ Error generando video`);
+  }
 }
 
 loadData();

@@ -557,7 +557,17 @@ app.post('/api/video/generate', async (req, res) => {
     return res.status(500).json({ error: 'GOOGLE_API_KEY no configurado' });
   }
   
-  const { product_id, product_name, product_description, image_url } = req.body;
+  const { product_id, product_name, image_url } = req.body;
+  let { product_description } = req.body;
+  
+  // Si no viene descripción, buscarla en la DB
+  if (!product_description && product_id) {
+    const product = get('SELECT description FROM products WHERE id = ?', [product_id]);
+    if (product && product.description) {
+      product_description = product.description;
+      console.log('📝 Descripción obtenida de DB');
+    }
+  }
   const videoId = Date.now();
   const slug = (product_name || 'video').toLowerCase().replace(/\s+/g, '_');
   
@@ -587,7 +597,14 @@ app.post('/api/video/generate', async (req, res) => {
       }
     }
 
-    const prompt = `Animate this floor image. Keep the EXACT same tile pattern and color. Slow camera pan revealing more of the same floor. Do not change or replace the tiles. Maintain the original texture throughout. Soft natural light. Gentle ambient room sounds.`;
+    // Construir prompt con narración para que Veo genere la voz
+    let prompt = `Cinematic slow motion video of ceramic tiles and interior design. Gentle camera movement. Professional architecture photography style. Elegant home decor. Soft ambient lighting. No people.`;
+    
+    // Si hay descripción, agregar narración al prompt
+    if (product_description) {
+      prompt = `A warm female voice with Mexican Spanish accent narrates: "${product_description}". Cinematic slow motion video showcasing elegant ceramic floor tiles. Gentle camera pan. Soft piano music in background. Professional interior design photography. Elegant ambient lighting. No people.`;
+      console.log('🎤 Prompt incluye narración de voz');
+    }
 
     let result;
     try {
@@ -707,43 +724,18 @@ app.post('/api/video/generate', async (req, res) => {
     }
 
     const tempPath = path.join(__dirname, 'public', 'videos', `temp_${videoId}.mp4`);
-    const tempWithMusic = path.join(__dirname, 'public', 'videos', `temp_music_${videoId}.mp4`);
     const finalPath = path.join(__dirname, 'public', 'videos', `${slug}.mp4`);
 
-    console.log('📥 Descargando video...');
+    console.log('📥 Descargando video de Veo (incluye audio nativo)...');
     execSync(`curl -L -o "${tempPath}" "${videoUri}&key=${GOOGLE_API_KEY}"`);
 
-    // Seleccionar música aleatoria
-    const musicDir = path.join(__dirname, 'public', 'music');
-    let musicPath = null;
-    if (fs.existsSync(musicDir)) {
-      const tracks = fs.readdirSync(musicDir).filter(f => f.endsWith('.mp3'));
-      if (tracks.length > 0) {
-        const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
-        musicPath = path.join(musicDir, randomTrack);
-        console.log('🎵 Usando música:', randomTrack);
-      }
-    }
-
-    console.log('🎨 Procesando video (logo + música)...');
+    console.log('🎨 Agregando logo Cesantoni...');
     try {
-      if (musicPath && fs.existsSync(musicPath)) {
-        // Video + Logo + Música
-        // Primero agregar música (mezclar con audio original más bajo)
-        execSync(`${FFMPEG} -i "${tempPath}" -i "${musicPath}" -filter_complex "[0:a]volume=0.3[a1];[1:a]volume=0.7[a2];[a1][a2]amix=inputs=2:duration=shortest[aout]" -map 0:v -map "[aout]" -c:v copy -shortest "${tempWithMusic}" -y`);
-        
-        // Luego agregar logo
-        execSync(`${FFMPEG} -i "${tempWithMusic}" -i "${LOGO_PATH}" -filter_complex "[1:v]scale=200:-1[logo];[0:v][logo]overlay=W-w-20:H-h-20" -c:a copy "${finalPath}" -y`);
-        
-        fs.unlinkSync(tempWithMusic);
-      } else {
-        // Solo logo, sin música
-        execSync(`${FFMPEG} -i "${tempPath}" -i "${LOGO_PATH}" -filter_complex "[1:v]scale=200:-1[logo];[0:v][logo]overlay=W-w-20:H-h-20" -c:a copy "${finalPath}" -y`);
-      }
+      execSync(`${FFMPEG} -i "${tempPath}" -i "${LOGO_PATH}" -filter_complex "[1:v]scale=200:-1[logo];[0:v][logo]overlay=W-w-20:H-h-20" -c:a copy "${finalPath}" -y`);
       fs.unlinkSync(tempPath);
+      console.log('✅ Logo agregado');
     } catch (ffmpegErr) {
-      console.log('⚠️ FFmpeg error:', ffmpegErr.message);
-      // Fallback: usar video sin procesar
+      console.log('⚠️ FFmpeg error, usando video sin logo:', ffmpegErr.message);
       if (fs.existsSync(tempPath)) {
         fs.renameSync(tempPath, finalPath);
       }
