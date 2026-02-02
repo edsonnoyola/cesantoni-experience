@@ -1,0 +1,11 @@
+# Nixpacks config para Railway
+# Instala ffmpeg para procesamiento de video
+
+[phases.setup]
+nixPkgs = ["ffmpeg", "nodejs-18_x"]
+
+[phases.install]
+cmds = ["npm ci || npm install"]
+
+[start]
+cmd = "node server.js"

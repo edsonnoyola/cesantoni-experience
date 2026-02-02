@@ -25,7 +25,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Veo 3.1 config - usando API directa
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 const LOGO_PATH = path.join(__dirname, 'public', 'logo-cesantoni.png');
-const FFMPEG = '/opt/homebrew/bin/ffmpeg';
+// FFmpeg: usa el del sistema (Railway lo instala via nixpacks)
+const FFMPEG = process.env.FFMPEG_PATH || 'ffmpeg';
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // =====================================================
@@ -562,7 +563,7 @@ app.post('/api/video/generate', async (req, res) => {
   
   // Si no viene descripción, buscarla en la DB
   if (!product_description && product_id) {
-    const product = get('SELECT description FROM products WHERE id = ?', [product_id]);
+    const product = queryOne('SELECT description FROM products WHERE id = ?', [product_id]);
     if (product && product.description) {
       product_description = product.description;
       console.log('📝 Descripción obtenida de DB');

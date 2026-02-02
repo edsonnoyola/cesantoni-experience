@@ -1,5 +1,36 @@
+# Dependencies
 node_modules/
+
+# Environment
 .env
+.env.local
+.env.production
+
+# System files
 .DS_Store
+Thumbs.db
+
+# Logs
 *.log
+npm-debug.log*
+
+# Temp files
 *.tmp
+*.temp
+
+# IDE
+.vscode/
+.idea/
+
+# Build outputs
+dist/
+build/
+
+# Database (optional - incluir si quieres persistir datos)
+# data/*.db
+
+# Videos generados (opcional - pueden ser muy pesados)
+# public/videos/*.mp4
+
+# Uploads
+# uploads/
