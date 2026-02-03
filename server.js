@@ -5,6 +5,7 @@ const QRCode = require('qrcode');
 const fs = require('fs');
 const { initDB, query, queryOne, run, scalar } = require('./database');
 const { execSync } = require('child_process');
+const { Storage } = require('@google-cloud/storage');
 require('dotenv').config();
 
 const app = express();
@@ -28,6 +29,61 @@ const LOGO_PATH = path.join(__dirname, 'public', 'logo-cesantoni.png');
 // FFmpeg: usa el del sistema (Railway lo instala via nixpacks)
 const FFMPEG = process.env.FFMPEG_PATH || 'ffmpeg';
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Google Cloud Storage config
+const GCS_BUCKET = process.env.GCS_BUCKET || 'cesantoni-videos';
+const GCS_KEY_FILE = process.env.GCS_KEY_FILE; // Path to service account JSON
+let gcsStorage = null;
+let gcsBucket = null;
+
+// Initialize GCS if credentials are available
+if (GCS_KEY_FILE && fs.existsSync(GCS_KEY_FILE)) {
+  try {
+    gcsStorage = new Storage({ keyFilename: GCS_KEY_FILE });
+    gcsBucket = gcsStorage.bucket(GCS_BUCKET);
+    console.log('✅ Google Cloud Storage configurado:', GCS_BUCKET);
+  } catch (err) {
+    console.log('⚠️ Error configurando GCS:', err.message);
+  }
+} else if (process.env.GCS_CREDENTIALS) {
+  // Alternative: credentials as JSON string in env var
+  try {
+    const credentials = JSON.parse(process.env.GCS_CREDENTIALS);
+    gcsStorage = new Storage({ credentials });
+    gcsBucket = gcsStorage.bucket(GCS_BUCKET);
+    console.log('✅ Google Cloud Storage configurado (env):', GCS_BUCKET);
+  } catch (err) {
+    console.log('⚠️ Error configurando GCS:', err.message);
+  }
+} else {
+  console.log('ℹ️ GCS no configurado - videos se guardarán localmente');
+}
+
+// Upload video to GCS
+async function uploadToGCS(localPath, filename) {
+  if (!gcsBucket) return null;
+
+  try {
+    const destination = `videos/${filename}`;
+    await gcsBucket.upload(localPath, {
+      destination,
+      metadata: {
+        contentType: 'video/mp4',
+        cacheControl: 'public, max-age=31536000'
+      }
+    });
+
+    // Make file public
+    await gcsBucket.file(destination).makePublic();
+
+    const publicUrl = `https://storage.googleapis.com/${GCS_BUCKET}/${destination}`;
+    console.log('✅ Video subido a GCS:', publicUrl);
+    return publicUrl;
+  } catch (err) {
+    console.log('⚠️ Error subiendo a GCS:', err.message);
+    return null;
+  }
+}
 
 // =====================================================
 // API: PRODUCTOS
@@ -864,11 +920,23 @@ app.post('/api/video/generate', async (req, res) => {
       }
     }
 
-    if (product_id) {
-      run('UPDATE products SET video_url = ? WHERE id = ?', [`/videos/${slug}.mp4`, product_id]);
+    // Upload to GCS if available, otherwise keep local
+    let finalVideoUrl = `/videos/${slug}.mp4`;
+
+    if (gcsBucket) {
+      const gcsUrl = await uploadToGCS(finalPath, `${slug}.mp4`);
+      if (gcsUrl) {
+        finalVideoUrl = gcsUrl;
+        // Clean up local file after successful upload
+        try { fs.unlinkSync(finalPath); } catch {}
+      }
     }
 
-    console.log('✅ Video listo:', `/videos/${slug}.mp4`);
+    if (product_id) {
+      run('UPDATE products SET video_url = ? WHERE id = ?', [finalVideoUrl, product_id]);
+    }
+
+    console.log('✅ Video listo:', finalVideoUrl);
   } catch (error) {
     console.error('Error generando video:', error.message);
   }
