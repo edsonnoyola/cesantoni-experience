@@ -895,18 +895,73 @@
         }
 
         @media (max-width: 768px) {
-            section { padding: 80px 25px; }
-            .header { padding: 15px 25px; }
-            .hero-content { padding: 0 25px 60px; }
+            section { padding: 60px 20px; }
+            .header { padding: 15px 20px; }
+            .header-badge { font-size: 0.6rem; padding: 6px 10px; }
+
+            /* Hero mobile fixes */
+            .hero-content { padding: 0 20px 80px; }
+            .hero-title {
+                font-size: clamp(2.5rem, 10vw, 4rem);
+                word-break: break-word;
+                hyphens: auto;
+                line-height: 1;
+            }
+            .hero-subtitle {
+                font-size: 0.95rem;
+                line-height: 1.6;
+                padding-right: 20px;
+            }
+            .hero-tag { font-size: 0.6rem; }
+
             .benefits-grid { grid-template-columns: 1fr; }
             .product-specs-mini { grid-template-columns: 1fr; }
+            .specs-grid { grid-template-columns: 1fr; }
+
+            /* WhatsApp button mobile */
             .whatsapp-cta {
                 right: 15px;
                 bottom: 15px;
-                padding: 15px 20px;
+                padding: 12px 18px;
+                font-size: 0.85rem;
             }
-            .pricing-box { padding: 40px 25px; }
-            .price-current { font-size: 3rem; }
+            .whatsapp-cta svg { width: 22px; height: 22px; }
+
+            .pricing-box { padding: 30px 20px; }
+            .price-current { font-size: 2.5rem; }
+
+            /* Action buttons mobile */
+            .action-bar { gap: 10px; }
+            .action-btn {
+                padding: 10px 16px;
+                font-size: 0.75rem;
+                flex: 1 1 auto;
+                justify-content: center;
+                min-width: 100px;
+            }
+
+            /* Product details mobile */
+            .product-details h2 { font-size: 2.5rem; }
+            .product-details p { font-size: 0.9rem; }
+
+            /* Section titles mobile */
+            .section-title { font-size: 2rem; }
+
+            /* Store section mobile */
+            .store-info h3 { font-size: 1.8rem; }
+        }
+
+        /* Extra small screens */
+        @media (max-width: 480px) {
+            .hero-title { font-size: 2.2rem; }
+            .hero-content { padding: 0 15px 100px; }
+            .price-current { font-size: 2rem; }
+            .action-btn {
+                padding: 10px 12px;
+                font-size: 0.7rem;
+            }
+            .section-title { font-size: 1.6rem; }
+            .product-details h2 { font-size: 2rem; }
         }
 
         /* ========== NEW FEATURES STYLES ========== */
@@ -1079,6 +1134,14 @@
         }
         .compare-badge.show { display: flex; }
         .compare-badge:hover { transform: scale(1.05); }
+        @media (max-width: 500px) {
+            .compare-badge {
+                bottom: 80px;
+                right: 15px;
+                padding: 10px 15px;
+                font-size: 0.8rem;
+            }
+        }
 
         /* Sample Request Modal */
         .modal-overlay {
@@ -1325,9 +1388,14 @@
         }
 
         @media (max-width: 500px) {
-            .chat-widget { left: 15px; bottom: 90px; }
-            .chat-box { width: calc(100vw - 30px); left: 0; }
-            .chat-toggle { width: 50px; height: 50px; }
+            .chat-widget { left: 10px; bottom: 80px; }
+            .chat-box { width: calc(100vw - 20px); left: -5px; }
+            .chat-toggle { width: 45px; height: 45px; }
+            .chat-toggle svg { width: 22px; height: 22px; }
+        }
+        @media (max-width: 400px) {
+            .chat-widget { bottom: 75px; }
+            .chat-toggle { width: 40px; height: 40px; }
         }
 
         /* Toast Notification */
@@ -1485,8 +1553,17 @@
             letter-spacing: 0.1em;
         }
         @media (max-width: 600px) {
-            .room-tabs { gap: 5px; }
-            .room-tab { padding: 10px 15px; font-size: 0.75rem; }
+            .room-tabs { gap: 5px; flex-wrap: wrap; }
+            .room-tab {
+                padding: 8px 12px;
+                font-size: 0.7rem;
+                flex: 0 0 auto;
+            }
+            .room-preview { aspect-ratio: 4/3; }
+            .room-label { font-size: 0.65rem; padding: 6px 10px; }
+        }
+        @media (max-width: 400px) {
+            .room-tab { padding: 6px 8px; font-size: 0.6rem; }
         }
 
         /* ========== MSI / PAYMENT OPTIONS ========== */
@@ -1561,6 +1638,20 @@
             font-size: 0.7rem;
             color: var(--black);
             font-weight: 600;
+        }
+        @media (max-width: 600px) {
+            .msi-section { padding: 30px 15px; }
+            .msi-section h3 { font-size: 1.4rem; }
+            .msi-grid { gap: 10px; }
+            .msi-card {
+                padding: 15px 20px;
+                min-width: 90px;
+                flex: 1;
+            }
+            .msi-months { font-size: 2rem; }
+            .msi-amount { font-size: 0.9rem; }
+            .msi-banks { gap: 8px; }
+            .msi-bank { padding: 6px 10px; font-size: 0.6rem; }
         }
 
         /* ========== STOCK DISPLAY ========== */
