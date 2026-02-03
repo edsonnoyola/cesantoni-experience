@@ -465,6 +465,154 @@
             color: var(--gray);
         }
 
+        /* Uses/Applications */
+        .uses-section {
+            background: var(--black);
+            padding: 80px 50px;
+        }
+
+        .uses-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 40px;
+        }
+
+        .use-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 25px;
+            background: var(--gray-dark);
+            border: 1px solid var(--gray-dark);
+            transition: all 0.3s ease;
+        }
+
+        .use-badge:hover {
+            border-color: var(--gold);
+            background: rgba(201,162,39,0.1);
+        }
+
+        .use-badge-icon {
+            font-size: 1.5rem;
+        }
+
+        .use-badge-text {
+            font-size: 0.8rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--cream);
+        }
+
+        /* PEI Badge */
+        .pei-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--gold);
+            color: var(--black);
+            padding: 10px 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            z-index: 10;
+        }
+
+        /* Gallery */
+        .gallery-section {
+            background: var(--black);
+            padding: 80px 50px;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 40px;
+        }
+
+        .gallery-item {
+            aspect-ratio: 1;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s ease;
+        }
+
+        .gallery-item:hover img {
+            transform: scale(1.1);
+        }
+
+        .gallery-item::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0);
+            transition: background 0.3s ease;
+        }
+
+        .gallery-item:hover::after {
+            background: rgba(201,162,39,0.2);
+        }
+
+        /* Lightbox */
+        .lightbox {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .lightbox.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .lightbox img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            color: var(--white);
+            font-size: 2rem;
+            cursor: pointer;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--gray);
+            transition: all 0.3s ease;
+        }
+
+        .lightbox-close:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+        }
+
+        @media (max-width: 768px) {
+            .gallery-grid { grid-template-columns: repeat(2, 1fr); }
+            .uses-grid { justify-content: flex-start; }
+        }
+
         /* Store */
         .store { background: var(--charcoal); }
 
@@ -738,6 +886,7 @@
         <section class="product-showcase">
             <div class="product-grid">
                 <div class="product-image-main">
+                    <div class="pei-badge hidden" id="peiBadge">PEI IV</div>
                     <img id="productImage" src="" alt="">
                 </div>
                 <div class="product-details">
@@ -807,10 +956,34 @@
             <div class="section-container">
                 <span class="section-label" style="color: var(--gold-dark);">Especificaciones Técnicas</span>
                 <h2 class="section-title">La ciencia detrás de la belleza</h2>
-                
+
                 <div class="specs-grid" id="specsGrid"></div>
             </div>
         </section>
+
+        <!-- Uses/Applications -->
+        <section class="uses-section hidden" id="usesSection">
+            <div class="section-container" style="text-align: center;">
+                <span class="section-label">Aplicaciones Recomendadas</span>
+                <h2 class="section-title" style="margin: 0 auto;">Ideal para cada espacio</h2>
+                <div class="uses-grid" id="usesGrid"></div>
+            </div>
+        </section>
+
+        <!-- Gallery -->
+        <section class="gallery-section hidden" id="gallerySection">
+            <div class="section-container" style="text-align: center;">
+                <span class="section-label">Galería</span>
+                <h2 class="section-title" style="margin: 0 auto;">Inspiración visual</h2>
+                <div class="gallery-grid" id="galleryGrid"></div>
+            </div>
+        </section>
+
+        <!-- Lightbox -->
+        <div class="lightbox" id="lightbox">
+            <div class="lightbox-close" onclick="closeLightbox()">×</div>
+            <img id="lightboxImg" src="" alt="">
+        </div>
 
         <!-- Store -->
         <section class="store" id="storeSection">
@@ -992,16 +1165,22 @@
                 document.getElementById('productVideo').src = product.video_url;
             }
 
+            // PEI Badge
+            if (product.pei) {
+                document.getElementById('peiBadge').textContent = product.pei;
+                document.getElementById('peiBadge').classList.remove('hidden');
+            }
+
             // Full specs
             const specs = [
                 { value: product.format || '60×60 cm', label: 'Formato' },
-                { value: product.resistance || 'PEI 4', label: 'Resistencia' },
+                { value: product.pei || product.resistance || 'PEI 4', label: 'Resistencia' },
                 { value: product.water_absorption || '<0.5%', label: 'Absorción' },
                 { value: product.mohs || '6-7', label: 'Dureza Mohs' },
                 { value: product.pieces_per_box || '5 pzas', label: 'Piezas/Caja' },
                 { value: product.sqm_per_box ? `${product.sqm_per_box} m²` : '1.20 m²', label: 'm² por Caja' },
                 { value: product.type || 'Porcelánico', label: 'Tipo' },
-                { value: product.usage || 'Int / Ext', label: 'Uso' }
+                { value: product.finish || 'Mate', label: 'Acabado' }
             ];
             document.getElementById('specsGrid').innerHTML = specs.map(s => `
                 <div class="spec-item">
@@ -1009,6 +1188,46 @@
                     <div class="spec-label">${s.label}</div>
                 </div>
             `).join('');
+
+            // Uses/Applications
+            const usesStr = product.uses || '';
+            if (usesStr) {
+                const uses = usesStr.split(',').map(u => u.trim()).filter(Boolean);
+                if (uses.length > 0) {
+                    const useIcons = {
+                        'BAÑO': '🚿',
+                        'COCINA': '🍳',
+                        'INTERIOR': '🏠',
+                        'EXTERIOR': '☀️',
+                        'COMERCIAL': '🏢',
+                        'RESIDENCIAL': '🏡',
+                        'FACHADA': '🏛️',
+                        'PISCINA': '🏊'
+                    };
+                    document.getElementById('usesGrid').innerHTML = uses.map(use => `
+                        <div class="use-badge">
+                            <span class="use-badge-icon">${useIcons[use] || '✓'}</span>
+                            <span class="use-badge-text">${use}</span>
+                        </div>
+                    `).join('');
+                    document.getElementById('usesSection').classList.remove('hidden');
+                }
+            }
+
+            // Gallery
+            let gallery = [];
+            try {
+                gallery = product.gallery ? JSON.parse(product.gallery) : [];
+            } catch(e) { gallery = []; }
+
+            if (gallery.length > 0) {
+                document.getElementById('galleryGrid').innerHTML = gallery.slice(0, 4).map((img, i) => `
+                    <div class="gallery-item" onclick="openLightbox('${img}')">
+                        <img src="${img}" alt="${product.name} - Vista ${i + 1}" loading="lazy">
+                    </div>
+                `).join('');
+                document.getElementById('gallerySection').classList.remove('hidden');
+            }
 
             // Store
             if (store) {
@@ -1088,6 +1307,28 @@
         window.addEventListener('scroll', () => {
             const header = document.getElementById('header');
             if (header) header.classList.toggle('scrolled', window.scrollY > 100);
+        });
+
+        // Lightbox functions
+        function openLightbox(src) {
+            document.getElementById('lightboxImg').src = src;
+            document.getElementById('lightbox').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        document.getElementById('lightbox').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('lightbox')) {
+                closeLightbox();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeLightbox();
         });
 
         // Init
