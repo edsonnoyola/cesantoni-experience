@@ -1089,6 +1089,168 @@ app.delete('/api/landings/:id', (req, res) => {
 });
 
 // =====================================================
+// SAMPLE REQUESTS - Solicitudes de muestra
+// =====================================================
+
+// Create sample request
+app.post('/api/samples', (req, res) => {
+  try {
+    const { product_id, product_name, store_id, store_name, customer_name, customer_phone, customer_email, address } = req.body;
+
+    // Create table if not exists
+    run(`CREATE TABLE IF NOT EXISTS sample_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER,
+      product_name TEXT,
+      store_id INTEGER,
+      store_name TEXT,
+      customer_name TEXT NOT NULL,
+      customer_phone TEXT NOT NULL,
+      customer_email TEXT,
+      address TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      notes TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`);
+
+    const result = run(`INSERT INTO sample_requests (product_id, product_name, store_id, store_name, customer_name, customer_phone, customer_email, address)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [product_id, product_name, store_id, store_name, customer_name, customer_phone, customer_email, address]
+    );
+
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (err) {
+    console.error('Sample request error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// List sample requests (admin)
+app.get('/api/samples', (req, res) => {
+  try {
+    const samples = query(`SELECT * FROM sample_requests ORDER BY created_at DESC`);
+    res.json(samples);
+  } catch (err) {
+    res.json([]); // Table might not exist yet
+  }
+});
+
+// Update sample request status
+app.put('/api/samples/:id', (req, res) => {
+  try {
+    const { status, notes } = req.body;
+    run(`UPDATE sample_requests SET status = ?, notes = ? WHERE id = ?`, [status, notes, req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =====================================================
+// QUOTES - Cotizaciones
+// =====================================================
+
+// Create quote
+app.post('/api/quotes', (req, res) => {
+  try {
+    const { product_id, product_name, product_sku, m2, price_per_m2, total, store_id, store_name, customer_name, customer_email, customer_phone } = req.body;
+
+    // Create table if not exists
+    run(`CREATE TABLE IF NOT EXISTS quotes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER,
+      product_name TEXT,
+      product_sku TEXT,
+      m2 REAL,
+      price_per_m2 REAL,
+      total REAL,
+      store_id INTEGER,
+      store_name TEXT,
+      customer_name TEXT NOT NULL,
+      customer_email TEXT NOT NULL,
+      customer_phone TEXT,
+      status TEXT DEFAULT 'sent',
+      created_at TEXT DEFAULT (datetime('now'))
+    )`);
+
+    const result = run(`INSERT INTO quotes (product_id, product_name, product_sku, m2, price_per_m2, total, store_id, store_name, customer_name, customer_email, customer_phone)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [product_id, product_name, product_sku, m2, price_per_m2, total, store_id, store_name, customer_name, customer_email, customer_phone]
+    );
+
+    // In a real implementation, you would send an email here
+    // For now, just store the quote
+
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (err) {
+    console.error('Quote error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// List quotes (admin)
+app.get('/api/quotes', (req, res) => {
+  try {
+    const quotes = query(`SELECT * FROM quotes ORDER BY created_at DESC`);
+    res.json(quotes);
+  } catch (err) {
+    res.json([]); // Table might not exist yet
+  }
+});
+
+// =====================================================
+// REVIEWS - Opiniones
+// =====================================================
+
+// Create review
+app.post('/api/reviews', (req, res) => {
+  try {
+    const { product_id, store_id, rating, comment, customer_name } = req.body;
+
+    // Create table if not exists
+    run(`CREATE TABLE IF NOT EXISTS reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL,
+      store_id INTEGER,
+      rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+      comment TEXT,
+      customer_name TEXT,
+      verified_purchase INTEGER DEFAULT 0,
+      approved INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`);
+
+    const result = run(`INSERT INTO reviews (product_id, store_id, rating, comment, customer_name)
+      VALUES (?, ?, ?, ?, ?)`,
+      [product_id, store_id, rating, comment, customer_name]
+    );
+
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (err) {
+    console.error('Review error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get reviews for product
+app.get('/api/products/:id/reviews', (req, res) => {
+  try {
+    const reviews = query(`SELECT * FROM reviews WHERE product_id = ? AND approved = 1 ORDER BY created_at DESC`, [req.params.id]);
+
+    // Calculate average
+    const avgResult = queryOne(`SELECT AVG(rating) as avg_rating, COUNT(*) as count FROM reviews WHERE product_id = ? AND approved = 1`, [req.params.id]);
+
+    res.json({
+      reviews,
+      average: avgResult?.avg_rating ? Math.round(avgResult.avg_rating * 10) / 10 : 0,
+      count: avgResult?.count || 0
+    });
+  } catch (err) {
+    res.json({ reviews: [], average: 0, count: 0 });
+  }
+});
+
+// =====================================================
 // INICIO
 // =====================================================
 

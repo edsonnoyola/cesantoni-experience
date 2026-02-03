@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Favoritos | Cesantoni</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --black: #0a0a0a;
+            --charcoal: #1a1a1a;
+            --gold: #c9a227;
+            --gold-dark: #a68523;
+            --cream: #f5f3ef;
+            --white: #ffffff;
+            --gray: #666;
+            --gray-light: #999;
+            --gray-dark: #2a2a2a;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--black);
+            color: var(--cream);
+            min-height: 100vh;
+        }
+
+        .header {
+            padding: 25px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--gray-dark);
+        }
+
+        .logo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.6rem;
+            color: var(--white);
+            text-decoration: none;
+        }
+        .logo span { color: var(--gold); }
+
+        .back-btn {
+            color: var(--gray-light);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.3s;
+        }
+        .back-btn:hover { color: var(--gold); }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.5rem;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--gray);
+            margin-bottom: 40px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+        }
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            color: var(--gray);
+            margin-bottom: 20px;
+        }
+        .empty-state h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+        .empty-state p {
+            color: var(--gray);
+            margin-bottom: 30px;
+        }
+        .empty-state a {
+            display: inline-block;
+            padding: 14px 30px;
+            background: var(--gold);
+            color: var(--black);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .favorites-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .favorite-card {
+            background: var(--charcoal);
+            overflow: hidden;
+            transition: transform 0.3s;
+        }
+        .favorite-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .favorite-card img {
+            width: 100%;
+            aspect-ratio: 4/3;
+            object-fit: cover;
+        }
+
+        .favorite-content {
+            padding: 20px;
+        }
+
+        .favorite-category {
+            font-size: 0.75rem;
+            color: var(--gold);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+        }
+
+        .favorite-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+        }
+
+        .favorite-price {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.6rem;
+            color: var(--gold);
+            margin-bottom: 15px;
+        }
+        .favorite-price span {
+            font-size: 0.9rem;
+            color: var(--gray);
+            font-family: 'Inter', sans-serif;
+        }
+
+        .favorite-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--gold);
+            color: var(--black);
+            border: none;
+            font-weight: 500;
+        }
+        .btn-primary:hover {
+            background: var(--gold-dark);
+        }
+
+        .btn-remove {
+            background: transparent;
+            border: 1px solid var(--gray-dark);
+            color: var(--gray);
+        }
+        .btn-remove:hover {
+            border-color: #e74c3c;
+            color: #e74c3c;
+        }
+
+        .share-all {
+            margin-top: 40px;
+            text-align: center;
+            padding: 30px;
+            background: var(--charcoal);
+        }
+        .share-all h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+        }
+        .share-all button {
+            padding: 14px 30px;
+            background: #25D366;
+            border: none;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .share-all button:hover {
+            opacity: 0.9;
+        }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 1.8rem; }
+            .favorites-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a href="/" class="logo">CESANTONI<span>.</span></a>
+        <a href="javascript:history.back()" class="back-btn">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            Volver
+        </a>
+    </header>
+
+    <div class="container">
+        <h1>Mis Favoritos</h1>
+        <p class="subtitle" id="favCount">0 productos guardados</p>
+
+        <div id="emptyState" class="empty-state">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+            </svg>
+            <h2>No tienes favoritos</h2>
+            <p>Guarda los pisos que te gustan usando el corazon en cada producto</p>
+            <a href="/">Explorar Productos</a>
+        </div>
+
+        <div id="favoritesContent" style="display: none;">
+            <div class="favorites-grid" id="favoritesGrid"></div>
+
+            <div class="share-all" id="shareAll">
+                <h3>Comparte tu seleccion</h3>
+                <button onclick="shareAllWhatsApp()">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    Enviar por WhatsApp
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getFavorites() {
+            return JSON.parse(localStorage.getItem('cesantoni_favorites') || '[]');
+        }
+
+        function saveFavorites(favorites) {
+            localStorage.setItem('cesantoni_favorites', JSON.stringify(favorites));
+        }
+
+        function formatPrice(price) {
+            return Number(price).toLocaleString('es-MX', { minimumFractionDigits: 0 });
+        }
+
+        function removeFavorite(sku) {
+            let favorites = getFavorites();
+            favorites = favorites.filter(f => f.sku !== sku);
+            saveFavorites(favorites);
+            renderFavorites();
+        }
+
+        function shareAllWhatsApp() {
+            const favorites = getFavorites();
+            let text = 'Mis pisos favoritos de Cesantoni:\n\n';
+            favorites.forEach((f, i) => {
+                text += `${i + 1}. ${f.name} - $${formatPrice(f.price)}/m2\n`;
+            });
+            text += `\nVer en: ${window.location.origin}`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+        }
+
+        function renderFavorites() {
+            const favorites = getFavorites();
+            const emptyState = document.getElementById('emptyState');
+            const content = document.getElementById('favoritesContent');
+            const grid = document.getElementById('favoritesGrid');
+            const countEl = document.getElementById('favCount');
+
+            countEl.textContent = `${favorites.length} producto${favorites.length !== 1 ? 's' : ''} guardado${favorites.length !== 1 ? 's' : ''}`;
+
+            if (favorites.length === 0) {
+                emptyState.style.display = 'block';
+                content.style.display = 'none';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            content.style.display = 'block';
+
+            grid.innerHTML = favorites.map(f => `
+                <div class="favorite-card">
+                    <img src="${f.image || ''}" alt="${f.name}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a1a%22 width=%22100%22 height=%22100%22/></svg>'">
+                    <div class="favorite-content">
+                        <div class="favorite-category">${f.category || 'Porcelanico'}</div>
+                        <h3 class="favorite-name">${f.name}</h3>
+                        <div class="favorite-price">$${formatPrice(f.price)} <span>/m2</span></div>
+                        <div class="favorite-actions">
+                            <a href="/p/${f.sku}" class="btn btn-primary">Ver producto</a>
+                            <button class="btn btn-remove" onclick="removeFavorite('${f.sku}')">Eliminar</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        renderFavorites();
+    </script>
+</body>
+</html>

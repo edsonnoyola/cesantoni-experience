@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparar Productos | Cesantoni</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --black: #0a0a0a;
+            --charcoal: #1a1a1a;
+            --gold: #c9a227;
+            --gold-dark: #a68523;
+            --cream: #f5f3ef;
+            --white: #ffffff;
+            --gray: #666;
+            --gray-light: #999;
+            --gray-dark: #2a2a2a;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--black);
+            color: var(--cream);
+            min-height: 100vh;
+        }
+
+        .header {
+            padding: 25px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--gray-dark);
+        }
+
+        .logo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.6rem;
+            color: var(--white);
+            text-decoration: none;
+        }
+        .logo span { color: var(--gold); }
+
+        .back-btn {
+            color: var(--gray-light);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.3s;
+        }
+        .back-btn:hover { color: var(--gold); }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.5rem;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--gray);
+            margin-bottom: 40px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+        }
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            color: var(--gray);
+            margin-bottom: 20px;
+        }
+        .empty-state h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+        .empty-state p {
+            color: var(--gray);
+            margin-bottom: 30px;
+        }
+        .empty-state a {
+            display: inline-block;
+            padding: 14px 30px;
+            background: var(--gold);
+            color: var(--black);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .compare-grid {
+            display: grid;
+            grid-template-columns: 200px repeat(var(--cols, 2), 1fr);
+            gap: 1px;
+            background: var(--gray-dark);
+            border: 1px solid var(--gray-dark);
+        }
+
+        .compare-cell {
+            background: var(--charcoal);
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .compare-cell.header-cell {
+            background: var(--black);
+            font-weight: 500;
+            color: var(--gray-light);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            justify-content: flex-start;
+        }
+
+        .product-header {
+            flex-direction: column;
+            padding: 30px 20px;
+        }
+        .product-header img {
+            width: 100%;
+            max-width: 150px;
+            aspect-ratio: 1;
+            object-fit: cover;
+            margin-bottom: 15px;
+        }
+        .product-header h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+        .product-header .category {
+            color: var(--gray);
+            font-size: 0.8rem;
+        }
+        .product-header .price {
+            color: var(--gold);
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.5rem;
+            margin-top: 10px;
+        }
+
+        .remove-btn {
+            margin-top: 15px;
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid var(--gray-dark);
+            color: var(--gray);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .remove-btn:hover {
+            border-color: #e74c3c;
+            color: #e74c3c;
+        }
+
+        .highlight {
+            background: rgba(201, 162, 39, 0.1);
+        }
+        .best {
+            color: var(--gold);
+            font-weight: 600;
+        }
+
+        .view-btn {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: var(--gold);
+            color: var(--black);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .view-btn:hover {
+            background: var(--gold-dark);
+        }
+
+        .clear-all {
+            margin-top: 30px;
+            text-align: center;
+        }
+        .clear-all button {
+            padding: 12px 30px;
+            background: transparent;
+            border: 1px solid var(--gray-dark);
+            color: var(--gray);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .clear-all button:hover {
+            border-color: #e74c3c;
+            color: #e74c3c;
+        }
+
+        @media (max-width: 900px) {
+            .compare-grid {
+                grid-template-columns: 120px repeat(var(--cols, 2), 1fr);
+                font-size: 0.85rem;
+            }
+            .product-header img { max-width: 80px; }
+            .compare-cell { padding: 12px; }
+        }
+
+        @media (max-width: 600px) {
+            .compare-grid {
+                grid-template-columns: 100px repeat(var(--cols, 2), 1fr);
+                font-size: 0.75rem;
+            }
+            h1 { font-size: 1.8rem; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a href="/" class="logo">CESANTONI<span>.</span></a>
+        <a href="javascript:history.back()" class="back-btn">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            Volver
+        </a>
+    </header>
+
+    <div class="container">
+        <h1>Comparar Productos</h1>
+        <p class="subtitle">Analiza las diferencias entre los productos seleccionados</p>
+
+        <div id="emptyState" class="empty-state">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+            <h2>No hay productos para comparar</h2>
+            <p>Agrega productos desde la landing page usando el boton "Comparar"</p>
+            <a href="/">Explorar Productos</a>
+        </div>
+
+        <div id="compareContent" style="display: none;">
+            <div class="compare-grid" id="compareGrid"></div>
+            <div class="clear-all">
+                <button onclick="clearAll()">Limpiar comparacion</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getCompareList() {
+            return JSON.parse(localStorage.getItem('cesantoni_compare') || '[]');
+        }
+
+        function saveCompareList(list) {
+            localStorage.setItem('cesantoni_compare', JSON.stringify(list));
+        }
+
+        function formatPrice(price) {
+            return Number(price).toLocaleString('es-MX', { minimumFractionDigits: 0 });
+        }
+
+        function removeProduct(sku) {
+            let list = getCompareList();
+            list = list.filter(p => p.sku !== sku);
+            saveCompareList(list);
+            renderComparison();
+        }
+
+        function clearAll() {
+            localStorage.removeItem('cesantoni_compare');
+            renderComparison();
+        }
+
+        function renderComparison() {
+            const list = getCompareList();
+            const emptyState = document.getElementById('emptyState');
+            const content = document.getElementById('compareContent');
+            const grid = document.getElementById('compareGrid');
+
+            if (list.length === 0) {
+                emptyState.style.display = 'block';
+                content.style.display = 'none';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            content.style.display = 'block';
+            grid.style.setProperty('--cols', list.length);
+
+            const specs = [
+                { key: 'category', label: 'Categoria' },
+                { key: 'format', label: 'Formato' },
+                { key: 'type', label: 'Tipo' },
+                { key: 'finish', label: 'Acabado' },
+                { key: 'pei', label: 'Resistencia' },
+                { key: 'sqm_per_box', label: 'm2/Caja', format: v => v ? `${v} m2` : '-' },
+                { key: 'price', label: 'Precio', format: v => `$${formatPrice(v)}/m2` }
+            ];
+
+            let html = '';
+
+            // Header row
+            html += '<div class="compare-cell header-cell"></div>';
+            list.forEach(p => {
+                html += `
+                    <div class="compare-cell product-header">
+                        <img src="${p.image || ''}" alt="${p.name}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a1a%22 width=%22100%22 height=%22100%22/></svg>'">
+                        <h3>${p.name}</h3>
+                        <span class="category">${p.category || 'Porcelanico'}</span>
+                        <span class="price">$${formatPrice(p.price)}/m2</span>
+                        <a href="/p/${p.sku}" class="view-btn">Ver producto</a>
+                        <button class="remove-btn" onclick="removeProduct('${p.sku}')">Eliminar</button>
+                    </div>
+                `;
+            });
+
+            // Spec rows
+            specs.forEach(spec => {
+                html += `<div class="compare-cell header-cell">${spec.label}</div>`;
+
+                // Find best value for numeric comparisons
+                const values = list.map(p => p[spec.key]);
+
+                list.forEach(p => {
+                    const value = p[spec.key];
+                    const displayValue = spec.format ? spec.format(value) : (value || '-');
+                    html += `<div class="compare-cell">${displayValue}</div>`;
+                });
+            });
+
+            grid.innerHTML = html;
+        }
+
+        renderComparison();
+    </script>
+</body>
+</html>
