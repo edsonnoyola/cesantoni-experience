@@ -992,25 +992,11 @@
         <!-- Benefits -->
         <section class="benefits">
             <div class="section-container">
-                <span class="section-label">¿Por qué elegir este producto?</span>
-                <h2 class="section-title">Excelencia en cada detalle</h2>
-                
-                <div class="benefits-grid">
-                    <div class="benefit-card">
-                        <div class="benefit-icon">◈</div>
-                        <h3 class="benefit-title">Resistencia Superior</h3>
-                        <p class="benefit-text">Garantiza durabilidad excepcional para áreas de alto tráfico. Resistente a rayones, manchas y humedad.</p>
-                    </div>
-                    <div class="benefit-card">
-                        <div class="benefit-icon">✧</div>
-                        <h3 class="benefit-title">Diseño Único</h3>
-                        <p class="benefit-text">Cada pieza presenta variaciones naturales que crean espacios verdaderamente irrepetibles.</p>
-                    </div>
-                    <div class="benefit-card">
-                        <div class="benefit-icon">◇</div>
-                        <h3 class="benefit-title">Garantía Premium</h3>
-                        <p class="benefit-text">Respaldado por años de experiencia Cesantoni. Certificaciones internacionales de calidad.</p>
-                    </div>
+                <span class="section-label" id="benefitsLabel">¿Por qué elegir este producto?</span>
+                <h2 class="section-title" id="benefitsTitle">Excelencia en cada detalle</h2>
+
+                <div class="benefits-grid" id="benefitsGrid">
+                    <!-- Se genera dinámicamente según el producto -->
                 </div>
             </div>
         </section>
@@ -1238,6 +1224,9 @@
                 document.getElementById('productVideo').src = product.video_url;
             }
 
+            // Generate personalized benefits
+            renderBenefits(product);
+
             // PEI Badge
             if (product.pei) {
                 document.getElementById('peiBadge').textContent = product.pei;
@@ -1419,6 +1408,186 @@
             } catch(e) {
                 console.log('Error loading related:', e);
             }
+        }
+
+        // Generate personalized benefits based on product characteristics
+        function renderBenefits(product) {
+            const benefits = [];
+            const type = (product.type || '').toUpperCase();
+            const category = (product.category || '').toUpperCase();
+            const finish = (product.finish || '').toLowerCase();
+            const usesStr = (product.uses || '').toUpperCase();
+            const uses = usesStr.split(',').map(u => u.trim());
+
+            // Benefits based on TYPE (Pasta Blanca, Porcelánico, etc.)
+            if (type.includes('PASTA BLANCA')) {
+                benefits.push({
+                    icon: '🏺',
+                    title: 'Pasta Blanca Premium',
+                    text: 'Fabricado con arcillas blancas de alta pureza. Base clara que realza los colores y permite acabados más vivos y luminosos.'
+                });
+                benefits.push({
+                    icon: '✨',
+                    title: 'Colores Más Vivos',
+                    text: 'La pasta blanca permite que los esmaltes y diseños se aprecien con mayor intensidad y fidelidad de color.'
+                });
+            } else if (type.includes('PORCELÁNICO') && type.includes('RECTIFICADO')) {
+                benefits.push({
+                    icon: '📐',
+                    title: 'Rectificado de Precisión',
+                    text: 'Bordes cortados con precisión milimétrica. Permite instalación con junta mínima para un acabado continuo y elegante.'
+                });
+                benefits.push({
+                    icon: '💎',
+                    title: 'Porcelánico Premium',
+                    text: 'Absorción de agua menor al 0.5%. Máxima resistencia, durabilidad superior y apto para alto tráfico.'
+                });
+            } else if (type.includes('PORCELÁNICO')) {
+                benefits.push({
+                    icon: '💎',
+                    title: 'Porcelánico de Alta Gama',
+                    text: 'Absorción de agua ultrabaja menor al 0.5%. Resistencia excepcional al desgaste, manchas y productos químicos.'
+                });
+                benefits.push({
+                    icon: '🛡️',
+                    title: 'Durabilidad Superior',
+                    text: 'Fabricado a temperaturas superiores a 1200°C. Estructura compacta que garantiza décadas de belleza sin deterioro.'
+                });
+            } else {
+                benefits.push({
+                    icon: '⭐',
+                    title: 'Calidad Cesantoni',
+                    text: 'Fabricado bajo los más altos estándares de calidad. Garantía de excelencia respaldada por más de 25 años de tradición.'
+                });
+            }
+
+            // Benefits based on CATEGORY (Madera, Mármol, Piedra, etc.)
+            if (category.includes('MADERA') || category.includes('WOOD')) {
+                benefits.push({
+                    icon: '🌳',
+                    title: 'Calidez de la Madera',
+                    text: 'Reproduce fielmente las vetas y texturas naturales de la madera. La calidez del wood con la resistencia del porcelánico.'
+                });
+                benefits.push({
+                    icon: '🔄',
+                    title: 'Sin Mantenimiento',
+                    text: 'A diferencia de la madera natural, no requiere barnizado, lijado ni tratamientos especiales. Fácil limpieza diaria.'
+                });
+            } else if (category.includes('MÁRMOL') || category.includes('MARBLE')) {
+                benefits.push({
+                    icon: '🏛️',
+                    title: 'Elegancia del Mármol',
+                    text: 'Reproduce las vetas únicas y la sofisticación del mármol natural. Cada pieza es una obra de arte arquitectónico.'
+                });
+                benefits.push({
+                    icon: '💫',
+                    title: 'Brillo Permanente',
+                    text: 'Mantiene su lustre sin necesidad de pulido periódico. Resistente a manchas de vino, café y ácidos cotidianos.'
+                });
+            } else if (category.includes('PIEDRA') || category.includes('STONE')) {
+                benefits.push({
+                    icon: '⛰️',
+                    title: 'Textura Natural',
+                    text: 'Captura la esencia de la piedra natural con texturas táctiles auténticas. Robustez visual con ligereza estructural.'
+                });
+                benefits.push({
+                    icon: '🏔️',
+                    title: 'Resistencia Extrema',
+                    text: 'Ideal para espacios de alto tránsito. Soporta condiciones exigentes manteniendo su aspecto original.'
+                });
+            } else if (category.includes('CEMENTO') || category.includes('CONCRETE')) {
+                benefits.push({
+                    icon: '🏗️',
+                    title: 'Estilo Industrial',
+                    text: 'El acabado contemporáneo del cemento con las ventajas del porcelánico. Perfecto para diseños modernos y lofts.'
+                });
+                benefits.push({
+                    icon: '🎨',
+                    title: 'Versatilidad Total',
+                    text: 'Combina con cualquier estilo decorativo. Base neutra que permite destacar mobiliario y accesorios.'
+                });
+            }
+
+            // Benefits based on USES
+            if (uses.includes('EXTERIOR') || uses.includes('FACHADA')) {
+                benefits.push({
+                    icon: '☀️',
+                    title: 'Apto para Exteriores',
+                    text: 'Resistente a rayos UV, lluvia y cambios extremos de temperatura. No se decolora ni deteriora con la exposición solar.'
+                });
+            }
+            if (uses.includes('BAÑO') || uses.includes('PISCINA')) {
+                benefits.push({
+                    icon: '💧',
+                    title: 'Resistente a la Humedad',
+                    text: 'Impermeabilidad total. No absorbe agua ni genera hongos. Superficie antideslizante disponible para zonas húmedas.'
+                });
+            }
+            if (uses.includes('COMERCIAL')) {
+                benefits.push({
+                    icon: '🏢',
+                    title: 'Uso Comercial Intensivo',
+                    text: 'Diseñado para soportar alto tráfico peatonal. Ideal para locales, oficinas, restaurantes y espacios públicos.'
+                });
+            }
+
+            // Benefits based on FINISH
+            if (finish.includes('pulido') || finish.includes('brillante')) {
+                benefits.push({
+                    icon: '✨',
+                    title: 'Acabado Pulido',
+                    text: 'Superficie brillante que refleja la luz y amplifica visualmente los espacios. Elegancia incomparable.'
+                });
+            } else if (finish.includes('mate')) {
+                benefits.push({
+                    icon: '🎭',
+                    title: 'Acabado Mate',
+                    text: 'Superficie suave sin reflejos. Aspecto natural y sofisticado que no muestra huellas ni marcas de agua.'
+                });
+            } else if (finish.includes('lappato') || finish.includes('satinado')) {
+                benefits.push({
+                    icon: '🌟',
+                    title: 'Acabado Satinado',
+                    text: 'El equilibrio perfecto entre mate y brillante. Brillo sutil que aporta profundidad sin reflejos excesivos.'
+                });
+            }
+
+            // Always add installation benefit
+            benefits.push({
+                icon: '🔧',
+                title: 'Fácil Instalación',
+                text: 'Dimensiones calibradas para instalación precisa. Compatible con sistemas de calefacción radiante.'
+            });
+
+            // Limit to 6 benefits max
+            const finalBenefits = benefits.slice(0, 6);
+
+            // Update section title based on product
+            const benefitsLabel = document.getElementById('benefitsLabel');
+            const benefitsTitle = document.getElementById('benefitsTitle');
+
+            if (type.includes('PASTA BLANCA')) {
+                benefitsLabel.textContent = '¿Por qué elegir Pasta Blanca?';
+                benefitsTitle.textContent = 'La diferencia está en la base';
+            } else if (category.includes('MADERA')) {
+                benefitsLabel.textContent = '¿Por qué elegir piso tipo madera?';
+                benefitsTitle.textContent = 'Naturaleza y tecnología en armonía';
+            } else if (category.includes('MÁRMOL')) {
+                benefitsLabel.textContent = '¿Por qué elegir efecto mármol?';
+                benefitsTitle.textContent = 'Lujo accesible y duradero';
+            } else {
+                benefitsLabel.textContent = `¿Por qué elegir ${product.name}?`;
+                benefitsTitle.textContent = 'Excelencia en cada detalle';
+            }
+
+            // Render benefits grid
+            document.getElementById('benefitsGrid').innerHTML = finalBenefits.map(b => `
+                <div class="benefit-card">
+                    <div class="benefit-icon">${b.icon}</div>
+                    <h3 class="benefit-title">${b.title}</h3>
+                    <p class="benefit-text">${b.text}</p>
+                </div>
+            `).join('');
         }
 
         // Header scroll effect
