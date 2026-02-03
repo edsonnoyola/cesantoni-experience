@@ -185,6 +185,30 @@ app.post('/api/distributors', (req, res) => {
   }
 });
 
+app.put('/api/distributors/:id', (req, res) => {
+  try {
+    const fields = [];
+    const values = [];
+
+    for (const [key, value] of Object.entries(req.body)) {
+      if (key !== 'id') {
+        fields.push(`${key} = ?`);
+        values.push(value);
+      }
+    }
+
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'No hay campos para actualizar' });
+    }
+
+    values.push(req.params.id);
+    run(`UPDATE distributors SET ${fields.join(', ')} WHERE id = ?`, values);
+    res.json({ message: 'Distribuidor actualizado' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // =====================================================
 // API: TIENDAS
 // =====================================================
@@ -246,6 +270,30 @@ app.post('/api/stores', (req, res) => {
     `, [distributor_id, name, slug, state, city, address, postal_code, lat, lng, whatsapp, phone, email, manager_name, promo_text, promo_discount]);
 
     res.json({ id: result.lastInsertRowid, message: 'Tienda creada' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/stores/:id', (req, res) => {
+  try {
+    const fields = [];
+    const values = [];
+
+    for (const [key, value] of Object.entries(req.body)) {
+      if (key !== 'id') {
+        fields.push(`${key} = ?`);
+        values.push(value);
+      }
+    }
+
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'No hay campos para actualizar' });
+    }
+
+    values.push(req.params.id);
+    run(`UPDATE stores SET ${fields.join(', ')} WHERE id = ?`, values);
+    res.json({ message: 'Tienda actualizada' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
