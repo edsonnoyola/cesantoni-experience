@@ -3095,13 +3095,17 @@
         }
 
         // ========== ROOM VISUALIZER ==========
-        const roomImages = {
+        // Default fallback images (Unsplash)
+        const defaultRoomImages = {
             sala: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800',
             cocina: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800',
             bano: 'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800',
             recamara: 'https://images.unsplash.com/photo-1617325247661-675ab4b64ae2?w=800',
             terraza: 'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?w=800'
         };
+
+        // Product-specific room images (populated from gallery)
+        let productRoomImages = {};
 
         const roomLabels = {
             sala: 'Sala',
@@ -3111,25 +3115,81 @@
             terraza: 'Terraza'
         };
 
+        // Keywords to match gallery images to rooms
+        const roomKeywords = {
+            sala: ['sala', 'living', 'estancia', 'comedor', 'recibidor'],
+            cocina: ['cocina', 'kitchen', 'credenza'],
+            bano: ['bano', 'baño', 'bath', 'wc', 'regadera'],
+            recamara: ['recamara', 'habitacion', 'bedroom', 'cuarto', 'dormitorio'],
+            terraza: ['exterior', 'terraza', 'patio', 'jardin', 'fachada', 'balcon', 'outdoor']
+        };
+
+        function matchGalleryToRooms(gallery) {
+            const matched = {};
+            if (!gallery || !Array.isArray(gallery)) return matched;
+
+            gallery.forEach(url => {
+                const urlLower = url.toLowerCase();
+                for (const [room, keywords] of Object.entries(roomKeywords)) {
+                    if (!matched[room]) {
+                        for (const keyword of keywords) {
+                            if (urlLower.includes(keyword)) {
+                                matched[room] = url;
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+
+            // If we have gallery but no specific matches, use first images as fallback
+            if (gallery.length > 0 && Object.keys(matched).length === 0) {
+                const rooms = ['sala', 'cocina', 'bano', 'recamara', 'terraza'];
+                gallery.slice(0, 5).forEach((url, i) => {
+                    if (rooms[i]) matched[rooms[i]] = url;
+                });
+            }
+
+            return matched;
+        }
+
         function selectRoom(room) {
             // Update tabs
             document.querySelectorAll('.room-tab').forEach(tab => tab.classList.remove('active'));
             document.querySelector(`.room-tab[data-room="${room}"]`).classList.add('active');
 
-            // Update image
-            document.getElementById('roomImage').src = roomImages[room];
+            // Use product gallery image if available, otherwise default
+            const imgSrc = productRoomImages[room] || defaultRoomImages[room];
+            document.getElementById('roomImage').src = imgSrc;
             document.getElementById('roomLabel').textContent = roomLabels[room];
 
-            // Update floor overlay with product texture
-            if (currentProduct?.image_url) {
-                document.getElementById('roomFloorOverlay').style.backgroundImage = `url(${currentProduct.image_url})`;
+            // Hide floor overlay if using product gallery (image already shows floor)
+            const overlay = document.getElementById('roomFloorOverlay');
+            if (productRoomImages[room]) {
+                overlay.style.display = 'none';
+            } else {
+                overlay.style.display = 'block';
+                if (currentProduct?.image_url) {
+                    overlay.style.backgroundImage = `url(${currentProduct.image_url})`;
+                }
             }
         }
 
         function initRoomVisualizer() {
-            if (currentProduct?.image_url) {
-                document.getElementById('roomFloorOverlay').style.backgroundImage = `url(${currentProduct.image_url})`;
+            // Parse product gallery and match to rooms
+            if (currentProduct?.gallery) {
+                try {
+                    const gallery = typeof currentProduct.gallery === 'string'
+                        ? JSON.parse(currentProduct.gallery)
+                        : currentProduct.gallery;
+                    productRoomImages = matchGalleryToRooms(gallery);
+                } catch (e) {
+                    productRoomImages = {};
+                }
             }
+
+            // Set initial room (sala)
+            selectRoom('sala');
         }
 
         // ========== MSI PAYMENT OPTIONS ==========
