@@ -559,9 +559,14 @@ app.get('/p/:sku', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'landing.html'));
 });
 
-app.get('/api/landing/:sku', (req, res) => {
+app.get('/api/landing/:identifier', (req, res) => {
   try {
-    const product = queryOne('SELECT * FROM products WHERE LOWER(sku) = LOWER(?)', [req.params.sku]);
+    // Buscar por SKU o por slug
+    const id = req.params.identifier;
+    const product = queryOne(
+      'SELECT * FROM products WHERE LOWER(sku) = LOWER(?) OR LOWER(slug) = LOWER(?)',
+      [id, id]
+    );
     if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
     res.json(product);
   } catch (err) {
@@ -570,13 +575,16 @@ app.get('/api/landing/:sku', (req, res) => {
 });
 
 // Endpoint para el landing - obtiene producto + promoción
-app.get('/api/promotions/for-product/:sku', (req, res) => {
+app.get('/api/promotions/for-product/:identifier', (req, res) => {
   try {
-    const sku = req.params.sku;
+    const identifier = req.params.identifier;
     const { store_slug, state, distributor } = req.query;
-    
-    // Buscar producto por SKU
-    const product = queryOne('SELECT * FROM products WHERE LOWER(sku) = LOWER(?)', [sku]);
+
+    // Buscar producto por SKU o por slug
+    const product = queryOne(
+      'SELECT * FROM products WHERE LOWER(sku) = LOWER(?) OR LOWER(slug) = LOWER(?)',
+      [identifier, identifier]
+    );
     if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
     
     // Buscar promoción activa para este producto
