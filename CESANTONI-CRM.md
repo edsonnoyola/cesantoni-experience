@@ -1,12 +1,12 @@
 # CESANTONI EXPERIENCE - Sistema QR + Video AI
 
-## Versión 2.4.0 | Febrero 2026
+## Versión 2.5.0 | Febrero 2026
 
 ---
 
-## 🎯 Resumen Ejecutivo
+## Resumen Ejecutivo
 
-Sistema completo para Cesantoni que genera landing pages personalizadas por tienda y producto, códigos QR únicos para tracking, y videos con IA usando Veo 3.1 que usan la imagen real del producto como base.
+Sistema completo para Cesantoni que genera landing pages personalizadas por tienda y producto, códigos QR/NFC únicos para tracking, videos con IA usando Veo 3.1, y asistente de chat con Gemini.
 
 **Métricas:**
 - 123 productos con datos enriquecidos
@@ -14,6 +14,7 @@ Sistema completo para Cesantoni que genera landing pages personalizadas por tien
 - 16 distribuidores
 - 13 videos generados con IA
 - Videos almacenados en Google Cloud Storage
+- Chat IA con Gemini 2.0 Flash
 
 **URLs:**
 - **Producción:** https://cesantoni-experience.onrender.com
@@ -21,38 +22,38 @@ Sistema completo para Cesantoni que genera landing pages personalizadas por tien
 
 ---
 
-## 🏗️ Arquitectura
+## Arquitectura
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    CESANTONI EXPERIENCE                      │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
-│  ┌──────────┐    ┌──────────┐    ┌──────────┐              │
-│  │ Dashboard │    │ QR Gen   │    │ Landing  │              │
-│  │ index.html│    │ qr-tiendas│   │ /p/:slug │              │
-│  └─────┬─────┘    └─────┬────┘    └────┬─────┘              │
-│        │                │               │                    │
-│        └────────────────┴───────────────┘                    │
-│                         │                                    │
-│                    ┌────▼────┐                               │
-│                    │ Express │  ← Render.com                 │
-│                    │ Server  │                               │
-│                    └────┬────┘                               │
-│                         │                                    │
-│   ┌─────────────────────┼─────────────────────┐             │
-│   │          │          │          │          │              │
-│ ┌─▼───┐  ┌───▼───┐  ┌───▼───┐  ┌───▼───┐  ┌──▼──┐         │
-│ │SQLite│  │Veo 3.1│  │ GCS   │  │FFmpeg │  │ QR  │         │
-│ │  DB  │  │  API  │  │Videos │  │ Logo  │  │Code │         │
-│ └──────┘  └───────┘  └───────┘  └───────┘  └─────┘         │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │ Dashboard │  │ QR Gen   │  │ Landing  │  │ AI Chat  │   │
+│  │ index    │  │ qr-tiendas│  │ /p/:slug │  │ Gemini   │   │
+│  └─────┬────┘  └─────┬────┘  └────┬─────┘  └────┬─────┘   │
+│        │             │            │              │          │
+│        └─────────────┴────────────┴──────────────┘          │
+│                              │                               │
+│                         ┌────▼────┐                          │
+│                         │ Express │  ← Render.com            │
+│                         │ Server  │                          │
+│                         └────┬────┘                          │
+│                              │                               │
+│   ┌──────────────────────────┼──────────────────────────┐   │
+│   │        │        │        │        │        │        │   │
+│ ┌─▼──┐ ┌───▼──┐ ┌───▼──┐ ┌───▼──┐ ┌───▼──┐ ┌───▼──┐     │
+│ │SQL │ │Veo   │ │ GCS  │ │Gemini│ │ QR   │ │ NFC  │     │
+│ │ite │ │ 3.1  │ │Videos│ │ Chat │ │Code  │ │ Tags │     │
+│ └────┘ └──────┘ └──────┘ └──────┘ └──────┘ └──────┘     │
 │                                                              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📁 Estructura de Archivos
+## Estructura de Archivos
 
 ```
 cesantoni-crm/
@@ -60,117 +61,90 @@ cesantoni-crm/
 ├── database.js               # Wrapper SQLite con sql.js
 ├── package.json              # Dependencias
 ├── .env                      # Variables de entorno
-├── .env.example              # Template de variables
 ├── gcs-credentials.json      # Credenciales GCS (no en git)
 ├── data/
 │   └── cesantoni.db          # Base de datos SQLite
 ├── public/
 │   ├── index.html            # Dashboard principal
-│   ├── landing.html          # Landing dinámico con beneficios personalizados
-│   ├── landings.html         # Gestor de landings
+│   ├── landing.html          # Landing con todas las features
+│   ├── comparar.html         # Comparador de productos
+│   ├── favoritos.html        # Lista de favoritos
 │   ├── qr-tiendas.html       # Generador de QRs
-│   ├── productos-edit.html   # Editor de productos
-│   └── images/
-│       └── logo-cesantoni.png
+│   ├── nfc.html              # Gestor de NFC tags
+│   ├── landings.html         # Gestor de landings
+│   └── productos-edit.html   # Editor de productos
 ├── scripts/
-│   ├── update-product-types.js    # Actualizar tipos de productos
-│   ├── add-related-products.js    # Agregar productos relacionados
-│   ├── migrate-videos-to-gcs.js   # Migrar videos a GCS
-│   └── enrich-all-products.js     # Enriquecer productos desde web
-├── docs/
-│   └── SETUP-GCS.md          # Guía configuración GCS
+│   ├── update-product-types.js
+│   ├── add-related-products.js
+│   └── migrate-videos-to-gcs.js
 └── generate-alpes.mjs        # Ejemplo generación video
 ```
 
 ---
 
-## 🚀 Funcionalidades
+## Funcionalidades del Landing (/p/:slug)
 
-### 1. Landing Pages Personalizadas (/p/:slug)
-
-**Beneficios dinámicos según producto:**
-- **Por tipo:** Pasta Blanca, Porcelánico, Porcelánico Rectificado
-- **Por categoría:** Madera, Mármol, Piedra, Cemento
-- **Por uso:** Interior, Exterior, Baño, Comercial
-- **Por acabado:** Pulido, Mate, Satinado
-
-**Secciones:**
+### 1. Contenido Dinámico
 - Hero con imagen del producto
 - Video con IA (si existe)
-- Beneficios personalizados (6 cards)
+- Beneficios personalizados por tipo/categoría
 - Especificaciones técnicas
-- Aplicaciones recomendadas
 - Galería de imágenes
 - Productos similares (upselling)
 - Información de tienda
 - Botón WhatsApp
 
-**URLs:**
-```
-/p/alabama                    # Por slug
-/p/CES-ALABAMA               # Por SKU
-/p/alabama?store=cesantoni-polanco  # Con tienda
-```
+### 2. Calculadora de m²
+- Input de metros cuadrados
+- Calcula cajas necesarias
+- Calcula piezas totales
+- Muestra costo total
+- Botón para generar cotización
 
-### 2. Generación de Video con Veo 3.1
+### 3. Sistema de Favoritos
+- Botón corazón para guardar
+- Almacenamiento en localStorage
+- Página `/favoritos.html` para ver todos
+- Compartir favoritos por WhatsApp
 
-**Características:**
-- **Image-to-Video:** Usa la imagen del producto como primer frame
-- **Narración en español:** Voz femenina mexicana
-- **Música de piano:** Fondo suave automático
-- **Almacenamiento GCS:** Videos persistentes en la nube
+### 4. Comparador de Productos
+- Agregar hasta 4 productos
+- Badge flotante con contador
+- Página `/comparar.html` con tabla lado a lado
+- Compara: precio, formato, tipo, resistencia, etc.
 
-**Proceso:**
-```
-1. Descargar imagen del producto
-2. Convertir a base64
-3. Enviar a Veo 3.1 con prompt + imagen
-4. Polling hasta completar (~2-3 min)
-5. Descargar video de URL temporal
-6. Subir a Google Cloud Storage
-7. Actualizar video_url en DB
-```
+### 5. Compartir
+- WhatsApp: mensaje pre-formateado
+- Email: asunto y cuerpo con detalles
+- Copiar link: al portapapeles
 
-**Prompt optimizado:**
-```
-Cinematic slow motion video with native audio.
-A warm female voice with Mexican Spanish accent narrates:
-"[Nombre]. [Descripción]. Cesantoni."
+### 6. Solicitar Muestra
+- Modal con formulario
+- Campos: nombre, teléfono, email, dirección
+- Se guarda en base de datos
+- Notificación al vendedor
 
-Gentle camera pan across this elegant [categoria] floor tile
-in a modern [espacio] with natural lighting.
-Soft piano music in background.
-Professional interior photography. No people.
-```
+### 7. Cotización Instantánea
+- Genera cotización con datos del cálculo
+- Campos: nombre, email, teléfono
+- Se guarda en base de datos
 
-### 3. Google Cloud Storage
+### 8. Descuento por Escaneo
+- Modal automático en primera visita (5 seg)
+- Código de descuento 5% único
+- Válido solo en tienda actual
+- Se guarda en localStorage para no repetir
 
-**Configuración:**
-- **Bucket:** `cesantoni-videos`
-- **Proyecto:** `sara-veo3-prod`
-- **Service Account:** `cesantoni-storage@sara-veo3-prod`
-
-**URLs de videos:**
-```
-https://storage.googleapis.com/cesantoni-videos/videos/alabama.mp4
-https://storage.googleapis.com/cesantoni-videos/videos/alpes.mp4
-```
-
-### 4. Generador de QRs por Tienda
-
-**Flujo:**
-1. Seleccionar productos (multi-select)
-2. Seleccionar tiendas (filtros en cascada)
-3. Generar PDF/CSV con QRs únicos
-
-**URL única por QR:**
-```
-https://cesantoni-experience.onrender.com/p/alabama?store=cesantoni-polanco
-```
+### 9. Chat IA (Gemini 2.0 Flash)
+- Botón flotante en esquina inferior izquierda
+- Responde sobre el producto actual
+- Conoce: características, instalación, mantenimiento, precios
+- Sugerencias rápidas pre-configuradas
+- Contexto de tienda incluido
 
 ---
 
-## 🔧 API Endpoints
+## API Endpoints
 
 ### Productos
 ```
@@ -178,161 +152,179 @@ GET    /api/products              # Lista todos
 GET    /api/products/:id          # Detalle
 PUT    /api/products/:id          # Actualizar
 DELETE /api/products/:id/video    # Borrar video
+GET    /api/products/:id/reviews  # Reviews del producto
 ```
 
-### Tiendas y Distribuidores
+### Tiendas
 ```
 GET    /api/stores                # Lista tiendas
 PUT    /api/stores/:id            # Actualizar tienda
 GET    /api/distributors          # Lista distribuidores
-PUT    /api/distributors/:id      # Actualizar distribuidor
 ```
 
 ### Videos
 ```
 POST   /api/video/generate        # Generar con Veo 3.1
-GET    /api/videos                # Lista videos existentes
+GET    /api/videos                # Lista videos
 ```
 
-### Promociones
+### Muestras
 ```
-GET    /api/promotions/for-product/:identifier  # Precio con promo
+POST   /api/samples               # Solicitar muestra
+GET    /api/samples               # Lista solicitudes (admin)
+PUT    /api/samples/:id           # Actualizar status
 ```
 
-### Scans (Tracking)
+### Cotizaciones
+```
+POST   /api/quotes                # Crear cotización
+GET    /api/quotes                # Lista cotizaciones (admin)
+```
+
+### Reviews
+```
+POST   /api/reviews               # Crear review
+GET    /api/products/:id/reviews  # Reviews por producto
+```
+
+### Chat IA
+```
+POST   /api/chat                  # Enviar mensaje al asistente
+       Body: { message, product, store }
+       Response: { reply }
+```
+
+### Analytics
 ```
 POST   /api/scans                 # Registrar scan QR/NFC
-GET    /api/scans                 # Lista scans
+GET    /api/analytics/by-source   # NFC vs QR stats
+GET    /api/analytics/overview    # Métricas generales
 ```
 
 ---
 
-## 🗄️ Base de Datos
+## Base de Datos
 
 ### Tabla: products
 ```sql
 id, sku, name, slug, description, category, format, finish,
-type (PORCELÁNICO RECTIFICADO, PASTA BLANCA, etc),
-pei, uses, image_url, video_url, gallery, related_products,
+type, pei, uses, image_url, video_url, gallery, related_products,
 base_price, active, created_at, updated_at
 ```
 
 ### Tabla: stores
 ```sql
 id, name, slug, distributor_id, distributor_name,
-address, city, state, whatsapp, phone, email,
-lat, lng, created_at
+address, city, state, whatsapp, phone, email, lat, lng
+```
+
+### Tabla: sample_requests
+```sql
+id, product_id, product_name, store_id, store_name,
+customer_name, customer_phone, customer_email, address,
+status, notes, created_at
+```
+
+### Tabla: quotes
+```sql
+id, product_id, product_name, product_sku, m2, price_per_m2,
+total, store_id, store_name, customer_name, customer_email,
+customer_phone, status, created_at
+```
+
+### Tabla: reviews
+```sql
+id, product_id, store_id, rating, comment, customer_name,
+verified_purchase, approved, created_at
 ```
 
 ### Tabla: scans
 ```sql
 id, product_id, store_id, source (qr/nfc),
-user_agent, referrer, utm_source, utm_medium, utm_campaign,
-created_at
+user_agent, referrer, utm_source, utm_medium, utm_campaign
 ```
 
 ---
 
-## 🚀 Deployment
+## Variables de Entorno
 
-### Variables de Entorno (Render)
 ```
 BASE_URL=https://cesantoni-experience.onrender.com
-GOOGLE_API_KEY=AIza...
+GOOGLE_API_KEY=AIza...           # Para Veo 3.1 y Gemini
 GCS_BUCKET=cesantoni-videos
 GCS_CREDENTIALS={"type":"service_account",...}
 NODE_ENV=production
 ```
 
-### Comandos Útiles
-```bash
-# Iniciar servidor local
-node server.js
+---
 
-# Actualizar tipos de productos
-node scripts/update-product-types.js
+## Changelog
 
-# Agregar productos relacionados
-node scripts/add-related-products.js
+### v2.5.0 (3 Feb 2026)
+- Calculadora de m² con costo total
+- Sistema de favoritos con localStorage
+- Comparador de hasta 4 productos
+- Compartir por WhatsApp/Email/Link
+- Solicitar muestra gratis (modal + API)
+- Cotización instantánea (modal + API)
+- Sistema de reviews/opiniones
+- Descuento 5% en primer escaneo
+- Chat IA con Gemini 2.0 Flash
+- Páginas: /comparar.html, /favoritos.html
 
-# Migrar videos a GCS
-node scripts/migrate-videos-to-gcs.js
+### v2.4.0 (3 Feb 2026)
+- Google Cloud Storage para videos
+- Landing pages con beneficios personalizados
+- Productos relacionados para upselling
+- Image-to-video usando imagen real del producto
 
-# Generar video para un producto
-node generate-alpes.mjs
+### v2.3.0 (2 Feb 2026)
+- Veo 3.1 con voz nativa en español
+- Descripciones únicas por producto
+- Multi-select QR generator
+
+### v2.2.0 (24 Ene 2026)
+- Veo 3.1 image-to-video
+- Música de fondo automática
+- Editor de productos
+
+---
+
+## NFC vs QR
+
+| Aspecto | QR Code | NFC Tag |
+|---------|---------|---------|
+| Costo | ~$0.01 | ~$0.30 |
+| Distancia | Hasta 3m | 1-4 cm |
+| Velocidad | 1-2 seg | Instantáneo |
+| Falsificable | Sí | No |
+
+**Recomendación:**
+- Muestras físicas en showroom → NFC + QR
+- Material impreso/catálogo → Solo QR
+
+---
+
+## URLs de Ejemplo
+
+```
+# Landing de producto
+/p/alabama
+/p/alabama?store=cesantoni-polanco
+
+# Páginas de usuario
+/comparar.html
+/favoritos.html
+
+# Admin/Dashboard
+/index.html
+/qr-tiendas.html
+/nfc.html
 ```
 
 ---
 
-## 🔄 Changelog
-
-### v2.4.0 (3 Feb 2026)
-- ✅ Google Cloud Storage para videos
-- ✅ Landing pages con beneficios personalizados
-- ✅ Productos relacionados para upselling
-- ✅ Tipos de producto (Pasta Blanca, Porcelánico, etc.)
-- ✅ Categorías (Madera, Mármol, Piedra, Cemento)
-- ✅ Image-to-video usando imagen real del producto
-- ✅ 123 productos enriquecidos
-- ✅ Scripts de migración y actualización
-
-### v2.3.0 (2 Feb 2026)
-- ✅ Veo 3.1 con voz nativa en español
-- ✅ Descripciones únicas por producto
-- ✅ Multi-select QR generator
-- ✅ Galería de imágenes con lightbox
-
-### v2.2.0 (24 Ene 2026)
-- ✅ Veo 3.1 image-to-video funcionando
-- ✅ Música de fondo automática
-- ✅ Página editor de productos
-- ✅ Endpoint DELETE video
-
-### v2.1.0 (24 Ene 2026)
-- ✅ Filtro por ciudad en generador QR
-- ✅ Descripciones auto-generadas
-- ✅ Badges de estado en productos
-- ✅ Railway deployment preparado
-
-### v2.0.0 (23 Ene 2026)
-- ✅ Generador QR por tienda
-- ✅ Landing pages dinámicas
-- ✅ Integración Veo 3.1
-- ✅ Logo automático con FFmpeg
-
----
-
-## 📊 Productos por Tipo
-
-| Tipo | Cantidad |
-|------|----------|
-| PORCELÁNICO RECTIFICADO | 115 |
-| PORCELÁNICO | 6 |
-| PASTA BLANCA | 6 |
-
-## 📊 Productos por Categoría
-
-| Categoría | Cantidad |
-|-----------|----------|
-| Pisos (genérico) | 67 |
-| MÁRMOL | 21 |
-| PIEDRA | 16 |
-| MADERA | 13 |
-| CEMENTO | 3 |
-
----
-
-## 📞 Soporte
+## Soporte
 
 **Repositorio:** https://github.com/edsonnoyola/cesantoni-experience
 **Producción:** https://cesantoni-experience.onrender.com
-
----
-
-## 🎯 Próximos Pasos
-
-1. [ ] Generar videos para todos los productos
-2. [ ] Dashboard de analytics avanzado
-3. [ ] Bulk video generation (cola de procesamiento)
-4. [ ] App móvil para vendedores
-5. [ ] Integración NFC tags
