@@ -34,3 +34,4 @@ build/
 
 # Uploads
 # uploads/
+gcs-credentials.json
