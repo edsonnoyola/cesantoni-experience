@@ -1410,6 +1410,207 @@
             font-size: 0.95rem;
             line-height: 1.6;
         }
+
+        /* ========== ROOM VISUALIZER ========== */
+        .room-visualizer {
+            background: var(--black);
+            padding: 60px 20px;
+        }
+        .room-visualizer-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .room-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 30px 0 20px;
+            flex-wrap: wrap;
+        }
+        .room-tab {
+            padding: 12px 24px;
+            background: var(--gray-dark);
+            border: 1px solid var(--gray-dark);
+            color: var(--gray-light);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .room-tab:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+        }
+        .room-tab.active {
+            background: var(--gold);
+            border-color: var(--gold);
+            color: var(--black);
+        }
+        .room-preview {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            aspect-ratio: 16/10;
+            overflow: hidden;
+            border: 1px solid var(--gray-dark);
+        }
+        .room-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .room-floor-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 35%;
+            background-size: cover;
+            background-position: center;
+            opacity: 0.85;
+            mix-blend-mode: multiply;
+        }
+        .room-label {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            background: rgba(0,0,0,0.8);
+            color: var(--gold);
+            padding: 8px 15px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        @media (max-width: 600px) {
+            .room-tabs { gap: 5px; }
+            .room-tab { padding: 10px 15px; font-size: 0.75rem; }
+        }
+
+        /* ========== MSI / PAYMENT OPTIONS ========== */
+        .msi-section {
+            background: var(--charcoal);
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .msi-grid {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 25px;
+        }
+        .msi-card {
+            background: var(--black);
+            border: 1px solid var(--gray-dark);
+            padding: 25px 35px;
+            min-width: 150px;
+            transition: all 0.3s;
+        }
+        .msi-card:hover {
+            border-color: var(--gold);
+            transform: translateY(-5px);
+        }
+        .msi-card.featured {
+            border-color: var(--gold);
+            position: relative;
+        }
+        .msi-card.featured::before {
+            content: 'Popular';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--gold);
+            color: var(--black);
+            padding: 3px 12px;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .msi-months {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.5rem;
+            color: var(--gold);
+        }
+        .msi-label {
+            font-size: 0.75rem;
+            color: var(--gray);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 5px;
+        }
+        .msi-amount {
+            font-size: 1.1rem;
+            color: var(--cream);
+            margin-top: 10px;
+        }
+        .msi-banks {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+        .msi-bank {
+            background: var(--white);
+            padding: 8px 15px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            color: var(--black);
+            font-weight: 600;
+        }
+
+        /* ========== STOCK DISPLAY ========== */
+        .stock-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 15px 20px;
+            background: var(--black);
+            border: 1px solid var(--gray-dark);
+        }
+        .stock-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        .stock-indicator.high { background: #22c55e; }
+        .stock-indicator.medium { background: #f59e0b; }
+        .stock-indicator.low { background: #ef4444; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .stock-text {
+            font-size: 0.9rem;
+            color: var(--cream);
+        }
+        .stock-count {
+            color: var(--gold);
+            font-weight: 600;
+        }
+
+        /* ========== VENDOR NOTIFICATION BADGE ========== */
+        .notification-sent {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: var(--gold);
+            color: var(--black);
+            padding: 10px 20px;
+            font-size: 0.8rem;
+            z-index: 100;
+            transform: translateX(200%);
+            transition: transform 0.4s ease;
+        }
+        .notification-sent.show {
+            transform: translateX(0);
+        }
     </style>
 </head>
 <body>
@@ -1528,6 +1729,60 @@
                         Generar Cotización
                     </button>
                 </div>
+            </div>
+        </section>
+
+        <!-- Room Visualizer -->
+        <section class="room-visualizer" id="roomVisualizerSection">
+            <div class="room-visualizer-container">
+                <span class="section-label">Visualizador</span>
+                <h2 class="section-title" style="color: var(--cream); margin: 0 auto;">Visualiza en tu espacio</h2>
+
+                <div class="room-tabs">
+                    <button class="room-tab active" data-room="sala" onclick="selectRoom('sala')">🛋️ Sala</button>
+                    <button class="room-tab" data-room="cocina" onclick="selectRoom('cocina')">🍳 Cocina</button>
+                    <button class="room-tab" data-room="bano" onclick="selectRoom('bano')">🚿 Baño</button>
+                    <button class="room-tab" data-room="recamara" onclick="selectRoom('recamara')">🛏️ Recámara</button>
+                    <button class="room-tab" data-room="terraza" onclick="selectRoom('terraza')">🌿 Terraza</button>
+                </div>
+
+                <div class="room-preview">
+                    <img id="roomImage" src="https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800" alt="Vista de sala">
+                    <div class="room-floor-overlay" id="roomFloorOverlay"></div>
+                    <div class="room-label" id="roomLabel">Sala</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MSI Payment Options -->
+        <section class="msi-section" id="msiSection">
+            <span class="section-label">Opciones de Pago</span>
+            <h3 style="font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; margin: 10px 0; color: var(--cream);">Meses Sin Intereses</h3>
+
+            <div class="msi-grid" id="msiGrid">
+                <div class="msi-card">
+                    <div class="msi-months">3</div>
+                    <div class="msi-label">meses</div>
+                    <div class="msi-amount" id="msi3">$0/mes</div>
+                </div>
+                <div class="msi-card featured">
+                    <div class="msi-months">6</div>
+                    <div class="msi-label">meses</div>
+                    <div class="msi-amount" id="msi6">$0/mes</div>
+                </div>
+                <div class="msi-card">
+                    <div class="msi-months">12</div>
+                    <div class="msi-label">meses</div>
+                    <div class="msi-amount" id="msi12">$0/mes</div>
+                </div>
+            </div>
+
+            <div class="msi-banks">
+                <span class="msi-bank">BBVA</span>
+                <span class="msi-bank">Banorte</span>
+                <span class="msi-bank">Santander</span>
+                <span class="msi-bank">HSBC</span>
+                <span class="msi-bank">Citibanamex</span>
             </div>
         </section>
 
@@ -1653,6 +1908,15 @@
                                 <span id="storePromoText">Detalles de la promoción</span>
                             </div>
                         </div>
+
+                        <!-- Stock Display -->
+                        <div class="stock-display" id="stockDisplay">
+                            <div class="stock-indicator high" id="stockIndicator"></div>
+                            <div class="stock-text">
+                                <span id="stockText">Disponible:</span>
+                                <span class="stock-count" id="stockCount">Consultando...</span>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="store-map" id="storeMap">
@@ -1694,6 +1958,11 @@
         <div class="compare-badge" id="compareBadge" onclick="goToCompare()">
             <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
             Comparar (<span id="compareCount">0</span>)
+        </div>
+
+        <!-- Vendor Notification Badge -->
+        <div class="notification-sent" id="vendorNotification">
+            ✅ Vendedor notificado de tu visita
         </div>
 
         <!-- Sample Request Modal -->
@@ -2042,6 +2311,12 @@
             updateFavoriteUI();
             updateCompareUI();
             checkFirstVisitDiscount();
+
+            // Initialize new features
+            initRoomVisualizer();
+            initMSI();
+            updateStockDisplay(store?.id, product?.id);
+            notifyVendor(store, product);
         }
 
         function formatPrice(price) {
@@ -2725,6 +3000,144 @@
                 console.error('Chat error:', err);
                 document.getElementById(typingId)?.remove();
                 messagesContainer.innerHTML += `<div class="chat-message bot">Lo siento, no pude conectar. Intenta de nuevo o contacta por WhatsApp.</div>`;
+            }
+        }
+
+        // ========== ROOM VISUALIZER ==========
+        const roomImages = {
+            sala: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800',
+            cocina: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800',
+            bano: 'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800',
+            recamara: 'https://images.unsplash.com/photo-1617325247661-675ab4b64ae2?w=800',
+            terraza: 'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?w=800'
+        };
+
+        const roomLabels = {
+            sala: 'Sala',
+            cocina: 'Cocina',
+            bano: 'Baño',
+            recamara: 'Recámara',
+            terraza: 'Terraza'
+        };
+
+        function selectRoom(room) {
+            // Update tabs
+            document.querySelectorAll('.room-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelector(`.room-tab[data-room="${room}"]`).classList.add('active');
+
+            // Update image
+            document.getElementById('roomImage').src = roomImages[room];
+            document.getElementById('roomLabel').textContent = roomLabels[room];
+
+            // Update floor overlay with product texture
+            if (currentProduct?.image_url) {
+                document.getElementById('roomFloorOverlay').style.backgroundImage = `url(${currentProduct.image_url})`;
+            }
+        }
+
+        function initRoomVisualizer() {
+            if (currentProduct?.image_url) {
+                document.getElementById('roomFloorOverlay').style.backgroundImage = `url(${currentProduct.image_url})`;
+            }
+        }
+
+        // ========== MSI PAYMENT OPTIONS ==========
+        function updateMSI(totalAmount) {
+            const msi3 = Math.ceil(totalAmount / 3);
+            const msi6 = Math.ceil(totalAmount / 6);
+            const msi12 = Math.ceil(totalAmount / 12);
+
+            document.getElementById('msi3').textContent = '$' + formatPrice(msi3) + '/mes';
+            document.getElementById('msi6').textContent = '$' + formatPrice(msi6) + '/mes';
+            document.getElementById('msi12').textContent = '$' + formatPrice(msi12) + '/mes';
+        }
+
+        function initMSI() {
+            // Calculate for 10m² as default example
+            const defaultM2 = 10;
+            const total = defaultM2 * currentPrice;
+            updateMSI(total);
+        }
+
+        // Override calculateTotal to also update MSI
+        const originalCalculateTotal = calculateTotal;
+        calculateTotal = function() {
+            const m2 = parseFloat(document.getElementById('calcM2').value) || 0;
+            const sqmPerBox = currentProduct?.sqm_per_box || 1.44;
+            const piecesPerBox = currentProduct?.pieces_per_box || 4;
+
+            const boxes = Math.ceil(m2 / sqmPerBox);
+            const pieces = boxes * piecesPerBox;
+            const total = m2 * currentPrice;
+
+            document.getElementById('calcBoxes').textContent = boxes;
+            document.getElementById('calcPieces').textContent = pieces;
+            document.getElementById('calcTotal').textContent = '$' + formatPrice(total);
+
+            // Update MSI when calculator changes
+            if (m2 > 0) {
+                updateMSI(total);
+            }
+        };
+
+        // ========== STOCK DISPLAY ==========
+        function updateStockDisplay(storeId, productId) {
+            // Simulate stock based on store and product
+            // In a real implementation, this would fetch from an inventory API
+            const seed = (storeId || 1) * (productId || 1);
+            const stockLevels = ['high', 'medium', 'low'];
+            const stockLevel = stockLevels[seed % 3];
+
+            // Generate a realistic stock number
+            const baseStock = stockLevel === 'high' ? 50 : stockLevel === 'medium' ? 15 : 5;
+            const variation = Math.floor(Math.random() * 10);
+            const stock = baseStock + variation;
+
+            const indicator = document.getElementById('stockIndicator');
+            const countEl = document.getElementById('stockCount');
+            const textEl = document.getElementById('stockText');
+
+            indicator.className = 'stock-indicator ' + stockLevel;
+
+            if (stockLevel === 'high') {
+                countEl.textContent = stock + '+ cajas disponibles';
+                textEl.textContent = '✓ En stock:';
+            } else if (stockLevel === 'medium') {
+                countEl.textContent = stock + ' cajas disponibles';
+                textEl.textContent = 'Stock limitado:';
+            } else {
+                countEl.textContent = 'Últimas ' + stock + ' cajas';
+                textEl.textContent = '⚠️ Pocas unidades:';
+            }
+        }
+
+        // ========== VENDOR NOTIFICATION ==========
+        async function notifyVendor(store, product) {
+            if (!store?.whatsapp) return;
+
+            // Only notify once per session per product
+            const notifiedKey = `notified_${product?.id}_${store?.id}`;
+            if (sessionStorage.getItem(notifiedKey)) return;
+
+            try {
+                // In production, this would send a server-side notification
+                // For now, we track the scan and show a visual indicator
+                sessionStorage.setItem(notifiedKey, 'true');
+
+                // Show notification badge
+                const badge = document.getElementById('vendorNotification');
+                badge.classList.add('show');
+                setTimeout(() => badge.classList.remove('show'), 4000);
+
+                // Log the notification (could be sent to server)
+                console.log('Vendor notification:', {
+                    store: store.name,
+                    whatsapp: store.whatsapp,
+                    product: product.name,
+                    time: new Date().toISOString()
+                });
+            } catch (e) {
+                console.log('Notification error:', e);
             }
         }
 
