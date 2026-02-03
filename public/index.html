@@ -183,6 +183,7 @@
         <div class="nav-item" onclick="showPage('productos')">📦 <span>Productos</span></div>
         <div class="nav-item" onclick="showPage('tiendas')">🏪 <span>Tiendas</span></div>
         <a href="/qr-tiendas.html" class="nav-item" style="text-decoration:none;color:inherit;">📱 <span>Generar QRs</span></a>
+        <a href="/nfc.html" class="nav-item" style="text-decoration:none;color:inherit;">📲 <span>NFC Tags</span></a>
         <div class="nav-item" onclick="showPage('promociones')">💰 <span>Promociones</span></div>
         <a href="/landings.html" class="nav-item" style="text-decoration:none;color:inherit;">📄 <span>Landings</span></a>
     </nav>
@@ -523,14 +524,21 @@
         let trendChart = null;
         
         async function loadAllData() {
-            const [p, s, pr] = await Promise.all([
-                fetch('/api/products').then(r => r.json()),
-                fetch('/api/stores').then(r => r.json()),
-                fetch('/api/promotions').then(r => r.json())
-            ]);
-            products = p;
-            stores = s;
-            promotions = pr;
+            try {
+                const [p, s, pr] = await Promise.all([
+                    fetch('/api/products').then(r => r.json()).catch(() => []),
+                    fetch('/api/stores').then(r => r.json()).catch(() => []),
+                    fetch('/api/promotions').then(r => r.json()).catch(() => [])
+                ]);
+                products = p || [];
+                stores = s || [];
+                promotions = pr || [];
+            } catch (e) {
+                console.error('Error loading data:', e);
+                products = [];
+                stores = [];
+                promotions = [];
+            }
         }
         
         // ==================== NAVIGATION ====================

@@ -529,6 +529,28 @@ app.get('/api/categories', (req, res) => {
   }
 });
 
+// API: PROMOTIONS
+app.get('/api/promotions', (req, res) => {
+  try {
+    // Intentar obtener promociones si existe la tabla
+    let promotions = [];
+    try {
+      promotions = query(`
+        SELECT p.*, pr.name as product_name, pr.sku as product_sku
+        FROM promotions p
+        LEFT JOIN products pr ON p.product_id = pr.id
+        WHERE p.active = 1
+        ORDER BY p.created_at DESC
+      `);
+    } catch (e) {
+      // Tabla no existe, devolver array vacío
+    }
+    res.json(promotions);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // =====================================================
 // LANDING PAGE DINÁMICO
 // =====================================================
