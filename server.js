@@ -409,6 +409,17 @@ app.post('/api/scans', (req, res) => {
   }
 });
 
+// Admin: borrar todos los scans (solo para testing)
+app.delete('/api/admin/scans', (req, res) => {
+  try {
+    run('DELETE FROM scans');
+    run('DELETE FROM whatsapp_clicks');
+    res.json({ message: 'Todos los scans y clicks borrados', success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/track/whatsapp', (req, res) => {
   try {
     const { scan_id, product_id, store_id, session_id, whatsapp_number } = req.body;
