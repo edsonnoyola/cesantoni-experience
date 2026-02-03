@@ -380,25 +380,32 @@ app.post('/api/track/scan', (req, res) => {
   }
 });
 
-// Alias para landing.html
+// Registrar escaneo QR/NFC
 app.post('/api/scans', (req, res) => {
   try {
-    const { product_id, store_id, session_id, source } = req.body;
-    const ip_address = req.ip || req.connection.remoteAddress;
-    const user_agent = req.headers['user-agent'] || '';
-    const referrer = req.headers.referer || req.headers.referrer || '';
+    const { product_id, store_id, session_id, source, user_agent: ua, referrer: ref, utm_source, utm_medium, utm_campaign } = req.body;
+    const ip_address = req.ip || req.connection?.remoteAddress || '';
+    const user_agent = ua || req.headers['user-agent'] || '';
+    const referrer = ref || req.headers.referer || req.headers.referrer || '';
 
     // source puede ser 'qr' o 'nfc'
     const scan_source = source || 'qr';
 
-    const result = run(`
-      INSERT INTO scans (product_id, store_id, session_id, ip_address, user_agent, referrer, source)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [product_id, store_id || null, session_id, ip_address, user_agent, referrer, scan_source]);
+    // Validate required field
+    if (!product_id) {
+      return res.status(400).json({ error: 'product_id is required' });
+    }
 
-    res.json({ scan_id: result.lastInsertRowid, message: 'Escaneo registrado', source: scan_source });
+    const result = run(`
+      INSERT INTO scans (product_id, store_id, session_id, ip_address, user_agent, referrer, utm_source, utm_medium, utm_campaign, source)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [product_id, store_id || null, session_id || null, ip_address, user_agent, referrer, utm_source || null, utm_medium || null, utm_campaign || null, scan_source]);
+
+    const scan_id = result?.lastInsertRowid || result?.changes || 1;
+    res.json({ scan_id, message: 'Escaneo registrado', source: scan_source });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Error in /api/scans:', err);
+    res.status(500).json({ error: err.message || err.toString() || 'Unknown error' });
   }
 });
 
