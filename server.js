@@ -443,23 +443,75 @@ app.get('/api/analytics/overview', (req, res) => {
   try {
     const days = parseInt(req.query.days) || 30;
 
+    // KPIs básicos
     const total_scans = scalar(`SELECT COUNT(*) FROM scans WHERE created_at >= datetime('now', '-${days} days')`) || 0;
     const total_stores = scalar('SELECT COUNT(*) FROM stores WHERE active = 1') || 0;
     const total_products = scalar('SELECT COUNT(*) FROM products WHERE active = 1') || 0;
     const total_wa_clicks = scalar(`SELECT COUNT(*) FROM whatsapp_clicks WHERE created_at >= datetime('now', '-${days} days')`) || 0;
+    const active_promos = scalar('SELECT COUNT(*) FROM promotions WHERE active = 1') || 0;
 
-    const conversion_rate = total_scans > 0 
+    const conversion_rate = total_scans > 0
       ? ((total_wa_clicks / total_scans) * 100).toFixed(1)
       : 0;
+
+    // Top productos
+    const top_products = query(`
+      SELECT p.name as product_name, COUNT(s.id) as scans
+      FROM scans s
+      JOIN products p ON s.product_id = p.id
+      WHERE s.created_at >= datetime('now', '-${days} days')
+      GROUP BY s.product_id
+      ORDER BY scans DESC
+      LIMIT 10
+    `);
+
+    // Top tiendas
+    const top_stores = query(`
+      SELECT st.name as store_name, st.state, COUNT(s.id) as scans
+      FROM scans s
+      JOIN stores st ON s.store_id = st.id
+      WHERE s.created_at >= datetime('now', '-${days} days')
+      GROUP BY s.store_id
+      ORDER BY scans DESC
+      LIMIT 10
+    `);
+
+    // Por estado (para el mapa heat)
+    const by_state = query(`
+      SELECT st.state, COUNT(s.id) as scans
+      FROM stores st
+      LEFT JOIN scans s ON s.store_id = st.id AND s.created_at >= datetime('now', '-${days} days')
+      WHERE st.active = 1 AND st.state IS NOT NULL AND st.state != ''
+      GROUP BY st.state
+      ORDER BY scans DESC
+    `);
+
+    // Tendencia diaria (últimos 30 días)
+    const daily = query(`
+      SELECT DATE(created_at) as date, COUNT(*) as count
+      FROM scans
+      WHERE created_at >= datetime('now', '-30 days')
+      GROUP BY DATE(created_at)
+      ORDER BY date ASC
+    `);
 
     res.json({
       total_scans,
       total_stores,
       total_products,
       total_wa_clicks,
-      conversion_rate
+      whatsapp_clicks: total_wa_clicks,
+      active_stores: total_stores,
+      active_promos,
+      conversion_rate,
+      top_products,
+      top_stores,
+      top_states: by_state,
+      by_state,
+      daily
     });
   } catch (err) {
+    console.error('Analytics overview error:', err);
     res.status(500).json({ error: err.message });
   }
 });
