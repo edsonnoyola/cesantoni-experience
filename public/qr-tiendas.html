@@ -410,6 +410,17 @@
         <button class="btn btn-secondary" id="btnExportCSV" disabled>
           📊 Exportar CSV
         </button>
+
+        <div style="border-top: 1px solid #333; margin: 15px 0; padding-top: 15px;">
+          <h3 style="font-size: 13px; color: #888; margin-bottom: 10px;">📱 NFC Tags</h3>
+          <button class="btn btn-secondary" id="btnExportNFC" disabled style="background: #1a3a4a; color: #60a5fa;">
+            📱 Exportar URLs para NFC
+          </button>
+          <button class="btn btn-secondary" id="btnCopyNFC" disabled style="background: #2a2a4a; color: #a78bfa;">
+            📋 Copiar URL NFC
+          </button>
+        </div>
+
         <button class="btn btn-secondary" id="btnPreview" disabled>
           👁️ Vista Previa
         </button>
@@ -592,6 +603,8 @@ function updateSummary() {
   const hasSelection = prodCount > 0 && storeCount > 0;
   document.getElementById('btnGeneratePDF').disabled = !hasSelection;
   document.getElementById('btnExportCSV').disabled = !hasSelection;
+  document.getElementById('btnExportNFC').disabled = !hasSelection;
+  document.getElementById('btnCopyNFC').disabled = !hasSelection;
   document.getElementById('btnPreview').disabled = !hasSelection;
 }
 
@@ -733,10 +746,53 @@ document.getElementById('btnExportCSV').addEventListener('click', function() {
 document.getElementById('btnPreview').addEventListener('click', function() {
   const selectedProds = products.filter(p => selectedProducts.has(p.id));
   const selectedStrs = stores.filter(s => selectedStores.has(s.id));
-  
+
   if (selectedProds.length && selectedStrs.length) {
     const url = `${BASE_URL}/p/${selectedProds[0].sku}?store=${selectedStrs[0].slug || selectedStrs[0].id}`;
     window.open(url, '_blank');
+  }
+});
+
+// Export NFC URLs
+document.getElementById('btnExportNFC').addEventListener('click', function() {
+  const selectedProds = products.filter(p => selectedProducts.has(p.id));
+  const selectedStrs = stores.filter(s => selectedStores.has(s.id));
+
+  let csv = 'Producto,SKU,Tienda,Ciudad,Estado,URL_NFC,Instrucciones\n';
+
+  for (const product of selectedProds) {
+    for (const store of selectedStrs) {
+      // URL con source=nfc para tracking diferenciado
+      const url = `${BASE_URL}/p/${product.sku}?store=${store.slug || store.id}&source=nfc`;
+      csv += `"${product.name}","${product.sku}","${store.name}","${store.city || ''}","${store.state || ''}","${url}","Programar en tag NFC"\n`;
+    }
+  }
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `NFC_URLs_${selectedProds.length}productos_${selectedStrs.length}tiendas.csv`;
+  a.click();
+
+  showToast('✅ URLs NFC exportadas');
+});
+
+// Copy single NFC URL
+document.getElementById('btnCopyNFC').addEventListener('click', function() {
+  const selectedProds = products.filter(p => selectedProducts.has(p.id));
+  const selectedStrs = stores.filter(s => selectedStores.has(s.id));
+
+  if (selectedProds.length === 1 && selectedStrs.length === 1) {
+    const url = `${BASE_URL}/p/${selectedProds[0].sku}?store=${selectedStrs[0].slug || selectedStrs[0].id}&source=nfc`;
+    navigator.clipboard.writeText(url).then(() => {
+      showToast('✅ URL NFC copiada al portapapeles');
+    });
+  } else if (selectedProds.length > 0 && selectedStrs.length > 0) {
+    // Si hay múltiples, copiar la primera combinación
+    const url = `${BASE_URL}/p/${selectedProds[0].sku}?store=${selectedStrs[0].slug || selectedStrs[0].id}&source=nfc`;
+    navigator.clipboard.writeText(url).then(() => {
+      showToast(`✅ URL NFC copiada (${selectedProds[0].name} - ${selectedStrs[0].name})`);
+    });
   }
 });
 

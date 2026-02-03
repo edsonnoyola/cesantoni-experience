@@ -107,11 +107,19 @@ async function initDB() {
       utm_source TEXT,
       utm_medium TEXT,
       utm_campaign TEXT,
+      source TEXT DEFAULT 'qr',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (product_id) REFERENCES products(id),
       FOREIGN KEY (store_id) REFERENCES stores(id)
     )
   `);
+
+  // Agregar columna source si no existe (para bases de datos existentes)
+  try {
+    db.run(`ALTER TABLE scans ADD COLUMN source TEXT DEFAULT 'qr'`);
+  } catch (e) {
+    // Columna ya existe
+  }
 
   db.run(`
     CREATE TABLE IF NOT EXISTS whatsapp_clicks (

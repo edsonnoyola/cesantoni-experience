@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NFC Tags - Cesantoni</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      min-height: 100vh;
+    }
+    .header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      padding: 20px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #333;
+    }
+    .header h1 { font-size: 24px; display: flex; align-items: center; gap: 10px; }
+    .header a { color: #60a5fa; text-decoration: none; }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr 350px;
+      gap: 20px;
+      padding: 20px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    .panel {
+      background: #1a1a1a;
+      border-radius: 12px;
+      border: 1px solid #333;
+      overflow: hidden;
+    }
+    .panel-header {
+      background: #222;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #333;
+    }
+    .panel-header h2 { font-size: 16px; display: flex; align-items: center; gap: 8px; }
+    .badge {
+      background: #60a5fa;
+      color: #000;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .panel-body { padding: 15px; max-height: 75vh; overflow-y: auto; }
+
+    .search-box {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .search-box input, .search-box select {
+      padding: 10px 15px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: #0a0a0a;
+      color: #fff;
+      font-size: 14px;
+      flex: 1;
+    }
+
+    .item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 15px;
+      background: #222;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+    }
+    .item:hover { border-color: #444; }
+    .item.selected { border-color: #60a5fa; background: #1a2a3a; }
+    .item img { width: 50px; height: 50px; object-fit: cover; border-radius: 6px; }
+    .item-info { flex: 1; }
+    .item-info h4 { font-size: 14px; margin-bottom: 3px; }
+    .item-info p { font-size: 12px; color: #888; }
+
+    .url-box {
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .url-box label { font-size: 12px; color: #888; display: block; margin-bottom: 8px; }
+    .url-box .url {
+      background: #1a1a1a;
+      padding: 12px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 11px;
+      word-break: break-all;
+      color: #60a5fa;
+      margin-bottom: 10px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary { background: #60a5fa; color: #000; }
+    .btn-secondary { background: #333; color: #fff; }
+    .btn-success { background: #22c55e; color: #000; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: #222;
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+    }
+    .stat-card .number { font-size: 28px; font-weight: bold; color: #60a5fa; }
+    .stat-card .label { font-size: 11px; color: #888; margin-top: 5px; }
+    .stat-card.nfc .number { color: #a78bfa; }
+    .stat-card.qr .number { color: #c9a227; }
+
+    .comparison {
+      background: #222;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .comparison h3 { font-size: 13px; margin-bottom: 10px; }
+    .bar-container {
+      display: flex;
+      height: 30px;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .bar-qr { background: #c9a227; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
+    .bar-nfc { background: #a78bfa; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #000; }
+    .legend { display: flex; justify-content: space-between; font-size: 11px; color: #888; }
+
+    .instructions {
+      background: #1a2a1a;
+      border: 1px solid #22c55e33;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+    .instructions h3 { font-size: 14px; color: #22c55e; margin-bottom: 10px; }
+    .instructions ol { padding-left: 20px; font-size: 12px; line-height: 1.8; color: #aaa; }
+    .instructions li { margin-bottom: 5px; }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #22c55e;
+      color: #000;
+      padding: 15px 25px;
+      border-radius: 8px;
+      display: none;
+      z-index: 1000;
+      font-weight: 600;
+    }
+    .toast.show { display: block; }
+
+    @media (max-width: 1200px) {
+      .container { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📱 NFC Tags Manager</h1>
+    <div>
+      <a href="/">Dashboard</a> |
+      <a href="/qr-tiendas.html">Generador QR</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Panel 1: Productos -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2>📦 Seleccionar Producto</h2>
+        <span class="badge" id="totalProducts">0</span>
+      </div>
+      <div class="panel-body">
+        <div class="search-box">
+          <input type="text" id="searchProduct" placeholder="Buscar producto...">
+        </div>
+        <div id="productsList"></div>
+      </div>
+    </div>
+
+    <!-- Panel 2: Tiendas -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2>🏪 Seleccionar Tienda</h2>
+        <span class="badge" id="totalStores">0</span>
+      </div>
+      <div class="panel-body">
+        <div class="search-box">
+          <select id="filterState">
+            <option value="">Todos los estados</option>
+          </select>
+        </div>
+        <div id="storesList"></div>
+      </div>
+    </div>
+
+    <!-- Panel 3: URL Generator & Stats -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2>🔗 URL para NFC</h2>
+      </div>
+      <div class="panel-body">
+        <div class="url-box">
+          <label>URL generada para programar en NFC:</label>
+          <div class="url" id="generatedUrl">Selecciona un producto y una tienda</div>
+          <button class="btn btn-primary" id="btnCopy" disabled>
+            📋 Copiar URL
+          </button>
+          <button class="btn btn-secondary" id="btnTest" disabled>
+            🔗 Probar URL
+          </button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card nfc">
+            <div class="number" id="nfcScans">0</div>
+            <div class="label">Lecturas NFC</div>
+          </div>
+          <div class="stat-card qr">
+            <div class="number" id="qrScans">0</div>
+            <div class="label">Escaneos QR</div>
+          </div>
+        </div>
+
+        <div class="comparison">
+          <h3>NFC vs QR (últimos 30 días)</h3>
+          <div class="bar-container">
+            <div class="bar-qr" id="barQR" style="width: 50%">QR 0%</div>
+            <div class="bar-nfc" id="barNFC" style="width: 50%">NFC 0%</div>
+          </div>
+          <div class="legend">
+            <span>📷 QR Codes</span>
+            <span>📱 NFC Tags</span>
+          </div>
+        </div>
+
+        <button class="btn btn-success" id="btnExportAll">
+          📥 Exportar todas las URLs NFC
+        </button>
+
+        <div class="instructions">
+          <h3>Cómo programar NFC Tags</h3>
+          <ol>
+            <li>Descarga una app NFC (NFC Tools, TagWriter)</li>
+            <li>Copia la URL generada arriba</li>
+            <li>En la app, selecciona "Escribir" o "Write"</li>
+            <li>Elige "URL/URI" como tipo de dato</li>
+            <li>Pega la URL y acerca el tag NFC</li>
+            <li>El tag quedará programado</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+const BASE_URL = window.location.origin;
+let products = [];
+let stores = [];
+let selectedProduct = null;
+let selectedStore = null;
+
+async function loadData() {
+  try {
+    const [prodRes, storeRes, statsRes] = await Promise.all([
+      fetch('/api/products'),
+      fetch('/api/stores'),
+      fetch('/api/analytics/by-source')
+    ]);
+    products = await prodRes.json();
+    stores = await storeRes.json();
+    const stats = await statsRes.json();
+
+    document.getElementById('totalProducts').textContent = products.length;
+    document.getElementById('totalStores').textContent = stores.length;
+
+    // Stats
+    document.getElementById('nfcScans').textContent = stats.summary?.nfc_scans || 0;
+    document.getElementById('qrScans').textContent = stats.summary?.qr_scans || 0;
+
+    const qrPct = parseFloat(stats.summary?.qr_percentage) || 50;
+    const nfcPct = parseFloat(stats.summary?.nfc_percentage) || 50;
+    document.getElementById('barQR').style.width = Math.max(qrPct, 5) + '%';
+    document.getElementById('barQR').textContent = `QR ${qrPct}%`;
+    document.getElementById('barNFC').style.width = Math.max(nfcPct, 5) + '%';
+    document.getElementById('barNFC').textContent = `NFC ${nfcPct}%`;
+
+    populateFilters();
+    renderProducts();
+    renderStores();
+  } catch (err) {
+    console.error(err);
+    showToast('Error cargando datos');
+  }
+}
+
+function populateFilters() {
+  const states = [...new Set(stores.map(s => s.state).filter(Boolean))].sort();
+  document.getElementById('filterState').innerHTML = '<option value="">Todos los estados</option>' +
+    states.map(s => `<option value="${s}">${s}</option>`).join('');
+}
+
+function renderProducts() {
+  const search = document.getElementById('searchProduct').value.toLowerCase();
+  const filtered = products.filter(p =>
+    p.name.toLowerCase().includes(search) ||
+    (p.sku && p.sku.toLowerCase().includes(search))
+  );
+
+  document.getElementById('productsList').innerHTML = filtered.slice(0, 50).map(p => `
+    <div class="item ${selectedProduct?.id === p.id ? 'selected' : ''}" onclick="selectProduct(${p.id})">
+      <img src="${p.image_url || ''}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22><rect fill=%22%23333%22 width=%2250%22 height=%2250%22/></svg>'">
+      <div class="item-info">
+        <h4>${p.name}</h4>
+        <p>${p.sku || ''}</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderStores() {
+  const state = document.getElementById('filterState').value;
+  let filtered = stores;
+  if (state) filtered = filtered.filter(s => s.state === state);
+
+  document.getElementById('storesList').innerHTML = filtered.slice(0, 50).map(s => `
+    <div class="item ${selectedStore?.id === s.id ? 'selected' : ''}" onclick="selectStore(${s.id})">
+      <div class="item-info">
+        <h4>${s.name}</h4>
+        <p>${s.city || ''}, ${s.state || ''}</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectProduct(id) {
+  selectedProduct = products.find(p => p.id === id);
+  renderProducts();
+  updateURL();
+}
+
+function selectStore(id) {
+  selectedStore = stores.find(s => s.id === id);
+  renderStores();
+  updateURL();
+}
+
+function updateURL() {
+  const urlDiv = document.getElementById('generatedUrl');
+  const btnCopy = document.getElementById('btnCopy');
+  const btnTest = document.getElementById('btnTest');
+
+  if (selectedProduct && selectedStore) {
+    const url = `${BASE_URL}/p/${selectedProduct.sku}?store=${selectedStore.slug || selectedStore.id}&source=nfc`;
+    urlDiv.textContent = url;
+    btnCopy.disabled = false;
+    btnTest.disabled = false;
+  } else {
+    urlDiv.textContent = 'Selecciona un producto y una tienda';
+    btnCopy.disabled = true;
+    btnTest.disabled = true;
+  }
+}
+
+document.getElementById('btnCopy').addEventListener('click', function() {
+  const url = document.getElementById('generatedUrl').textContent;
+  navigator.clipboard.writeText(url).then(() => {
+    showToast('URL copiada al portapapeles');
+  });
+});
+
+document.getElementById('btnTest').addEventListener('click', function() {
+  const url = document.getElementById('generatedUrl').textContent;
+  window.open(url, '_blank');
+});
+
+document.getElementById('btnExportAll').addEventListener('click', function() {
+  let csv = 'Producto,SKU,Tienda,Estado,Ciudad,URL_NFC\n';
+
+  for (const product of products) {
+    for (const store of stores) {
+      const url = `${BASE_URL}/p/${product.sku}?store=${store.slug || store.id}&source=nfc`;
+      csv += `"${product.name}","${product.sku}","${store.name}","${store.state || ''}","${store.city || ''}","${url}"\n`;
+    }
+  }
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `NFC_URLs_todos_${products.length}x${stores.length}.csv`;
+  a.click();
+
+  showToast('CSV exportado con todas las URLs');
+});
+
+document.getElementById('searchProduct').addEventListener('input', renderProducts);
+document.getElementById('filterState').addEventListener('change', renderStores);
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+loadData();
+</script>
+</body>
+</html>

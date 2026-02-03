@@ -257,17 +257,20 @@ app.post('/api/stores', (req, res) => {
 
 app.post('/api/track/scan', (req, res) => {
   try {
-    const { product_id, store_id, session_id, utm_source, utm_medium, utm_campaign } = req.body;
+    const { product_id, store_id, session_id, utm_source, utm_medium, utm_campaign, source } = req.body;
     const ip_address = req.ip || req.connection.remoteAddress;
     const user_agent = req.headers['user-agent'] || '';
     const referrer = req.headers.referer || req.headers.referrer || '';
 
-    const result = run(`
-      INSERT INTO scans (product_id, store_id, session_id, ip_address, user_agent, referrer, utm_source, utm_medium, utm_campaign)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [product_id, store_id || null, session_id, ip_address, user_agent, referrer, utm_source || null, utm_medium || null, utm_campaign || null]);
+    // source puede ser 'qr' o 'nfc'
+    const scan_source = source || 'qr';
 
-    res.json({ scan_id: result.lastInsertRowid, message: 'Escaneo registrado' });
+    const result = run(`
+      INSERT INTO scans (product_id, store_id, session_id, ip_address, user_agent, referrer, utm_source, utm_medium, utm_campaign, source)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [product_id, store_id || null, session_id, ip_address, user_agent, referrer, utm_source || null, utm_medium || null, utm_campaign || null, scan_source]);
+
+    res.json({ scan_id: result.lastInsertRowid, message: 'Escaneo registrado', source: scan_source });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -276,17 +279,20 @@ app.post('/api/track/scan', (req, res) => {
 // Alias para landing.html
 app.post('/api/scans', (req, res) => {
   try {
-    const { product_id, store_id, session_id } = req.body;
+    const { product_id, store_id, session_id, source } = req.body;
     const ip_address = req.ip || req.connection.remoteAddress;
     const user_agent = req.headers['user-agent'] || '';
     const referrer = req.headers.referer || req.headers.referrer || '';
 
-    const result = run(`
-      INSERT INTO scans (product_id, store_id, session_id, ip_address, user_agent, referrer)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [product_id, store_id || null, session_id, ip_address, user_agent, referrer]);
+    // source puede ser 'qr' o 'nfc'
+    const scan_source = source || 'qr';
 
-    res.json({ scan_id: result.lastInsertRowid, message: 'Escaneo registrado' });
+    const result = run(`
+      INSERT INTO scans (product_id, store_id, session_id, ip_address, user_agent, referrer, source)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [product_id, store_id || null, session_id, ip_address, user_agent, referrer, scan_source]);
+
+    res.json({ scan_id: result.lastInsertRowid, message: 'Escaneo registrado', source: scan_source });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -366,9 +372,9 @@ app.get('/api/analytics/by-store', (req, res) => {
     const days = parseInt(req.query.days) || 30;
     const state = req.query.state;
     const limit = parseInt(req.query.limit) || 20;
-    
+
     let sql = `
-      SELECT 
+      SELECT
         st.id, st.name, st.state, st.city,
         d.name as distributor_name,
         COUNT(s.id) as scans,
@@ -390,6 +396,44 @@ app.get('/api/analytics/by-store', (req, res) => {
     params.push(limit);
 
     res.json(query(sql, params));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Analytics NFC vs QR
+app.get('/api/analytics/by-source', (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+
+    const data = query(`
+      SELECT
+        COALESCE(source, 'qr') as source,
+        COUNT(*) as scans,
+        COUNT(DISTINCT product_id) as unique_products,
+        COUNT(DISTINCT store_id) as unique_stores,
+        COUNT(DISTINCT session_id) as unique_sessions
+      FROM scans
+      WHERE created_at >= datetime('now', '-${days} days')
+      GROUP BY source
+      ORDER BY scans DESC
+    `);
+
+    // Totales
+    const total_qr = data.find(d => d.source === 'qr')?.scans || 0;
+    const total_nfc = data.find(d => d.source === 'nfc')?.scans || 0;
+    const total = total_qr + total_nfc;
+
+    res.json({
+      by_source: data,
+      summary: {
+        total_scans: total,
+        qr_scans: total_qr,
+        nfc_scans: total_nfc,
+        qr_percentage: total > 0 ? ((total_qr / total) * 100).toFixed(1) : 0,
+        nfc_percentage: total > 0 ? ((total_nfc / total) * 100).toFixed(1) : 0
+      }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
