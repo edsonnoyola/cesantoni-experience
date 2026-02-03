@@ -1251,6 +1251,106 @@ app.get('/api/products/:id/reviews', (req, res) => {
 });
 
 // =====================================================
+// AI CHAT - Asistente Cesantoni
+// =====================================================
+
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { message, product, store } = req.body;
+
+    if (!GOOGLE_API_KEY) {
+      return res.status(500).json({ error: 'API no configurada' });
+    }
+
+    // Build context about the product
+    let context = `Eres un asistente de ventas experto de Cesantoni, una empresa mexicana de pisos y porcelanatos premium.
+Responde de manera amable, profesional y concisa en español mexicano.
+Usa un tono cálido pero profesional. Respuestas cortas (máximo 3 oraciones).
+
+INFORMACIÓN DE CESANTONI:
+- Empresa mexicana con más de 25 años de experiencia
+- Pisos porcelánicos, pasta blanca y rectificados
+- Garantía de calidad premium
+- Envíos a toda la república mexicana
+
+`;
+
+    if (product) {
+      context += `
+PRODUCTO ACTUAL QUE EL CLIENTE ESTÁ VIENDO:
+- Nombre: ${product.name}
+- Categoría: ${product.category || 'Porcelánico'}
+- Tipo: ${product.type || 'Porcelánico Rectificado'}
+- Formato: ${product.format || 'Formato estándar'}
+- Acabado: ${product.finish || 'Acabado premium'}
+- Precio: $${product.price}/m²
+- Descripción: ${product.description || 'Piso de alta calidad'}
+- Resistencia: ${product.pei || product.resistance || 'Alta resistencia'}
+- Usos: ${product.uses || 'Interior y exterior'}
+`;
+    }
+
+    if (store) {
+      context += `
+TIENDA DONDE ESTÁ EL CLIENTE:
+- Nombre: ${store.name}
+- Dirección: ${store.address}, ${store.city}, ${store.state}
+- Teléfono: ${store.phone || store.whatsapp || 'Disponible en tienda'}
+`;
+    }
+
+    context += `
+TEMAS QUE PUEDES RESPONDER:
+- Características del producto (resistencia, durabilidad, etc.)
+- Instalación y mantenimiento
+- Precios y promociones
+- Disponibilidad y envíos
+- Comparación con otros productos
+- Recomendaciones según el espacio (baño, cocina, sala, exterior)
+- Garantía y devoluciones
+
+Si no sabes algo específico, sugiere contactar a un asesor por WhatsApp.
+`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: context },
+              { text: `Cliente pregunta: ${message}` }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 200
+          }
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (data.error) {
+      console.error('Gemini error:', data.error);
+      return res.status(500).json({ error: 'Error al procesar tu pregunta' });
+    }
+
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text ||
+                  'Lo siento, no pude procesar tu pregunta. ¿Podrías reformularla?';
+
+    res.json({ reply });
+
+  } catch (err) {
+    console.error('Chat error:', err);
+    res.status(500).json({ error: 'Error en el chat' });
+  }
+});
+
+// =====================================================
 // INICIO
 // =====================================================
 
