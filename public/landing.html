@@ -519,6 +519,70 @@
             z-index: 10;
         }
 
+        /* Related Products */
+        .related-section {
+            background: var(--charcoal);
+            padding: 80px 50px;
+        }
+
+        .related-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 25px;
+            margin-top: 40px;
+        }
+
+        .related-card {
+            background: var(--gray-dark);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .related-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .related-card img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            transition: transform 0.4s ease;
+        }
+
+        .related-card:hover img {
+            transform: scale(1.05);
+        }
+
+        .related-card-info {
+            padding: 20px;
+        }
+
+        .related-card-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.3rem;
+            color: var(--cream);
+            margin-bottom: 5px;
+        }
+
+        .related-card-format {
+            font-size: 0.75rem;
+            color: var(--gold);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        @media (max-width: 1024px) {
+            .related-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            .related-grid { grid-template-columns: 1fr; }
+        }
+
         /* Gallery */
         .gallery-section {
             background: var(--black);
@@ -985,6 +1049,15 @@
             <img id="lightboxImg" src="" alt="">
         </div>
 
+        <!-- Related Products -->
+        <section class="related-section hidden" id="relatedSection">
+            <div class="section-container" style="text-align: center;">
+                <span class="section-label">Te puede interesar</span>
+                <h2 class="section-title" style="margin: 0 auto;">Productos Similares</h2>
+                <div class="related-grid" id="relatedGrid"></div>
+            </div>
+        </section>
+
         <!-- Store -->
         <section class="store" id="storeSection">
             <div class="section-container">
@@ -1229,6 +1302,9 @@
                 document.getElementById('gallerySection').classList.remove('hidden');
             }
 
+            // Related Products
+            loadRelatedProducts(product, store);
+
             // Store
             if (store) {
                 document.getElementById('storeName').textContent = store.name;
@@ -1300,6 +1376,48 @@
                 });
             } catch (e) {
                 console.log('Tracking error:', e);
+            }
+        }
+
+        // Load related products
+        async function loadRelatedProducts(product, store) {
+            try {
+                // Parse related_products JSON
+                let relatedSlugs = [];
+                try {
+                    relatedSlugs = product.related_products ? JSON.parse(product.related_products) : [];
+                } catch(e) { relatedSlugs = []; }
+
+                if (relatedSlugs.length === 0) return;
+
+                // Fetch related products data
+                const relatedProducts = [];
+                for (const slug of relatedSlugs.slice(0, 4)) {
+                    try {
+                        const res = await fetch(`/api/promotions/for-product/${slug}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            relatedProducts.push(data.product);
+                        }
+                    } catch(e) { /* skip */ }
+                }
+
+                if (relatedProducts.length > 0) {
+                    const storeParam = store ? `?store=${store.slug}` : '';
+                    document.getElementById('relatedGrid').innerHTML = relatedProducts.map(p => `
+                        <a class="related-card" href="/p/${p.slug || p.sku}${storeParam}">
+                            <img src="${p.image_url || ''}" alt="${p.name}" loading="lazy"
+                                 onerror="this.src='https://via.placeholder.com/400x400?text=${encodeURIComponent(p.name)}'">
+                            <div class="related-card-info">
+                                <div class="related-card-name">${p.name}</div>
+                                <div class="related-card-format">${p.format || p.category || 'Ver más'}</div>
+                            </div>
+                        </a>
+                    `).join('');
+                    document.getElementById('relatedSection').classList.remove('hidden');
+                }
+            } catch(e) {
+                console.log('Error loading related:', e);
             }
         }
 

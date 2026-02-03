@@ -121,6 +121,13 @@ async function initDB() {
     // Columna ya existe
   }
 
+  // Agregar columna related_products para productos similares
+  try {
+    db.run(`ALTER TABLE products ADD COLUMN related_products TEXT`);
+  } catch (e) {
+    // Columna ya existe
+  }
+
   db.run(`
     CREATE TABLE IF NOT EXISTS whatsapp_clicks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

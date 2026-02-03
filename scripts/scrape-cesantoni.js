@@ -70,6 +70,7 @@ async function scrapeProduct(browser, url) {
         url: window.location.href,
         name: '',
         sku: '',
+        slug: '',
         pei: '',
         format: '',
         type: '',
@@ -77,7 +78,8 @@ async function scrapeProduct(browser, url) {
         uses: [],
         finish: '',
         images: [],
-        gallery: []
+        gallery: [],
+        relatedSlugs: []  // Productos similares
       };
 
       // Get product name from title or h1
@@ -86,9 +88,10 @@ async function scrapeProduct(browser, url) {
         data.name = titleEl.textContent.trim();
       }
 
-      // Extract slug from URL as potential SKU
+      // Extract slug from URL
       const urlParts = window.location.pathname.split('/').filter(Boolean);
-      data.sku = urlParts[urlParts.length - 1]?.toUpperCase() || '';
+      data.slug = urlParts[urlParts.length - 1]?.toLowerCase() || '';
+      data.sku = data.slug.toUpperCase();
 
       // Find all text content to extract specs
       const allText = document.body.innerText;
@@ -172,6 +175,23 @@ async function scrapeProduct(browser, url) {
         if (match && match[1] && match[1].includes('cesantoni') && !match[1].includes('logo')) {
           if (!data.images.includes(match[1])) {
             data.images.push(match[1]);
+          }
+        }
+      });
+
+      // Extract related/similar products
+      const currentSlug = data.slug;
+      const relatedLinks = document.querySelectorAll('a[href*="/producto/"]');
+      relatedLinks.forEach(link => {
+        const href = link.href;
+        if (href && href.includes('/producto/')) {
+          const match = href.match(/\/producto\/([^\/\?#]+)/);
+          if (match && match[1]) {
+            const slug = match[1].toLowerCase();
+            // Exclude current product and english version
+            if (slug !== currentSlug && !href.includes('/en/') && !data.relatedSlugs.includes(slug)) {
+              data.relatedSlugs.push(slug);
+            }
           }
         }
       });
