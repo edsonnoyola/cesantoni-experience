@@ -1,6 +1,6 @@
 # CESANTONI EXPERIENCE - Sistema QR + Video AI
 
-## Versión 2.5.0 | Febrero 2026
+## Versión 2.6.0 | Febrero 2026
 
 ---
 
@@ -142,6 +142,29 @@ cesantoni-crm/
 - Sugerencias rápidas pre-configuradas
 - Contexto de tienda incluido
 
+### 10. Visualizador de Espacios
+- Tabs: Sala, Cocina, Baño, Recámara, Terraza
+- Muestra imagen del espacio con overlay del piso
+- Textura del producto se superpone en el piso
+- Ayuda al cliente a visualizar el resultado
+
+### 11. Meses Sin Intereses (MSI)
+- Cards con opciones: 3, 6 y 12 meses
+- Se actualiza automáticamente con la calculadora
+- Muestra monto mensual por opción
+- Logos de bancos participantes
+
+### 12. Stock en Tiempo Real
+- Indicador visual (verde/amarillo/rojo)
+- Muestra cajas disponibles en tienda
+- Se actualiza según tienda seleccionada
+- Alerta de "últimas unidades"
+
+### 13. Notificación al Vendedor
+- Badge automático cuando cliente escanea
+- Registra el escaneo en sesión
+- Preparado para integración WhatsApp Business API
+
 ---
 
 ## API Endpoints
@@ -259,6 +282,12 @@ NODE_ENV=production
 ---
 
 ## Changelog
+
+### v2.6.0 (3 Feb 2026)
+- Visualizador de espacios: ver piso en sala/cocina/baño/recámara/terraza
+- Meses sin intereses: calculador 3/6/12 MSI
+- Stock en tiempo real: disponibilidad en tienda
+- Notificación al vendedor: badge cuando escanean QR/NFC
 
 ### v2.5.0 (3 Feb 2026)
 - Calculadora de m² con costo total
