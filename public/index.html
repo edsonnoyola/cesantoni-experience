@@ -16,7 +16,7 @@
         .logo { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
         .logo h1 { font-family: 'Playfair Display', serif; color: white; font-size: 1.3rem; }
         .logo span { color: var(--accent); font-size: 0.75rem; }
-        .nav-item { display: flex; align-items: center; gap: 10px; padding: 12px 20px; color: rgba(255,255,255,0.6); cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
+        .nav-item, a.nav-item { display: flex; align-items: center; gap: 10px; padding: 12px 20px; color: rgba(255,255,255,0.6); cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
         .nav-item:hover { background: rgba(255,255,255,0.05); color: white; }
         .nav-item.active { background: rgba(196,30,58,0.2); color: var(--accent); border-left: 3px solid var(--accent); }
         
@@ -182,10 +182,10 @@
         <div class="nav-item active" onclick="showPage('dashboard')">📊 <span>Dashboard</span></div>
         <div class="nav-item" onclick="showPage('productos')">📦 <span>Productos</span></div>
         <div class="nav-item" onclick="showPage('tiendas')">🏪 <span>Tiendas</span></div>
-        <a href="/qr-tiendas.html" class="nav-item" style="text-decoration:none;color:inherit;">📱 <span>Generar QRs</span></a>
-        <a href="/nfc.html" class="nav-item" style="text-decoration:none;color:inherit;">📲 <span>NFC Tags</span></a>
+        <a href="/qr-tiendas.html" class="nav-item" style="text-decoration:none;">📱 <span>Generar QRs</span></a>
+        <a href="/nfc.html" class="nav-item" style="text-decoration:none;">📲 <span>NFC Tags</span></a>
         <div class="nav-item" onclick="showPage('promociones')">💰 <span>Promociones</span></div>
-        <a href="/landings.html" class="nav-item" style="text-decoration:none;color:inherit;">📄 <span>Landings</span></a>
+        <a href="/landings.html" class="nav-item" style="text-decoration:none;">📄 <span>Landings</span></a>
     </nav>
 
     <main class="main">
