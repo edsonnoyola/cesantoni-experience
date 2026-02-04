@@ -3175,14 +3175,7 @@
                 }
             });
 
-            // If we have gallery but no specific matches, use first images as fallback
-            if (gallery.length > 0 && Object.keys(matched).length === 0) {
-                const rooms = ['sala', 'cocina', 'bano', 'recamara', 'terraza'];
-                gallery.slice(0, 5).forEach((url, i) => {
-                    if (rooms[i]) matched[rooms[i]] = url;
-                });
-            }
-
+            // NO fallback - solo mostrar tabs con imágenes reales que coinciden
             return matched;
         }
 
@@ -3221,8 +3214,37 @@
                 }
             }
 
-            // Set initial room (sala)
-            selectRoom('sala');
+            // Ocultar tabs sin imagen real del producto
+            const rooms = ['sala', 'cocina', 'bano', 'recamara', 'terraza'];
+            let firstAvailable = null;
+            let availableCount = 0;
+
+            rooms.forEach(room => {
+                const tab = document.querySelector(`.room-tab[data-room="${room}"]`);
+                if (tab) {
+                    if (productRoomImages[room]) {
+                        tab.style.display = 'flex';
+                        if (!firstAvailable) firstAvailable = room;
+                        availableCount++;
+                    } else {
+                        tab.style.display = 'none';
+                    }
+                }
+            });
+
+            // Si no hay imágenes reales, ocultar toda la sección
+            const visualizerSection = document.getElementById('roomVisualizerSection');
+            if (availableCount === 0) {
+                if (visualizerSection) visualizerSection.classList.add('hidden');
+                return;
+            } else {
+                if (visualizerSection) visualizerSection.classList.remove('hidden');
+            }
+
+            // Seleccionar el primer room disponible
+            if (firstAvailable) {
+                selectRoom(firstAvailable);
+            }
         }
 
         // ========== MSI PAYMENT OPTIONS ==========
