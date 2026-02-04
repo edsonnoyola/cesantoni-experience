@@ -590,7 +590,12 @@ app.get('/p/:sku', (req, res) => {
 
 app.get('/api/landing/:sku', (req, res) => {
   try {
-    const product = queryOne('SELECT * FROM products WHERE LOWER(sku) = LOWER(?)', [req.params.sku]);
+    // Search by SKU or slug
+    const param = req.params.sku.toLowerCase();
+    let product = queryOne('SELECT * FROM products WHERE LOWER(sku) = ?', [param]);
+    if (!product) {
+      product = queryOne('SELECT * FROM products WHERE LOWER(slug) = ?', [param]);
+    }
     if (!product) {
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
