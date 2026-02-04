@@ -2340,14 +2340,47 @@
                 }
             }
 
-            // Gallery
+            // Gallery - con variedad de imágenes
             let gallery = [];
             try {
                 gallery = product.gallery ? JSON.parse(product.gallery) : [];
             } catch(e) { gallery = []; }
 
             if (gallery.length > 0) {
-                document.getElementById('galleryGrid').innerHTML = gallery.slice(0, 4).map((img, i) => `
+                // Filtrar duplicados y la imagen principal
+                const mainImage = product.image_url || '';
+                const mainImageName = mainImage.split('/').pop().split('-')[0].toLowerCase();
+
+                // Filtrar imágenes únicas (por nombre base del archivo)
+                const seenNames = new Set();
+                const uniqueGallery = gallery.filter(img => {
+                    const fileName = img.split('/').pop().toLowerCase();
+                    const baseName = fileName.replace(/[-_]\d+.*$/, '').replace(/render_?/i, '');
+
+                    // Evitar duplicados y la imagen principal
+                    if (seenNames.has(baseName) || fileName.includes(mainImageName)) {
+                        return false;
+                    }
+                    seenNames.add(baseName);
+                    return true;
+                });
+
+                // Priorizar imágenes de diferentes espacios
+                const roomPriority = ['sala', 'cocina', 'bano', 'recamara', 'terraza', 'comedor', 'exterior'];
+                const sortedGallery = uniqueGallery.sort((a, b) => {
+                    const aLower = a.toLowerCase();
+                    const bLower = b.toLowerCase();
+                    const aRoom = roomPriority.findIndex(r => aLower.includes(r));
+                    const bRoom = roomPriority.findIndex(r => bLower.includes(r));
+                    if (aRoom !== -1 && bRoom === -1) return -1;
+                    if (bRoom !== -1 && aRoom === -1) return 1;
+                    return 0;
+                });
+
+                // Si no hay suficientes únicas, usar las originales
+                const finalGallery = sortedGallery.length >= 4 ? sortedGallery : gallery;
+
+                document.getElementById('galleryGrid').innerHTML = finalGallery.slice(0, 4).map((img, i) => `
                     <div class="gallery-item" onclick="openLightbox('${img}')">
                         <img src="${img}" alt="${product.name} - Vista ${i + 1}" loading="lazy">
                     </div>
