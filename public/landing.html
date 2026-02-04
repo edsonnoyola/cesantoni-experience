@@ -1831,6 +1831,7 @@
 
                 <div class="room-tabs">
                     <button class="room-tab active" data-room="sala" onclick="selectRoom('sala')">🛋️ Sala</button>
+                    <button class="room-tab" data-room="comedor" onclick="selectRoom('comedor')">🍽️ Comedor</button>
                     <button class="room-tab" data-room="cocina" onclick="selectRoom('cocina')">🍳 Cocina</button>
                     <button class="room-tab" data-room="bano" onclick="selectRoom('bano')">🚿 Baño</button>
                     <button class="room-tab" data-room="recamara" onclick="selectRoom('recamara')">🛏️ Recámara</button>
@@ -2231,16 +2232,51 @@
             // Page title
             document.getElementById('pageTitle').textContent = `${product.name} | Cesantoni Premium`;
 
-            // Hero
-            const heroImg = product.image_url || 'https://via.placeholder.com/1920x1080?text=' + encodeURIComponent(product.name);
+            // Parse gallery and filter for unique images of THIS product only
+            let galleryImages = [];
+            try {
+                const rawGallery = product.gallery ? JSON.parse(product.gallery) : [];
+                const productSlug = product.slug.toLowerCase().replace(/-/g, '');
+                const productName = product.name.toLowerCase().replace(/\s+/g, '');
+
+                // Filter: only images that contain product name/slug, exclude other products
+                galleryImages = rawGallery.filter(url => {
+                    const urlLower = url.toLowerCase();
+                    const fileName = urlLower.split('/').pop();
+
+                    // Must contain product reference OR be generic (piso, render without other product names)
+                    const hasProductRef = fileName.includes(productSlug) ||
+                                         fileName.includes(productName.replace(/\s/g, '')) ||
+                                         fileName.includes(product.name.split(' ')[0].toLowerCase());
+
+                    // Exclude images of other products
+                    const otherProducts = ['memphis', 'amberwood', 'nebraska', 'decker', 'alabama', 'blendwood'];
+                    const isOtherProduct = otherProducts.some(other =>
+                        fileName.includes(other) && !productSlug.includes(other) && !productName.includes(other)
+                    );
+
+                    return (hasProductRef || fileName.includes('piso')) && !isOtherProduct;
+                });
+            } catch(e) { galleryImages = []; }
+
+            // Select different images for hero and product
+            const mainImg = product.image_url || '';
+            const mainImgName = mainImg.split('/').pop().split('-')[0].toLowerCase();
+
+            // Find a DIFFERENT image for the hero background
+            const heroImg = galleryImages.find(img => {
+                const imgName = img.split('/').pop().split('-')[0].toLowerCase();
+                return imgName !== mainImgName;
+            }) || mainImg || 'https://via.placeholder.com/1920x1080?text=' + encodeURIComponent(product.name);
+
             document.getElementById('heroBg').style.backgroundImage = `url('${heroImg}')`;
             document.getElementById('heroTag').textContent = product.category || 'Piso Porcelánico Premium';
             document.getElementById('heroTitle').textContent = product.name;
-            document.getElementById('heroSubtitle').textContent = product.description || 
+            document.getElementById('heroSubtitle').textContent = product.description ||
                 `Elegancia y durabilidad premium. Transforma cada espacio en una obra maestra del diseño contemporáneo.`;
 
-            // Product showcase
-            document.getElementById('productImage').src = heroImg;
+            // Product showcase - use main image (different from hero)
+            document.getElementById('productImage').src = mainImg || heroImg;
             document.getElementById('productImage').alt = product.name;
             document.getElementById('productCategory').textContent = product.category || 'Porcelánico Premium';
             document.getElementById('productName').textContent = product.name;
@@ -2340,33 +2376,25 @@
                 }
             }
 
-            // Gallery - con variedad de imágenes
-            let gallery = [];
-            try {
-                gallery = product.gallery ? JSON.parse(product.gallery) : [];
-            } catch(e) { gallery = []; }
+            // Gallery - usando galleryImages ya filtradas (sin imágenes de otros productos)
+            if (galleryImages.length > 0) {
+                // Excluir hero y producto para no repetir
+                const heroImgName = heroImg.split('/').pop().split('-')[0].toLowerCase();
+                const mainImgNameGal = mainImg.split('/').pop().split('-')[0].toLowerCase();
 
-            if (gallery.length > 0) {
-                // Filtrar duplicados y la imagen principal
-                const mainImage = product.image_url || '';
-                const mainImageName = mainImage.split('/').pop().split('-')[0].toLowerCase();
-
-                // Filtrar imágenes únicas (por nombre base del archivo)
-                const seenNames = new Set();
-                const uniqueGallery = gallery.filter(img => {
+                // Filtrar imágenes únicas
+                const seenNames = new Set([heroImgName, mainImgNameGal]);
+                const uniqueGallery = galleryImages.filter(img => {
                     const fileName = img.split('/').pop().toLowerCase();
-                    const baseName = fileName.replace(/[-_]\d+.*$/, '').replace(/render_?/i, '');
+                    const baseName = fileName.replace(/[-_]\d+.*$/, '').replace(/render_?/i, '').replace(/vxl_\d+_ld_/i, '');
 
-                    // Evitar duplicados y la imagen principal
-                    if (seenNames.has(baseName) || fileName.includes(mainImageName)) {
-                        return false;
-                    }
+                    if (seenNames.has(baseName)) return false;
                     seenNames.add(baseName);
                     return true;
                 });
 
                 // Priorizar imágenes de diferentes espacios
-                const roomPriority = ['sala', 'cocina', 'bano', 'recamara', 'terraza', 'comedor', 'exterior'];
+                const roomPriority = ['cocina', 'sala', 'bano', 'recamara', 'terraza', 'comedor', 'exterior', 'yoga'];
                 const sortedGallery = uniqueGallery.sort((a, b) => {
                     const aLower = a.toLowerCase();
                     const bLower = b.toLowerCase();
@@ -2374,18 +2402,20 @@
                     const bRoom = roomPriority.findIndex(r => bLower.includes(r));
                     if (aRoom !== -1 && bRoom === -1) return -1;
                     if (bRoom !== -1 && aRoom === -1) return 1;
+                    if (aRoom !== -1 && bRoom !== -1) return aRoom - bRoom;
                     return 0;
                 });
 
-                // Si no hay suficientes únicas, usar las originales
-                const finalGallery = sortedGallery.length >= 4 ? sortedGallery : gallery;
+                const finalGallery = sortedGallery.length >= 4 ? sortedGallery : uniqueGallery;
 
-                document.getElementById('galleryGrid').innerHTML = finalGallery.slice(0, 4).map((img, i) => `
-                    <div class="gallery-item" onclick="openLightbox('${img}')">
-                        <img src="${img}" alt="${product.name} - Vista ${i + 1}" loading="lazy">
-                    </div>
-                `).join('');
-                document.getElementById('gallerySection').classList.remove('hidden');
+                if (finalGallery.length > 0) {
+                    document.getElementById('galleryGrid').innerHTML = finalGallery.slice(0, 4).map((img, i) => `
+                        <div class="gallery-item" onclick="openLightbox('${img}')">
+                            <img src="${img}" alt="${product.name} - Vista ${i + 1}" loading="lazy">
+                        </div>
+                    `).join('');
+                    document.getElementById('gallerySection').classList.remove('hidden');
+                }
             }
 
             // Related Products
@@ -3142,6 +3172,7 @@
 
         const roomLabels = {
             sala: 'Sala',
+            comedor: 'Comedor',
             cocina: 'Cocina',
             bano: 'Baño',
             recamara: 'Recámara',
@@ -3150,7 +3181,8 @@
 
         // Keywords to match gallery images to rooms
         const roomKeywords = {
-            sala: ['sala', 'living', 'estancia', 'comedor', 'recibidor'],
+            sala: ['sala', 'living', 'estancia', 'recibidor'],
+            comedor: ['comedor', 'dining', 'mesa'],
             cocina: ['cocina', 'kitchen', 'credenza'],
             bano: ['bano', 'baño', 'bath', 'wc', 'regadera'],
             recamara: ['recamara', 'habitacion', 'bedroom', 'cuarto', 'dormitorio'],
@@ -3215,7 +3247,7 @@
             }
 
             // Ocultar tabs sin imagen real del producto
-            const rooms = ['sala', 'cocina', 'bano', 'recamara', 'terraza'];
+            const rooms = ['sala', 'comedor', 'cocina', 'bano', 'recamara', 'terraza'];
             let firstAvailable = null;
             let availableCount = 0;
 
