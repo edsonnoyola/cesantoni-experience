@@ -2378,23 +2378,57 @@
 
             // Gallery - usando galleryImages ya filtradas (sin imágenes de otros productos)
             if (galleryImages.length > 0) {
+                // Función para extraer nombre base (sin resolución, prefijos, sufijos)
+                const getBaseName = (url) => {
+                    let name = url.split('/').pop().toLowerCase();
+                    // Quitar extensión
+                    name = name.replace(/\.(jpg|jpeg|png|webp)$/, '');
+                    // Quitar sufijos de resolución: -scaled, -819x1024, -1024x512, _1, -1, etc.
+                    name = name.replace(/-scaled$/, '');
+                    name = name.replace(/-?\d{3,4}x\d{3,4}$/, '');
+                    name = name.replace(/-e\d+$/, ''); // timestamps como -e1740408990720
+                    name = name.replace(/[-_]\d+$/, ''); // sufijos como _1, -1
+                    // Quitar prefijos comunes
+                    name = name.replace(/^render_?/i, '');
+                    name = name.replace(/^vxl_?\d*_?ld_?/i, '');
+                    name = name.replace(/^vxlab_?\d*_?/i, '');
+                    name = name.replace(/^porcelanato_?/i, '');
+                    name = name.replace(/^cesantoni_?/i, '');
+                    name = name.replace(/^piedra_porcelanica_?/i, '');
+                    name = name.replace(/^cemento_?/i, '');
+                    return name;
+                };
+
                 // Excluir hero y producto para no repetir
-                const heroImgName = heroImg.split('/').pop().split('-')[0].toLowerCase();
-                const mainImgNameGal = mainImg.split('/').pop().split('-')[0].toLowerCase();
+                const heroBaseName = getBaseName(heroImg);
+                const mainBaseName = getBaseName(mainImg);
+                const seenNames = new Set([heroBaseName, mainBaseName]);
 
-                // Filtrar imágenes únicas
-                const seenNames = new Set([heroImgName, mainImgNameGal]);
+                // También trackear por tipo de espacio para garantizar variedad
+                const seenRooms = new Set();
+                const roomTypes = ['sala', 'cocina', 'bano', 'sanitario', 'recamara', 'habitacion', 'terraza', 'comedor', 'restaurante', 'exterior'];
+
+                // Filtrar imágenes únicas Y de diferentes espacios
                 const uniqueGallery = galleryImages.filter(img => {
-                    const fileName = img.split('/').pop().toLowerCase();
-                    const baseName = fileName.replace(/[-_]\d+.*$/, '').replace(/render_?/i, '').replace(/vxl_\d+_ld_/i, '');
+                    const baseName = getBaseName(img);
+                    const imgLower = img.toLowerCase();
 
+                    // Detectar tipo de espacio
+                    const roomType = roomTypes.find(r => imgLower.includes(r)) || 'other';
+
+                    // Rechazar si ya vimos este nombre base
                     if (seenNames.has(baseName)) return false;
+
+                    // Rechazar si ya tenemos imagen de este espacio (para garantizar variedad)
+                    if (roomType !== 'other' && seenRooms.has(roomType)) return false;
+
                     seenNames.add(baseName);
+                    if (roomType !== 'other') seenRooms.add(roomType);
                     return true;
                 });
 
                 // Priorizar imágenes de diferentes espacios
-                const roomPriority = ['cocina', 'sala', 'bano', 'recamara', 'terraza', 'comedor', 'exterior', 'yoga'];
+                const roomPriority = ['cocina', 'sala', 'bano', 'sanitario', 'recamara', 'habitacion', 'terraza', 'comedor', 'restaurante', 'exterior'];
                 const sortedGallery = uniqueGallery.sort((a, b) => {
                     const aLower = a.toLowerCase();
                     const bLower = b.toLowerCase();
