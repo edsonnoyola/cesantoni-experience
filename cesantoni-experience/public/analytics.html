@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Cesantoni Experience</title>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Source Sans 3', sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: #1a1a1a;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #8BC34A;
+        }
+
+        .stat-label {
+            color: #666;
+            margin-top: 8px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .section h2 {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #f8f8f8;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: #fafafa;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-green { background: #e8f5e9; color: #2e7d32; }
+        .badge-blue { background: #e3f2fd; color: #1565c0; }
+        .badge-orange { background: #fff3e0; color: #e65100; }
+
+        .chart-placeholder {
+            height: 200px;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+        }
+
+        .refresh-btn {
+            background: #8BC34A;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .refresh-btn:hover {
+            background: #7cb342;
+        }
+
+        .date-filter {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .date-filter button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .date-filter button.active {
+            background: #8BC34A;
+            color: white;
+            border-color: #8BC34A;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>📊 Cesantoni Analytics</h1>
+    </header>
+
+    <div class="container">
+        <div class="date-filter">
+            <button class="active" onclick="setDateRange('today')">Hoy</button>
+            <button onclick="setDateRange('week')">Esta Semana</button>
+            <button onclick="setDateRange('month')">Este Mes</button>
+            <button onclick="setDateRange('all')">Todo</button>
+            <button class="refresh-btn" onclick="loadData()">🔄 Actualizar</button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="total-scans">-</div>
+                <div class="stat-label">Escaneos QR</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="total-whatsapp">-</div>
+                <div class="stat-label">Clicks WhatsApp</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="conversion-rate">-</div>
+                <div class="stat-label">Tasa Conversión</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="unique-products">-</div>
+                <div class="stat-label">Productos Vistos</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📈 Escaneos por Día</h2>
+            <div class="chart-placeholder" id="scans-chart">
+                Gráfica de escaneos diarios
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🏆 Productos Más Escaneados</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Categoría</th>
+                        <th>Escaneos</th>
+                        <th>WhatsApp</th>
+                    </tr>
+                </thead>
+                <tbody id="top-products">
+                    <tr><td colspan="4">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>🏪 Tiendas con Más Actividad</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tienda</th>
+                        <th>Ciudad</th>
+                        <th>Escaneos</th>
+                        <th>Conversión</th>
+                    </tr>
+                </thead>
+                <tbody id="top-stores">
+                    <tr><td colspan="4">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>🕐 Últimos Escaneos</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Hora</th>
+                        <th>Producto</th>
+                        <th>Tienda</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="recent-scans">
+                    <tr><td colspan="4">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API = '/api';
+        let dateRange = 'today';
+
+        function setDateRange(range) {
+            dateRange = range;
+            document.querySelectorAll('.date-filter button:not(.refresh-btn)').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            loadData();
+        }
+
+        async function loadData() {
+            try {
+                // Load stats
+                const stats = await fetch(`${API}/analytics/stats?range=${dateRange}`).then(r => r.json());
+                document.getElementById('total-scans').textContent = stats.total_scans || 0;
+                document.getElementById('total-whatsapp').textContent = stats.total_whatsapp || 0;
+                document.getElementById('unique-products').textContent = stats.unique_products || 0;
+
+                const convRate = stats.total_scans > 0
+                    ? ((stats.total_whatsapp / stats.total_scans) * 100).toFixed(1) + '%'
+                    : '0%';
+                document.getElementById('conversion-rate').textContent = convRate;
+
+                // Load top products
+                const products = await fetch(`${API}/analytics/top-products?range=${dateRange}`).then(r => r.json());
+                document.getElementById('top-products').innerHTML = products.length ? products.map(p => `
+                    <tr>
+                        <td><strong>${p.name}</strong></td>
+                        <td><span class="badge badge-green">${p.category || '-'}</span></td>
+                        <td>${p.scan_count}</td>
+                        <td>${p.whatsapp_count || 0}</td>
+                    </tr>
+                `).join('') : '<tr><td colspan="4">Sin datos</td></tr>';
+
+                // Load top stores
+                const stores = await fetch(`${API}/analytics/top-stores?range=${dateRange}`).then(r => r.json());
+                document.getElementById('top-stores').innerHTML = stores.length ? stores.map(s => `
+                    <tr>
+                        <td><strong>${s.name}</strong></td>
+                        <td>${s.city || '-'}</td>
+                        <td>${s.scan_count}</td>
+                        <td>${s.scan_count > 0 ? ((s.whatsapp_count / s.scan_count) * 100).toFixed(0) + '%' : '0%'}</td>
+                    </tr>
+                `).join('') : '<tr><td colspan="4">Sin datos</td></tr>';
+
+                // Load recent scans
+                const recent = await fetch(`${API}/analytics/recent?range=${dateRange}`).then(r => r.json());
+                document.getElementById('recent-scans').innerHTML = recent.length ? recent.map(s => `
+                    <tr>
+                        <td>${new Date(s.created_at).toLocaleTimeString()}</td>
+                        <td>${s.product_name || '-'}</td>
+                        <td>${s.store_name || '-'}</td>
+                        <td><span class="badge ${s.whatsapp_clicked ? 'badge-green' : 'badge-blue'}">${s.whatsapp_clicked ? 'WhatsApp' : 'Vista'}</span></td>
+                    </tr>
+                `).join('') : '<tr><td colspan="4">Sin datos</td></tr>';
+
+            } catch (err) {
+                console.error('Error loading analytics:', err);
+            }
+        }
+
+        // Load on start
+        loadData();
+
+        // Auto-refresh every 30 seconds
+        setInterval(loadData, 30000);
+    </script>
+</body>
+</html>

@@ -581,6 +581,94 @@ app.get('/api/categories', (req, res) => {
 });
 
 // =====================================================
+// ANALYTICS API
+// =====================================================
+
+function getDateFilter(range) {
+  switch(range) {
+    case 'today': return "date(created_at) = date('now')";
+    case 'week': return "created_at >= date('now', '-7 days')";
+    case 'month': return "created_at >= date('now', '-30 days')";
+    default: return '1=1';
+  }
+}
+
+app.get('/api/analytics/stats', (req, res) => {
+  try {
+    const dateFilter = getDateFilter(req.query.range);
+    const stats = queryOne(`
+      SELECT
+        COUNT(*) as total_scans,
+        SUM(CASE WHEN whatsapp_clicked = 1 THEN 1 ELSE 0 END) as total_whatsapp,
+        COUNT(DISTINCT product_id) as unique_products
+      FROM scans WHERE ${dateFilter}
+    `);
+    res.json(stats || { total_scans: 0, total_whatsapp: 0, unique_products: 0 });
+  } catch (err) {
+    res.json({ total_scans: 0, total_whatsapp: 0, unique_products: 0 });
+  }
+});
+
+app.get('/api/analytics/top-products', (req, res) => {
+  try {
+    const dateFilter = getDateFilter(req.query.range);
+    const products = query(`
+      SELECT p.name, p.category,
+        COUNT(s.id) as scan_count,
+        SUM(CASE WHEN s.whatsapp_clicked = 1 THEN 1 ELSE 0 END) as whatsapp_count
+      FROM scans s
+      JOIN products p ON s.product_id = p.id
+      WHERE ${dateFilter}
+      GROUP BY p.id
+      ORDER BY scan_count DESC
+      LIMIT 10
+    `);
+    res.json(products);
+  } catch (err) {
+    res.json([]);
+  }
+});
+
+app.get('/api/analytics/top-stores', (req, res) => {
+  try {
+    const dateFilter = getDateFilter(req.query.range);
+    const stores = query(`
+      SELECT st.name, st.city,
+        COUNT(s.id) as scan_count,
+        SUM(CASE WHEN s.whatsapp_clicked = 1 THEN 1 ELSE 0 END) as whatsapp_count
+      FROM scans s
+      JOIN stores st ON s.store_id = st.id
+      WHERE ${dateFilter}
+      GROUP BY st.id
+      ORDER BY scan_count DESC
+      LIMIT 10
+    `);
+    res.json(stores);
+  } catch (err) {
+    res.json([]);
+  }
+});
+
+app.get('/api/analytics/recent', (req, res) => {
+  try {
+    const dateFilter = getDateFilter(req.query.range);
+    const recent = query(`
+      SELECT s.created_at, s.whatsapp_clicked,
+        p.name as product_name, st.name as store_name
+      FROM scans s
+      LEFT JOIN products p ON s.product_id = p.id
+      LEFT JOIN stores st ON s.store_id = st.id
+      WHERE ${dateFilter}
+      ORDER BY s.created_at DESC
+      LIMIT 20
+    `);
+    res.json(recent);
+  } catch (err) {
+    res.json([]);
+  }
+});
+
+// =====================================================
 // LANDING PAGE DINÁMICO
 // =====================================================
 

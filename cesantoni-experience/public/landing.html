@@ -4,6 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title id="page-title">Cesantoni Experience</title>
+
+    <!-- SEO Meta Tags (updated dynamically) -->
+    <meta name="description" id="meta-description" content="Descubre pisos y azulejos de la más alta calidad. Cesantoni - Experiencia en pisos.">
+    <meta name="keywords" content="pisos, azulejos, porcelanato, mármol, cesantoni, pisos de lujo">
+    <meta name="author" content="Cesantoni">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="product">
+    <meta property="og:title" id="og-title" content="Cesantoni Experience">
+    <meta property="og:description" id="og-description" content="Descubre pisos y azulejos de la más alta calidad.">
+    <meta property="og:image" id="og-image" content="https://www.cesantoni.com.mx/wp-content/uploads/cesantoni-logo.png">
+    <meta property="og:url" id="og-url" content="">
+    <meta property="og:site_name" content="Cesantoni">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" id="tw-title" content="Cesantoni Experience">
+    <meta name="twitter:description" id="tw-description" content="Descubre pisos y azulejos de la más alta calidad.">
+    <meta name="twitter:image" id="tw-image" content="">
+
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -365,6 +385,174 @@
             color: #666;
             font-size: 1.1rem;
         }
+
+        /* Gallery Section */
+        .gallery-section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+
+        .gallery-section h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            margin-bottom: 16px;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .gallery-item {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .gallery-item:hover {
+            transform: scale(1.05);
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Room Visualizer */
+        .visualizer-section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+
+        .visualizer-section h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            margin-bottom: 16px;
+        }
+
+        .room-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+
+        .room-tab {
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .room-tab.active {
+            background: var(--cesantoni-green);
+            color: white;
+        }
+
+        .room-tab:hover:not(.active) {
+            background: #e0e0e0;
+        }
+
+        .room-image {
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .room-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Lightbox */
+        .lightbox {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .lightbox.active {
+            display: flex;
+        }
+
+        .lightbox img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 8px;
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+
+        /* PDF Button */
+        .pdf-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 14px 20px;
+            background: #e53935;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            text-decoration: none;
+            margin-top: 12px;
+            transition: all 0.2s;
+        }
+
+        .pdf-btn:hover {
+            background: #c62828;
+        }
+
+        /* Uses Tags */
+        .uses-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .use-tag {
+            padding: 6px 12px;
+            background: var(--cesantoni-green);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
     </style>
 </head>
 <body>
@@ -521,9 +709,111 @@
         // =====================================================
         // RENDER
         // =====================================================
+        function updateSEO() {
+            const title = `${product.name} - Piso ${product.category || ''} | Cesantoni`;
+            const desc = product.description || `${product.name} - ${product.type || 'Porcelanato'} ${product.format || ''}. Calidad premium Cesantoni.`;
+            const img = product.image_url || '';
+            const url = window.location.href;
+
+            document.getElementById('page-title').textContent = title;
+            document.getElementById('meta-description').content = desc;
+            document.getElementById('og-title').content = title;
+            document.getElementById('og-description').content = desc;
+            document.getElementById('og-image').content = img;
+            document.getElementById('og-url').content = url;
+            document.getElementById('tw-title').content = title;
+            document.getElementById('tw-description').content = desc;
+            document.getElementById('tw-image').content = img;
+        }
+
+        function getGalleryImages() {
+            if (!product.gallery) return [];
+            try {
+                const gallery = JSON.parse(product.gallery);
+                return Array.isArray(gallery) ? gallery.slice(0, 6) : [];
+            } catch { return []; }
+        }
+
+        function getRoomImages() {
+            const images = getGalleryImages();
+            const rooms = { sala: [], cocina: [], bano: [], recamara: [], exterior: [] };
+
+            images.forEach(url => {
+                const lower = url.toLowerCase();
+                if (lower.includes('sala') || lower.includes('living')) rooms.sala.push(url);
+                else if (lower.includes('cocina') || lower.includes('kitchen')) rooms.cocina.push(url);
+                else if (lower.includes('bano') || lower.includes('bath')) rooms.bano.push(url);
+                else if (lower.includes('recamara') || lower.includes('habitacion') || lower.includes('bedroom')) rooms.recamara.push(url);
+                else if (lower.includes('exterior') || lower.includes('terraza')) rooms.exterior.push(url);
+                else if (rooms.sala.length === 0) rooms.sala.push(url);
+            });
+
+            return rooms;
+        }
+
+        function renderGallery() {
+            const images = getGalleryImages();
+            if (images.length === 0) return '';
+
+            return `
+                <div class="gallery-section">
+                    <h2>Galería</h2>
+                    <div class="gallery-grid">
+                        ${images.map((img, i) => `
+                            <div class="gallery-item" onclick="openLightbox('${img}')">
+                                <img src="${img}" alt="Vista ${i+1}" loading="lazy">
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderVisualizer() {
+            const rooms = getRoomImages();
+            const availableRooms = Object.entries(rooms).filter(([_, imgs]) => imgs.length > 0);
+            if (availableRooms.length === 0) return '';
+
+            const roomNames = { sala: 'Sala', cocina: 'Cocina', bano: 'Baño', recamara: 'Recámara', exterior: 'Exterior' };
+            const firstRoom = availableRooms[0];
+
+            return `
+                <div class="visualizer-section">
+                    <h2>Visualiza en tu Espacio</h2>
+                    <div class="room-tabs">
+                        ${availableRooms.map(([room, _], i) => `
+                            <button class="room-tab ${i === 0 ? 'active' : ''}" onclick="switchRoom('${room}')">${roomNames[room]}</button>
+                        `).join('')}
+                    </div>
+                    <div class="room-image" id="room-display">
+                        <img src="${firstRoom[1][0]}" alt="${roomNames[firstRoom[0]]}">
+                    </div>
+                </div>
+            `;
+        }
+
+        function switchRoom(room) {
+            const rooms = getRoomImages();
+            if (!rooms[room] || rooms[room].length === 0) return;
+
+            document.querySelectorAll('.room-tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('room-display').innerHTML = `<img src="${rooms[room][0]}" alt="${room}">`;
+        }
+
+        function openLightbox(src) {
+            const lightbox = document.getElementById('lightbox');
+            lightbox.querySelector('img').src = src;
+            lightbox.classList.add('active');
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('active');
+        }
+
         function render() {
-            document.getElementById('page-title').textContent = `${product.name} | Cesantoni`;
-            
+            updateSEO();
+
             const promo = getPromoDiscount();
             const price = getPrice();
             const storeName = store?.name || decodeURIComponent(params.tienda).replace(/-/g, ' ') || 'Distribuidor Autorizado';
@@ -620,8 +910,26 @@
                                 <div class="spec-value">${product.usage}</div>
                             </div>
                         ` : ''}
+
+                        ${product.uses ? `
+                            <div class="uses-tags">
+                                ${product.uses.split(',').map(u => `<span class="use-tag">${u.trim()}</span>`).join('')}
+                            </div>
+                        ` : ''}
+
+                        ${product.pdf_url ? `
+                            <a href="${product.pdf_url}" target="_blank" class="pdf-btn">
+                                📄 Ficha Técnica PDF
+                            </a>
+                        ` : ''}
                     </div>
-                    
+
+                    <!-- Gallery -->
+                    \${renderGallery()}
+
+                    <!-- Room Visualizer -->
+                    \${renderVisualizer()}
+
                     <!-- Store -->
                     <div class="store-section">
                         <h2>Disponible en</h2>
@@ -659,6 +967,12 @@
                 
                 <!-- Floating WhatsApp -->
                 <a href="${getWhatsAppURL()}" class="floating-wa" onclick="handleWhatsAppClick(event)">💬</a>
+
+                <!-- Lightbox -->
+                <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+                    <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+                    <img src="" alt="Vista ampliada">
+                </div>
             `;
         }
         
@@ -688,8 +1002,11 @@
             // Don't prevent default - let the link work
         }
         
-        // Make function available globally
+        // Make functions available globally
         window.handleWhatsAppClick = handleWhatsAppClick;
+        window.switchRoom = switchRoom;
+        window.openLightbox = openLightbox;
+        window.closeLightbox = closeLightbox;
         
         // =====================================================
         // START
