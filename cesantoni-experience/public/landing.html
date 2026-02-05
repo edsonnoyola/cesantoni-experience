@@ -553,6 +553,65 @@
             border-radius: 20px;
             font-size: 0.8rem;
         }
+
+        /* Related Products */
+        .related-section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+
+        .related-section h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            margin-bottom: 16px;
+        }
+
+        .related-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .related-item {
+            text-decoration: none;
+            color: inherit;
+            background: #f8f8f8;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .related-item:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+
+        .related-img {
+            aspect-ratio: 4/3;
+            overflow: hidden;
+        }
+
+        .related-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .related-name {
+            padding: 12px 12px 4px;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .related-price {
+            padding: 0 12px 12px;
+            color: var(--cesantoni-green-dark);
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -618,6 +677,9 @@
                 
                 // Render page
                 render();
+
+                // Load related products
+                loadRelatedProducts();
                 
             } catch (err) {
                 console.error(err);
@@ -736,17 +798,30 @@
 
         function getRoomImages() {
             const images = getGalleryImages();
-            const rooms = { sala: [], cocina: [], bano: [], recamara: [], exterior: [] };
+            const rooms = { sala: [], cocina: [], bano: [], recamara: [], comedor: [], exterior: [] };
 
             images.forEach(url => {
                 const lower = url.toLowerCase();
-                if (lower.includes('sala') || lower.includes('living')) rooms.sala.push(url);
-                else if (lower.includes('cocina') || lower.includes('kitchen')) rooms.cocina.push(url);
-                else if (lower.includes('bano') || lower.includes('bath')) rooms.bano.push(url);
-                else if (lower.includes('recamara') || lower.includes('habitacion') || lower.includes('bedroom')) rooms.recamara.push(url);
-                else if (lower.includes('exterior') || lower.includes('terraza')) rooms.exterior.push(url);
-                else if (rooms.sala.length === 0) rooms.sala.push(url);
+                if (lower.includes('sala') || lower.includes('living') || lower.includes('estancia')) {
+                    rooms.sala.push(url);
+                } else if (lower.includes('cocina') || lower.includes('kitchen')) {
+                    rooms.cocina.push(url);
+                } else if (lower.includes('bano') || lower.includes('bath') || lower.includes('baño')) {
+                    rooms.bano.push(url);
+                } else if (lower.includes('recamara') || lower.includes('habitacion') || lower.includes('bedroom') || lower.includes('cuarto')) {
+                    rooms.recamara.push(url);
+                } else if (lower.includes('comedor') || lower.includes('dining')) {
+                    rooms.comedor.push(url);
+                } else if (lower.includes('exterior') || lower.includes('terraza') || lower.includes('patio') || lower.includes('jardin')) {
+                    rooms.exterior.push(url);
+                }
             });
+
+            // If no rooms detected, use first image as "General"
+            const hasAnyRoom = Object.values(rooms).some(arr => arr.length > 0);
+            if (!hasAnyRoom && images.length > 0) {
+                rooms.sala = [images[0]];
+            }
 
             return rooms;
         }
@@ -774,7 +849,7 @@
             const availableRooms = Object.entries(rooms).filter(([_, imgs]) => imgs.length > 0);
             if (availableRooms.length === 0) return '';
 
-            const roomNames = { sala: 'Sala', cocina: 'Cocina', bano: 'Baño', recamara: 'Recámara', exterior: 'Exterior' };
+            const roomNames = { sala: 'Sala', cocina: 'Cocina', bano: 'Baño', recamara: 'Recámara', comedor: 'Comedor', exterior: 'Exterior' };
             const firstRoom = availableRooms[0];
 
             return `
@@ -809,6 +884,45 @@
 
         function closeLightbox() {
             document.getElementById('lightbox').classList.remove('active');
+        }
+
+        // Related products
+        let relatedProducts = [];
+
+        async function loadRelatedProducts() {
+            if (!product.related_products) return;
+            try {
+                const ids = JSON.parse(product.related_products);
+                if (!Array.isArray(ids) || ids.length === 0) return;
+
+                const promises = ids.slice(0, 4).map(id =>
+                    fetch(`${API}/products/${id}`).then(r => r.ok ? r.json() : null)
+                );
+                relatedProducts = (await Promise.all(promises)).filter(p => p);
+                renderRelatedProducts();
+            } catch (err) {
+                console.error('Error loading related:', err);
+            }
+        }
+
+        function renderRelatedProducts() {
+            const container = document.getElementById('related-products');
+            if (!container || relatedProducts.length === 0) return;
+
+            container.innerHTML = `
+                <h2>Te puede interesar</h2>
+                <div class="related-grid">
+                    ${relatedProducts.map(p => `
+                        <a href="/p/${p.slug}" class="related-item">
+                            <div class="related-img">
+                                <img src="${p.image_url}" alt="${p.name}" loading="lazy">
+                            </div>
+                            <div class="related-name">${p.name}</div>
+                            <div class="related-price">$${(p.base_price || 0).toLocaleString()} /m²</div>
+                        </a>
+                    `).join('')}
+                </div>
+            `;
         }
 
         function render() {
@@ -929,6 +1043,12 @@
 
                     <!-- Room Visualizer -->
                     ${renderVisualizer()}
+
+                    <!-- Related Products -->
+                    <div class="related-section" id="related-products">
+                        <h2>Te puede interesar</h2>
+                        <div style="text-align:center;color:#999;padding:20px;">Cargando...</div>
+                    </div>
 
                     <!-- Store -->
                     <div class="store-section">
