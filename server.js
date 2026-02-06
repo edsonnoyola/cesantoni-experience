@@ -1578,8 +1578,8 @@ app.post('/api/tts', async (req, res) => {
     const data = await response.json();
 
     if (data.error) {
-      console.error('TTS error:', data.error);
-      return res.status(500).json({ error: 'TTS no disponible', fallback: true });
+      console.error('TTS error:', JSON.stringify(data.error));
+      return res.status(500).json({ error: 'TTS no disponible', detail: data.error.message || data.error.status, fallback: true });
     }
 
     res.json({ audioContent: data.audioContent });
