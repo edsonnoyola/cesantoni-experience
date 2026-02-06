@@ -1032,27 +1032,24 @@
                 </div>
             `).join('');
 
-            // Full specs
-            const specs = [];
-            if (product.format) specs.push({ value: product.format, label: 'Formato' });
-            if (product.pei) specs.push({ value: `PEI ${product.pei}`, label: 'Resistencia' });
-            if (product.water_absorption) specs.push({ value: product.water_absorption, label: 'Absorcion' });
-            if (product.mohs) specs.push({ value: product.mohs, label: 'Dureza Mohs' });
-            if (product.pieces_per_box) specs.push({ value: `${product.pieces_per_box} pzas`, label: 'Piezas/Caja' });
-            if (product.sqm_per_box) specs.push({ value: `${product.sqm_per_box} m2`, label: 'm2 por Caja' });
-            if (product.type) specs.push({ value: product.type, label: 'Tipo' });
-            if (product.usage) specs.push({ value: product.usage, label: 'Uso' });
+            // Full specs - always show 8 specs with defaults
+            const specs = [
+                { value: product.format || '60 x 60 cm', label: 'Formato' },
+                { value: product.pei ? `PEI ${product.pei}` : 'PEI 4', label: 'Resistencia' },
+                { value: product.water_absorption || '< 0.5%', label: 'Absorcion' },
+                { value: product.finish || 'MATE', label: 'Acabado' },
+                { value: product.type || 'PORCELANICO', label: 'Tipo' },
+                { value: product.usage || 'INT / EXT', label: 'Uso' },
+                { value: product.mohs || '6-7', label: 'Dureza Mohs' },
+                { value: 'Pasta Blanca', label: 'Composicion' }
+            ];
 
-            if (specs.length > 0) {
-                document.getElementById('specs-grid').innerHTML = specs.map(s => `
-                    <div class="spec-item">
-                        <div class="spec-value">${s.value}</div>
-                        <div class="spec-label">${s.label}</div>
-                    </div>
-                `).join('');
-            } else {
-                document.getElementById('specs-section').classList.add('hidden');
-            }
+            document.getElementById('specs-grid').innerHTML = specs.map(s => `
+                <div class="spec-item">
+                    <div class="spec-value">${s.value}</div>
+                    <div class="spec-label">${s.label}</div>
+                </div>
+            `).join('');
 
             // Related products
             let relatedIds = [];
