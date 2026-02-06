@@ -825,44 +825,43 @@ app.post('/api/video/generate', async (req, res) => {
   res.json({ success: true, videoId, slug, message: 'Generando video...' });
 
   try {
-    // Buscar imagen close-up del piso real (patrón _C1) en la galería
-    let tileImageUrl = image_url;
+    // Buscar imagen RENDER del cuarto (con el piso instalado) - NO la C1
+    // Prioridad: Render_ de galería que coincida con producto > image_url principal
+    let renderImageUrl = image_url;
     if (dbProduct && dbProduct.gallery) {
       try {
         const gallery = JSON.parse(dbProduct.gallery || '[]');
-        const productNameClean = (product_name || '').toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
-        // Buscar imagen C1 que coincida con el nombre del producto
-        const c1Image = gallery.find(url => {
+        const productNameClean = (product_name || '').toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '');
+        // Buscar render que coincida con el nombre del producto
+        const renderImg = gallery.find(url => {
           const urlUpper = url.toUpperCase();
-          return urlUpper.includes('_C1') && (urlUpper.includes(productNameClean) || urlUpper.includes(productNameClean.replace(/_/g, '')));
+          const hasRender = urlUpper.includes('RENDER');
+          const matchesName = urlUpper.includes(productNameClean) || urlUpper.includes(productNameClean.replace(/_/g, ''));
+          const isFullSize = !url.includes('-150x') && !url.includes('-300x');
+          return hasRender && matchesName && isFullSize;
         });
-        // Fallback: cualquier imagen C1
-        const anyC1 = gallery.find(url => url.toUpperCase().includes('_C1'));
-        if (c1Image) {
-          tileImageUrl = c1Image;
-          console.log('🎯 Usando imagen close-up del piso:', c1Image);
-        } else if (anyC1) {
-          tileImageUrl = anyC1;
-          console.log('🎯 Usando imagen C1 de galería:', anyC1);
+        if (renderImg) {
+          renderImageUrl = renderImg;
+          console.log('🎯 Usando render del cuarto:', renderImg);
         }
       } catch (e) {
         console.log('⚠️ Error parseando galería:', e.message);
       }
     }
 
-    // Descargar imagen del piso y convertir a base64
+    // Descargar imagen render y convertir a base64
     let imageBase64 = null;
     let imageMimeType = 'image/jpeg';
 
-    if (tileImageUrl) {
-      console.log('📥 Descargando imagen close-up del piso:', tileImageUrl);
+    if (renderImageUrl) {
+      console.log('📥 Descargando render del cuarto:', renderImageUrl);
       try {
-        const imgResponse = await fetch(tileImageUrl);
+        const imgResponse = await fetch(renderImageUrl);
         const imgBuffer = await imgResponse.arrayBuffer();
         imageBase64 = Buffer.from(imgBuffer).toString('base64');
 
-        if (tileImageUrl.includes('.png')) imageMimeType = 'image/png';
-        else if (tileImageUrl.includes('.webp')) imageMimeType = 'image/webp';
+        if (renderImageUrl.includes('.png')) imageMimeType = 'image/png';
+        else if (renderImageUrl.includes('.webp')) imageMimeType = 'image/webp';
 
         console.log('✅ Imagen descargada y convertida a base64');
       } catch (imgErr) {
@@ -870,10 +869,9 @@ app.post('/api/video/generate', async (req, res) => {
       }
     }
 
-    // Prompt: piso instalado en ambiente real - SIN TEXTO/LETRAS
-    const finish = dbProduct?.finish || 'mate';
-    let prompt = `Cinematic video of a beautiful modern living room with this exact tile installed as the floor. The camera glides slowly through the room at a low angle, showing how the tile with its ${finish} finish looks installed in the space. Elegant furniture, soft natural daylight, warm ambient atmosphere. The tile pattern and color must match the reference image exactly. No text, no letters, no words, no logos, no watermarks. No people.`;
-    console.log('🎬 Prompt:', prompt.substring(0, 100));
+    // Prompt: animar la escena del render - SIN TEXTO/LETRAS
+    let prompt = `Animate this interior design scene with slow cinematic camera movement. Subtle dolly forward through the room. The floor tiles must stay exactly as shown in the image. Soft natural lighting, gentle shadows moving. No text, no letters, no logos, no watermarks. No people. Keep the scene exactly as the reference image but with gentle motion.`;
+    console.log('🎬 Prompt (animar render):', prompt.substring(0, 80));
 
     let result;
     try {
