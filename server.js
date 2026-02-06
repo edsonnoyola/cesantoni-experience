@@ -1435,7 +1435,7 @@ JSON: {"intent":"recommend|lookup|question|greeting","speech":"respuesta","produ
           contents,
           generationConfig: {
             temperature: 0.8,
-            maxOutputTokens: 250
+            maxOutputTokens: 400
           }
         })
       }
