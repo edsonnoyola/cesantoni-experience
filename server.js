@@ -870,11 +870,10 @@ app.post('/api/video/generate', async (req, res) => {
       }
     }
 
-    // Prompt enfocado en mostrar el piso real - SIN TEXTO/LETRAS
+    // Prompt: piso instalado en ambiente real - SIN TEXTO/LETRAS
     const finish = dbProduct?.finish || 'mate';
-    const category = dbProduct?.category || 'ceramico';
-    let prompt = `Slow cinematic video starting as an extreme close-up of this exact tile surface, showing its real texture and ${finish} finish in detail. Camera slowly pulls back to reveal the tile beautifully installed on a floor in an elegant modern room with soft ambient lighting. Absolutely no text, no letters, no words, no logos, no watermarks anywhere in the video. No people. Professional interior design cinematography.`;
-    console.log('🎬 Prompt (sin texto):', prompt.substring(0, 100));
+    let prompt = `Cinematic video of a beautiful modern living room with this exact tile installed as the floor. The camera glides slowly through the room at a low angle, showing how the tile with its ${finish} finish looks installed in the space. Elegant furniture, soft natural daylight, warm ambient atmosphere. The tile pattern and color must match the reference image exactly. No text, no letters, no words, no logos, no watermarks. No people.`;
+    console.log('🎬 Prompt:', prompt.substring(0, 100));
 
     let result;
     try {
