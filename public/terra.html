@@ -199,6 +199,66 @@
         }
         .suggestion-btn:hover { border-color: var(--gold); color: var(--gold); }
 
+        /* Welcome screen */
+        .welcome-screen {
+            position: fixed; inset: 0; z-index: 200;
+            background: var(--black);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 40px 30px; text-align: center;
+            transition: opacity 0.5s ease;
+        }
+        .welcome-screen.hide { opacity: 0; pointer-events: none; }
+        .welcome-logo { height: 50px; margin-bottom: 40px; opacity: 0.8; }
+        .welcome-orb {
+            width: 120px; height: 120px; border-radius: 50%;
+            background: radial-gradient(circle at 40% 40%, var(--gold-light), var(--gold-dark));
+            opacity: 0.5; margin-bottom: 30px;
+            animation: orbPulse 2s ease infinite;
+        }
+        .welcome-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2rem; font-weight: 300; color: var(--gold-light);
+            margin-bottom: 8px;
+        }
+        .welcome-subtitle {
+            font-size: 0.85rem; color: var(--gray-light); margin-bottom: 35px;
+            font-weight: 300;
+        }
+        .welcome-store {
+            font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase;
+            color: var(--gray); margin-bottom: 30px;
+        }
+        .welcome-form { width: 100%; max-width: 300px; }
+        .welcome-input {
+            width: 100%; background: transparent;
+            border: none; border-bottom: 2px solid var(--gold);
+            color: var(--white); padding: 14px 4px;
+            font-size: 1.1rem; font-family: 'Montserrat', sans-serif;
+            text-align: center; outline: none;
+            letter-spacing: 0.03em;
+        }
+        .welcome-input::placeholder { color: var(--gray); font-weight: 300; }
+        .welcome-btn {
+            width: 100%; margin-top: 24px; padding: 16px;
+            background: var(--gold); border: none; color: var(--black);
+            font-family: 'Montserrat', sans-serif; font-size: 0.85rem;
+            font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+            cursor: pointer; transition: all 0.3s;
+        }
+        .welcome-btn:hover { background: var(--gold-light); }
+        .welcome-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Store badge in header */
+        .header-store {
+            font-size: 0.55rem; letter-spacing: 0.15em; text-transform: uppercase;
+            color: var(--gray-light); margin-top: 2px;
+        }
+        .header-right { text-align: right; }
+        .header-user {
+            font-size: 0.65rem; color: var(--gold); font-weight: 500;
+        }
+
         /* No speech API fallback */
         .no-voice {
             display: none; padding: 20px; text-align: center;
@@ -220,11 +280,29 @@
     </style>
 </head>
 <body>
+    <!-- Welcome Screen -->
+    <div class="welcome-screen" id="welcome-screen">
+        <img src="/images/logo-cesantoni.png" alt="Cesantoni" class="welcome-logo">
+        <div class="welcome-orb"></div>
+        <h1 class="welcome-title">Hola, soy Terra</h1>
+        <p class="welcome-subtitle">Tu asistente personal de pisos</p>
+        <div class="welcome-store" id="welcome-store"></div>
+        <div class="welcome-form">
+            <input type="text" class="welcome-input" id="welcome-name"
+                   placeholder="Tu nombre" autocomplete="given-name"
+                   onkeydown="if(event.key==='Enter')startSession()">
+            <button class="welcome-btn" id="welcome-btn" onclick="startSession()">Comenzar</button>
+        </div>
+    </div>
+
     <div class="app" id="app">
         <!-- Header -->
         <div class="header">
             <img src="/images/logo-cesantoni.png" alt="Cesantoni" class="header-logo">
-            <div class="header-label">Terra</div>
+            <div class="header-right">
+                <div class="header-label">Terra</div>
+                <div class="header-store" id="header-store"></div>
+            </div>
         </div>
 
         <!-- Main -->
@@ -303,9 +381,79 @@
         let spanishVoice = null;
         let allProducts = [];
 
-        // ===== INIT =====
-        async function init() {
-            // Load products for context
+        // ===== PERSONALIZATION =====
+        let customerName = '';
+        let storeName = '';
+        let storeSlug = '';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        storeSlug = urlParams.get('store') || urlParams.get('tienda') || '';
+
+        // ===== WELCOME SCREEN =====
+        function initWelcome() {
+            // Check if returning customer
+            const saved = localStorage.getItem('terra_customer');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    if (data.name && data.timestamp > Date.now() - 86400000) { // 24h
+                        document.getElementById('welcome-name').value = data.name;
+                    }
+                } catch (e) {}
+            }
+
+            // Load store name if provided
+            if (storeSlug) {
+                fetch(`/api/stores?slug=${storeSlug}`)
+                    .then(r => r.json())
+                    .then(stores => {
+                        if (stores.length > 0) {
+                            storeName = stores[0].name;
+                            document.getElementById('welcome-store').textContent = storeName;
+                            document.getElementById('header-store').textContent = storeName;
+                        }
+                    })
+                    .catch(() => {});
+            }
+
+            // Focus name input
+            setTimeout(() => document.getElementById('welcome-name').focus(), 500);
+        }
+
+        function startSession() {
+            const nameInput = document.getElementById('welcome-name');
+            customerName = nameInput.value.trim();
+
+            if (!customerName) {
+                nameInput.style.borderColor = '#E74C3C';
+                nameInput.placeholder = 'Por favor, tu nombre';
+                nameInput.focus();
+                return;
+            }
+
+            // Capitalize first letter
+            customerName = customerName.charAt(0).toUpperCase() + customerName.slice(1).toLowerCase();
+
+            // Save to localStorage
+            localStorage.setItem('terra_customer', JSON.stringify({
+                name: customerName,
+                store: storeSlug,
+                timestamp: Date.now()
+            }));
+
+            // Hide welcome, show app
+            document.getElementById('welcome-screen').classList.add('hide');
+            setTimeout(() => {
+                document.getElementById('welcome-screen').style.display = 'none';
+            }, 500);
+
+            // Start Terra
+            initTerra();
+        }
+
+        // ===== INIT TERRA =====
+        async function initTerra() {
+            // Load products
             try {
                 const res = await fetch('/api/products');
                 allProducts = await res.json();
@@ -345,7 +493,6 @@
                     if (isListening) stopListening();
                 };
             } else {
-                // No speech API - show text input
                 document.getElementById('no-voice').classList.add('show');
                 document.getElementById('mic-btn').style.display = 'none';
                 micLabel.textContent = 'Usa el teclado';
@@ -357,15 +504,16 @@
                 synth.onvoiceschanged = loadVoices;
             }
 
-            // Auto-greet after short delay
-            setTimeout(() => {
-                speak('Bienvenido a Cesantoni. Soy Terra, tu asistente. Dime, que tipo de piso buscas?');
-            }, 800);
+            // Personalized greeting
+            const storeGreet = storeName ? ` a ${storeName}` : ' a Cesantoni';
+            const greeting = `Hola ${customerName}, bienvenida${storeGreet}. Soy Terra, tu asistente personal. Dime, que tipo de piso buscas?`;
+
+            speechText.textContent = greeting;
+            setTimeout(() => speak(greeting), 600);
         }
 
         function loadVoices() {
             const voices = synth.getVoices();
-            // Prefer: Mexican Spanish female > Spanish female > any Spanish
             spanishVoice = voices.find(v => v.lang === 'es-MX' && v.name.toLowerCase().includes('female')) ||
                            voices.find(v => v.lang === 'es-MX' && v.name.toLowerCase().includes('paulina')) ||
                            voices.find(v => v.lang === 'es-MX') ||
@@ -386,7 +534,7 @@
 
         function startListening() {
             if (!recognition) return;
-            synth.cancel(); // Stop any ongoing speech
+            synth.cancel();
             isListening = true;
             app.className = 'app listening';
             micLabel.textContent = 'Escuchando...';
@@ -427,11 +575,12 @@
             synth.speak(utter);
         }
 
-        // ===== SEND TEXT (typed or suggestion) =====
+        // ===== SEND TEXT =====
         function sendText(text) {
             if (!text || !text.trim()) return;
             const msg = text.trim();
-            document.getElementById('text-input').value = '';
+            const textInput = document.getElementById('text-input');
+            if (textInput) textInput.value = '';
             transcriptEl.textContent = `"${msg}"`;
             processMessage(msg);
         }
@@ -448,19 +597,19 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         message,
+                        customer_name: customerName,
+                        store_name: storeName,
                         current_product_id: currentProduct?.id || null
                     })
                 });
 
                 const data = await res.json();
 
-                // Show product card if returned
                 if (data.product) {
                     showProduct(data.product);
                     currentProduct = data.product;
                 }
 
-                // Update suggestions based on context
                 if (data.product) {
                     updateSuggestions([
                         'Es resistente a manchas?',
@@ -469,12 +618,11 @@
                     ]);
                 }
 
-                // Speak the response
-                speak(data.speech || 'Disculpa, no entendi. Podrias repetirlo?');
+                speak(data.speech || `Disculpa ${customerName}, no entendi. Podrias repetirlo?`);
 
             } catch (err) {
                 console.error('Terra error:', err);
-                speak('Disculpa, hubo un problema de conexion. Intenta de nuevo.');
+                speak(`Disculpa ${customerName}, hubo un problema de conexion. Intenta de nuevo.`);
                 app.className = 'app';
             }
         }
@@ -499,7 +647,7 @@
         }
 
         // ===== START =====
-        init();
+        initWelcome();
     </script>
 </body>
 </html>
