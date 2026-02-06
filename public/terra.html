@@ -426,9 +426,9 @@
 
         <!-- Suggestions -->
         <div class="suggestions" id="suggestions">
-            <button class="suggestion-btn" onclick="sendText(this.textContent)">Quiero remodelar mi cocina</button>
-            <button class="suggestion-btn" onclick="sendText(this.textContent)">Busco piso para exterior</button>
-            <button class="suggestion-btn" onclick="sendText(this.textContent)">Tengo ninos y mascotas</button>
+            <button class="suggestion-btn" onclick="sendText(this.textContent)">Busco piso para cocina</button>
+            <button class="suggestion-btn" onclick="sendText(this.textContent)">Quiero algo para exterior</button>
+            <button class="suggestion-btn" onclick="sendText(this.textContent)">Que piso es mas resistente?</button>
         </div>
 
         <!-- Text fallback -->
@@ -469,6 +469,7 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         storeSlug = urlParams.get('store') || urlParams.get('tienda') || '';
+        const productSlug = urlParams.get('product') || urlParams.get('producto') || '';
 
         // ===== SOUND EFFECTS (Feature 4) =====
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -595,7 +596,50 @@
             loadVoices();
             if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoices;
 
-            // Feature 6: Gender-neutral greeting
+            // If product came from QR/NFC scan, load it immediately
+            if (productSlug) {
+                const scannedProduct = allProducts.find(p =>
+                    p.slug === productSlug || p.sku === productSlug || String(p.id) === productSlug
+                );
+                if (scannedProduct) {
+                    currentProduct = scannedProduct;
+                    showProduct(scannedProduct);
+                    addToVisited(scannedProduct);
+
+                    // Ask Terra to introduce this product
+                    const storeGreet = storeName ? ` en ${storeName}` : '';
+                    speechText.textContent = 'Analizando este piso...';
+                    app.className = 'app thinking';
+
+                    try {
+                        const introRes = await fetch('/api/terra', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                message: `El cliente acaba de escanear el piso ${scannedProduct.name}. Presentalo, explica que tipo de piso es, para que espacios es ideal, y sus mejores caracteristicas. Se breve pero informativo.`,
+                                customer_name: customerName,
+                                store_name: storeName,
+                                current_product_id: scannedProduct.id,
+                                visited_products: []
+                            })
+                        });
+                        const introData = await introRes.json();
+                        speak(introData.speech || `${customerName}, este es ${scannedProduct.name}. Preguntame lo que quieras.`);
+
+                        updateSuggestions([
+                            'Es resistente al agua?',
+                            'Como se limpia?',
+                            'Sirve para exterior?',
+                            'Recomiendame algo similar'
+                        ]);
+                    } catch (e) {
+                        speak(`${customerName}, este es ${scannedProduct.name}. Preguntame lo que quieras sobre este piso.`);
+                    }
+                    return;
+                }
+            }
+
+            // Default greeting when no product scanned
             const storeGreet = storeName ? ` a ${storeName}` : ' a Cesantoni';
             const greeting = `Hola ${customerName}, te doy la bienvenida${storeGreet}. Soy Terra, tu asistente personal. Hoy vas a vivir una experiencia figital: yo te guio por la tienda, y cada piso que te interese te explico sus materiales, resistencia, acabados, todo. Dime, que espacio quieres transformar?`;
 
@@ -708,20 +752,9 @@
                     addToVisited(data.product); // Feature 1
                 }
 
-                // Feature 5: Context-aware suggestions
-                if (data.product && visitedProducts.length >= 2) {
-                    updateSuggestions([
-                        'Comparalo con el anterior',
-                        'Donde se puede usar?',
-                        'Recomiendame otro',
-                        'Mandame el resumen por WhatsApp'
-                    ]);
-                } else if (data.product) {
-                    updateSuggestions([
-                        'Es resistente a manchas?',
-                        'Donde se puede usar?',
-                        'Recomiendame otro'
-                    ]);
+                // Context-aware suggestions based on product
+                if (data.product) {
+                    updateSuggestions(getProductSuggestions(data.product));
                 }
 
                 speak(data.speech || `Disculpa ${customerName}, no entendi. Podrias repetirlo?`);
@@ -796,6 +829,52 @@
             setTimeout(() => {
                 window.open(waUrl, '_blank');
             }, 2000);
+        }
+
+        function getProductSuggestions(product) {
+            const suggestions = [];
+            const cat = (product.category || '').toLowerCase();
+            const finish = (product.finish || '').toLowerCase();
+            const usage = (product.usage || '').toLowerCase();
+
+            // Always: how to clean
+            suggestions.push('Como se limpia este piso?');
+
+            // Based on finish
+            if (finish.includes('mate') || finish.includes('textur')) {
+                suggestions.push('Es antiderrapante?');
+            } else if (finish.includes('brill') || finish.includes('pulid')) {
+                suggestions.push('Se resbala mucho?');
+            }
+
+            // Based on category/type
+            if (cat.includes('mader') || cat.includes('wood')) {
+                suggestions.push('Es mejor que madera real?');
+            } else if (cat.includes('marmol') || cat.includes('marble') || cat.includes('piedra') || cat.includes('stone')) {
+                suggestions.push('Es mejor que marmol natural?');
+            }
+
+            // Usage-based
+            if (usage.includes('ext')) {
+                suggestions.push('Resiste heladas?');
+            } else {
+                suggestions.push('Sirve para exterior?');
+            }
+
+            // If they've seen others
+            if (visitedProducts.length >= 2) {
+                suggestions.push('Comparalo con el anterior');
+            }
+
+            // General useful
+            suggestions.push('Para que espacio es ideal?');
+
+            // WhatsApp if they've seen several
+            if (visitedProducts.length >= 3) {
+                suggestions.push('Mandame el resumen por WhatsApp');
+            }
+
+            return suggestions.slice(0, 4); // Max 4 suggestions
         }
 
         function updateSuggestions(items) {
