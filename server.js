@@ -1539,6 +1539,58 @@ RESPONDE UNICAMENTE EN JSON VALIDO (sin markdown, sin backticks):
 });
 
 // =====================================================
+// TTS - Google Cloud Text-to-Speech Neural2
+// =====================================================
+
+app.post('/api/tts', async (req, res) => {
+  try {
+    const { text } = req.body;
+
+    if (!text || !text.trim()) {
+      return res.status(400).json({ error: 'Texto requerido' });
+    }
+
+    if (!GOOGLE_API_KEY) {
+      return res.status(500).json({ error: 'API no configurada' });
+    }
+
+    const response = await fetch(
+      `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input: { text: text.substring(0, 500) },
+          voice: {
+            languageCode: 'es-MX',
+            name: 'es-MX-Neural2-A'
+          },
+          audioConfig: {
+            audioEncoding: 'MP3',
+            speakingRate: 1.0,
+            pitch: 0.5,
+            volumeGainDb: 0
+          }
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (data.error) {
+      console.error('TTS error:', data.error);
+      return res.status(500).json({ error: 'TTS no disponible', fallback: true });
+    }
+
+    res.json({ audioContent: data.audioContent });
+
+  } catch (err) {
+    console.error('TTS error:', err);
+    res.status(500).json({ error: 'Error TTS', fallback: true });
+  }
+});
+
+// =====================================================
 // AI CHAT - Asistente Cesantoni
 // =====================================================
 

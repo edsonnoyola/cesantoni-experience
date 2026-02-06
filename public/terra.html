@@ -666,6 +666,7 @@
         function startListening() {
             if (!recognition) return;
             synth.cancel();
+            if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
             isListening = true;
             app.className = 'app listening';
             micLabel.textContent = 'Escuchando...';
@@ -683,14 +684,51 @@
             }
         }
 
-        // ===== SPEAK =====
-        function speak(text) {
+        // ===== SPEAK (Google Cloud TTS Neural2 + fallback) =====
+        let ttsAudio = null;
+        let useGoogleTTS = true; // Will flip to false if API not available
+
+        async function speak(text) {
             synth.cancel();
+            if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
             app.className = 'app speaking';
             speechText.className = 'speech-text';
             speechText.textContent = text;
             soundSpeak();
 
+            if (useGoogleTTS) {
+                try {
+                    const res = await fetch('/api/tts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text })
+                    });
+                    const data = await res.json();
+
+                    if (data.audioContent) {
+                        ttsAudio = new Audio('data:audio/mp3;base64,' + data.audioContent);
+                        ttsAudio.onended = () => {
+                            app.className = 'app';
+                            micLabel.textContent = 'Toca para hablar';
+                            ttsAudio = null;
+                        };
+                        ttsAudio.onerror = () => {
+                            speakFallback(text);
+                        };
+                        ttsAudio.play();
+                        return;
+                    }
+
+                    if (data.fallback) useGoogleTTS = false;
+                } catch (e) {
+                    useGoogleTTS = false;
+                }
+            }
+
+            speakFallback(text);
+        }
+
+        function speakFallback(text) {
             const utter = new SpeechSynthesisUtterance(text);
             utter.lang = 'es-MX';
             utter.rate = 0.95;
