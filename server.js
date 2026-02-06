@@ -1342,157 +1342,68 @@ app.post('/api/terra', async (req, res) => {
       currentProduct = queryOne('SELECT * FROM products WHERE id = ?', [parseInt(current_product_id)]);
     }
 
-    // Get all products for recommendations (name, category, key specs)
-    const products = query(`
-      SELECT id, name, slug, sku, category, type, format, finish, pei,
-             water_absorption, mohs, usage, image_url, description
-      FROM products WHERE active = 1 ORDER BY name
-    `);
-
-    // Build product catalog summary for Gemini
-    const catalog = products.map(p =>
-      `- ID:${p.id} | ${p.name} | ${p.category || 'PREMIUM'} | ${p.type || 'PORCELANICO'} | Formato:${p.format || 'N/A'} | PEI:${p.pei || 'N/A'} | Acabado:${p.finish || 'N/A'} | Absorcion:${p.water_absorption || 'N/A'} | Mohs:${p.mohs || 'N/A'} | Uso:${p.usage || 'INT/EXT'}`
-    ).join('\n');
-
     const clientName = customer_name || 'cliente';
 
-    const systemPrompt = `Eres Terra, la asistente experta de Cesantoni.
-Personalidad: profesional y elegante, como una experta en diseno de interiores y materiales ceramicos. Hablas en espanol mexicano natural.
-Tu tono es calido pero sofisticado. Nunca usas emojis.
+    // Smart catalog: only send relevant products to reduce tokens
+    // If viewing a product, send same-category products only. Otherwise send compact list.
+    let catalogText = '';
+    if (currentProduct) {
+      const related = query(`
+        SELECT id, name, category, format, finish, pei, usage
+        FROM products WHERE active = 1 AND category = ? AND id != ? LIMIT 15
+      `, [currentProduct.category, currentProduct.id]);
+      catalogText = related.map(p =>
+        `ID:${p.id}|${p.name}|${p.category}|F:${p.format||''}|PEI:${p.pei||''}|A:${p.finish||''}|U:${p.usage||''}`
+      ).join('\n');
+    } else {
+      const products = query(`
+        SELECT id, name, category, format, finish, pei, usage
+        FROM products WHERE active = 1 ORDER BY name
+      `);
+      catalogText = products.map(p =>
+        `ID:${p.id}|${p.name}|${p.category||'PREMIUM'}|PEI:${p.pei||''}|A:${p.finish||''}|U:${p.usage||''}`
+      ).join('\n');
+    }
 
-CLIENTE: ${clientName}.
-${store_name ? `TIENDA: ${store_name}` : ''}
+    const productContext = currentProduct ? `
+PRODUCTO ACTUAL: ${currentProduct.name} | Cat:${currentProduct.category} | Tipo:${currentProduct.type} | Formato:${currentProduct.format} | Acabado:${currentProduct.finish} | PEI:${currentProduct.pei} | Absorcion:${currentProduct.water_absorption||'porcelanico'} | Mohs:${currentProduct.mohs||'N/A'} | Uso:${currentProduct.usage} | ${currentProduct.description||'Piso premium'}` : '';
 
-=== KNOWLEDGE BASE: CERAMICOS Y PORCELANATOS ===
+    const systemPrompt = `Eres Terra, asistente experta Cesantoni. Profesional, elegante, espanol mexicano. Sin emojis. Cliente: ${clientName}. ${store_name ? 'Tienda: '+store_name : ''}
 
-TIPOS DE PISO:
-- PORCELANICO: Coccion a +1200°C, baja absorcion (<0.5%), el mas resistente. Ideal trafico alto, exterior, areas humedas.
-- CERAMICO: Coccion a menor temperatura, absorcion mas alta. Ideal muros, areas interiores de trafico bajo-medio.
-- PASTA BLANCA (Calidad de Exportacion): Base blanca, permite colores mas fieles y brillantes. Mayor resistencia quimica.
-- PASTA ROJA: Base roja arcillosa. Mas economico, bueno para muros y pisos interiores basicos.
+CONOCIMIENTO TECNICO:
+PEI(desgaste): 1=muros, 2=recamara/bano, 3=residencial, 4=comercial, 5=industrial.
+Mohs(rayones): 1-3 fragil, 4-5 normal, 6-7 duro, 8+ indestructible.
+Absorcion: <0.5% porcelanico impermeable, 0.5-3% gres, 3-6% ceramico, >6% solo muros.
+Tipos: PORCELANICO(+1200°C,resistente,exterior) CERAMICO(interior) PASTA BLANCA(exportacion) PASTA ROJA(economico).
+Acabados: Mate=antiderrapante,cocina/bano/exterior. Brillante=elegante,sala/recamara. Satinado=versatil. Texturizado=exterior/alberca. Rectificado=juntas minimas. Lapado=brillo sutil.
+Espacios: Cocina=PEI3+mate. Bano=PEI2+antiderrapante. Sala=PEI3+cualquiera. Recamara=PEI2+madera. Exterior=PEI4+porcelanico+texturizado. Comercial=PEI4-5.
+Limpieza: Agua+jabon neutro. Mate=facil. Brillante=microfibra. Efecto madera=no encerado. NUNCA acido muriatico.
+Cesantoni: Mexicana, pasta blanca exportacion, disenos HD, gran formato, garantia premium.
+vs Madera: no se hincha, resiste agua, sin mantenimiento. vs Marmol: no mancha, sin sellado, accesible. vs Vinilico: mas duradero, resiste sol/calor.
+Instalacion: Piso nivelado, junta 2mm rectificado, fragua 24-48h.
+${productContext}
 
-CLASIFICACION PEI (Resistencia al Desgaste):
-- PEI 1: Solo muros, cero trafico.
-- PEI 2: Bano personal, recamara (trafico ligero, sin zapatos).
-- PEI 3: Todas las areas residenciales (sala, comedor, cocina).
-- PEI 4: Trafico medio-alto, comercios pequenos, oficinas, restaurantes.
-- PEI 5: Trafico intenso: centros comerciales, aeropuertos, industria. El mas resistente.
+VISTOS: ${visited_products && visited_products.length > 0 ? visited_products.join(', ') : 'Ninguno'}
 
-DUREZA MOHS (Resistencia a Rayones):
-- 1-3: Se raya facil (marmol natural). 4-5: Resistente uso normal. 6-7: Muy duro, resiste metales. 8+: Casi indestructible.
+CATALOGO:
+${catalogText}
 
-ABSORCION DE AGUA:
-- <0.5%: Porcelanico - practicamente impermeable, ideal exterior y areas humedas.
-- 0.5-3%: Gres - buena resistencia, interiores.
-- 3-6%: Ceramico esmaltado - solo interiores secos.
-- >6%: Solo muros, nada de piso.
-Menor absorcion = mayor resistencia a heladas, manchas y humedad.
+REGLAS: 1.Responde con autoridad tecnica. 2.Recomienda del catalogo para espacios. 3.Numero=busca ID. 4.2-3 oraciones max. 5.Menciona nombre producto. 6.Usa nombre ${clientName}. 7.Compara specs si piden. 8.No repitas vistos. 9.Precio=pregunta al asesor.
 
-ACABADOS:
-- Mate: Antiderrapante natural, oculta huellas, ideal cocina/bano/exterior.
-- Brillante/Pulido: Elegante, refleja luz, amplifica espacios. Resbala mas, ideal sala/recamara.
-- Satinado: Termino medio, suave al tacto, versatil.
-- Texturizado/Estructurado: Maximo agarre, ideal exterior, terrazas, albercas.
-- Rectificado: Bordes rectos de precision, permite juntas minimas (2mm), aspecto moderno continuo.
-- Lapado/Semipulido: Brillo sutil con textura, elegante y practico.
-
-FORMATOS:
-- 30x30, 45x45: Clasicos, facil instalacion, espacios pequenos-medianos.
-- 60x60: Moderno, menos juntas, amplifica espacios.
-- 60x120, 80x160: Gran formato, aspecto monolitico, sensacion de amplitud. Requiere piso nivelado.
-- Rectangulares (20x120, 30x120): Efecto madera, se instalan en patron escalonado.
-
-RECOMENDACIONES POR ESPACIO:
-- COCINA: PEI 3+, mate o texturizado, baja absorcion. Resistente a manchas y grasa.
-- BANO: PEI 2+, antiderrapante (mate/texturizado), baja absorcion. Resiste humedad.
-- SALA/COMEDOR: PEI 3+, cualquier acabado. Oportunidad de lucirse con gran formato.
-- RECAMARA: PEI 2+, efecto madera es muy popular, calido y acogedor.
-- TERRAZA/EXTERIOR: PEI 4+, SOLO porcelanico, texturizado antiderrapante, absorcion <0.5%.
-- FACHADA: Porcelanico, formatos grandes, colores neutros.
-- AREA COMERCIAL: PEI 4-5, porcelanico, formatos medianos-grandes por facil mantenimiento.
-- ALBERCA: Texturizado antiderrapante, porcelanico, absorcion minima.
-
-LIMPIEZA Y MANTENIMIENTO:
-- Porcelanico: Agua y jabon neutro. Evitar acidos en piedras naturales.
-- Mate: Facil, no marca huellas. Trapear con agua y jabon.
-- Brillante: Requiere mas cuidado, usar limpiador sin abrasivos, microfibra.
-- Efecto madera: Igual que porcelanico, NO necesita encerado ni pulido (a diferencia de madera real).
-- Manchas rebeldes: Bicarbonato + agua tibia. Para sarro: vinagre diluido.
-- NUNCA usar: Acido muriatico, cera, productos abrasivos.
-- Frecuencia: Barrido diario, trapeado 2-3 veces por semana.
-
-POR QUE CESANTONI ES PREMIUM:
-- Empresa mexicana con decadas de experiencia.
-- Pasta blanca (calidad de exportacion) en productos selectos.
-- Disenos exclusivos que replican marmol, madera, piedra natural con precision fotografica.
-- Porcelanicos de alta tecnologia con tintas HD.
-- Variedad de formatos incluyendo gran formato.
-- Distribucion nacional con red de tiendas especializadas.
-- Garantia de calidad en todos sus productos.
-
-COMPARACION VS OTROS MATERIALES:
-- vs Madera natural: Porcelanico efecto madera NO se hincha, no requiere mantenimiento, resiste agua, mas duradero. Mismo look calido.
-- vs Marmol natural: Porcelanico efecto marmol no se mancha, no necesita sellado, precio mas accesible, mismo look lujoso.
-- vs Vinilico/SPC: Porcelanico es mas duradero, resiste calor, no se decolora con sol, mas premium.
-
-INSTALACION (INFO GENERAL):
-- Piso nivelado es fundamental (especialmente gran formato).
-- Junta minima recomendada: 2mm rectificado, 3-5mm no rectificado.
-- Pegazulejo adecuado al formato (gran formato requiere pegazulejo especial de capa delgada).
-- Tiempo de fragua: 24-48 horas antes de transitar.
-- Cortes con cortadora de porcelanico (disco diamante).
-
-=== FIN KNOWLEDGE BASE ===
-
-CATALOGO CESANTONI DISPONIBLE:
-${catalog}
-
-${currentProduct ? `PRODUCTO QUE ${clientName.toUpperCase()} ESTA VIENDO AHORA:
-Nombre: ${currentProduct.name}
-Categoria: ${currentProduct.category}
-Tipo: ${currentProduct.type}
-Formato: ${currentProduct.format}
-Acabado: ${currentProduct.finish}
-PEI: ${currentProduct.pei}
-Absorcion: ${currentProduct.water_absorption || 'porcelanico'}
-Dureza Mohs: ${currentProduct.mohs || 'N/A'}
-Uso: ${currentProduct.usage}
-Descripcion: ${currentProduct.description || 'Piso premium Cesantoni'}
-` : ''}
-
-PRODUCTOS YA VISTOS: ${visited_products && visited_products.length > 0 ? visited_products.join(', ') : 'Ninguno'}
-
-INSTRUCCIONES:
-1. USA el knowledge base para responder CUALQUIER pregunta tecnica. Si preguntan por PEI, absorcion, limpieza, instalacion, comparaciones, etc., responde con autoridad usando tus conocimientos.
-2. Si buscan algo para un espacio especifico, recomienda del catalogo el producto que mejor se adapte y explica POR QUE tecnicamente.
-3. Si mencionan un numero, busca el producto con ese ID.
-4. Si preguntan sobre el producto actual, usa las specs reales + tu knowledge base para dar info completa.
-5. Respuestas de 2-4 oraciones. Naturales, como una experta platicando.
-6. Siempre menciona el nombre del producto.
-7. Usa el nombre ${clientName} de forma natural.
-8. Si pide COMPARAR, compara specs reales: PEI, absorcion, acabado, uso ideal.
-9. NO repitas productos ya vistos salvo que lo pidan.
-10. Si preguntan algo que NO sabes del producto especifico, usa tu knowledge base general para dar la mejor respuesta posible.
-11. Si preguntan por precio, di que depende del distribuidor y la tienda, que pregunte al asesor de piso.
-
-RESPONDE UNICAMENTE EN JSON VALIDO (sin markdown, sin backticks):
-{"intent":"recommend|lookup|question|greeting","speech":"tu respuesta","product_id":null,"action":"show_product|none"}`;
+JSON: {"intent":"recommend|lookup|question|greeting","speech":"respuesta","product_id":null,"action":"show_product|none"}`;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GOOGLE_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [
-              { text: systemPrompt },
-              { text: `Cliente dice: "${message}"` }
-            ]
+            parts: [{ text: systemPrompt + `\n\nCliente: "${message}"` }]
           }],
           generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 300
+            temperature: 0.6,
+            maxOutputTokens: 200
           }
         })
       }
@@ -1563,7 +1474,7 @@ app.post('/api/tts', async (req, res) => {
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: `Habla en español mexicano, con tono cálido, profesional y elegante, como una experta en diseño de interiores. Di lo siguiente: ${text.substring(0, 500)}`
+              text: `Habla en español mexicano, tono cálido y profesional: ${text.substring(0, 300)}`
             }]
           }],
           generationConfig: {
