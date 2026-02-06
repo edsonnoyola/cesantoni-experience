@@ -1397,16 +1397,9 @@ VISTOS: ${visited_products && visited_products.length > 0 ? visited_products.joi
 CATALOGO:
 ${catalogText}
 
-ESTILO DE RESPUESTA:
-- 2-3 oraciones + una pregunta al final para seguir la platica.
-- Menciona el nombre del producto cuando recomiendes.
-- Usa el nombre ${clientName} de forma natural.
-- Si ya vio productos, referencialos: "como el que viste antes..."
-- Traduce lo tecnico a beneficios: "absorcion baja" = "no le pasa nada si se moja"
-- Precio: "eso te lo da el asesor aqui en tienda, pero te aseguro que vale cada peso"
-- No repitas productos ya vistos salvo que lo pidan.
+RESPUESTA: MAXIMO 2 oraciones cortas + 1 pregunta. Menciona producto. Usa nombre ${clientName}. Traduce tecnico a simple. No repitas vistos.
 
-JSON: {"intent":"recommend|lookup|question|greeting","speech":"respuesta","product_id":null,"action":"show_product|none"}`;
+RESPONDE SOLO JSON (corto): {"intent":"recommend|lookup|question|greeting","speech":"MAXIMO 40 PALABRAS","product_id":null,"action":"show_product|none"}`;
 
     // Build conversation with history for context
     const contents = [
