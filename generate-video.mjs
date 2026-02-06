@@ -6,22 +6,22 @@ const API_KEY = process.env.GOOGLE_API_KEY;
 
 // Product to generate - edit these values
 const PRODUCT = {
-  id: 124,
-  name: 'Romagni',
-  slug: 'romagni',
-  category: 'MÁRMOL',
-  type: 'PORCELÁNICO RECTIFICADO',
-  image: 'https://www.cesantoni.com.mx/wp-content/uploads/PORCALANTO_RENDER_ROMAGNI_80X160CM_4-896x1024.png'
+  id: 137,
+  name: 'Península Oxford',
+  slug: 'peninsula-oxford',
+  category: 'MADERA',
+  type: 'PORCELÁNICO',
+  image: 'https://www.cesantoni.com.mx/wp-content/uploads/Render_PENINSULA_OXFORD_CloseUp_HD.png'
 };
 
-// Generate unique description based on product
+// Generate unique description based on product - SHORT narrations (under 15 words)
 function getVoiceNarration(product) {
   const narrations = {
-    'MADERA': `${product.name}. La belleza atemporal de la madera en porcelanato de alta resistencia. Tonos cálidos que transforman cualquier espacio. Cesantoni.`,
-    'MÁRMOL': `${product.name}. La elegancia del mármol italiano en cada detalle. Vetas únicas que crean ambientes sofisticados. Cesantoni.`,
-    'PIEDRA': `${product.name}. La fuerza de la piedra natural recreada con perfección. Texturas auténticas para espacios con carácter. Cesantoni.`,
-    'CEMENTO': `${product.name}. El estilo industrial contemporáneo en su máxima expresión. Acabados urbanos para diseños modernos. Cesantoni.`,
-    'DEFAULT': `${product.name}. Diseño excepcional y calidad premium. Superficies que inspiran. Cesantoni.`
+    'MADERA': `${product.name}. Calidez natural, resistencia superior. Cesantoni.`,
+    'MÁRMOL': `${product.name}. Elegancia italiana en cada veta. Cesantoni.`,
+    'PIEDRA': `${product.name}. Fuerza y textura auténtica. Cesantoni.`,
+    'CEMENTO': `${product.name}. Estilo industrial, diseño contemporáneo. Cesantoni.`,
+    'DEFAULT': `${product.name}. Diseño premium, calidad excepcional. Cesantoni.`
   };
   return narrations[product.category] || narrations['DEFAULT'];
 }
@@ -40,11 +40,13 @@ async function main() {
   const imageBase64 = Buffer.from(imgBuffer).toString('base64');
   console.log('✅ Imagen:', Math.round(imageBase64.length / 1024), 'KB\n');
 
-  // Build prompt
+  // Build prompt with voice narration
   const narration = getVoiceNarration(PRODUCT);
-  const prompt = `Cinematic slow motion video with native audio. A warm female voice with Mexican Spanish accent narrates softly: "${narration}"
+  const prompt = `AUDIO: Clear female voice speaking Mexican Spanish narrates briefly: "${narration}" - Soft gentle piano background music throughout.
 
-Gentle camera slowly pans across this elegant ${PRODUCT.category.toLowerCase()} look porcelain floor tile in a luxurious modern living room with warm natural lighting streaming through large windows. The camera moves smoothly, revealing the beautiful texture and grain. Soft piano music plays in background. Professional interior design photography style. High-end residential space. No people visible.`;
+VIDEO (8 seconds max, NO TEXT ON SCREEN): Smooth cinematic slow dolly shot revealing this beautiful ${PRODUCT.category.toLowerCase()}-look porcelain tile floor. Camera glides close to surface showing the detailed texture, grain patterns, and natural beauty of the tile. Warm golden hour lighting. Luxurious modern interior setting. Professional commercial quality. Extremely slow camera movement. Focus on tile surface details and texture.
+
+IMPORTANT: Absolutely no text, titles, or words displayed on screen. Only voice and music for audio.`;
 
   const requestBody = {
     instances: [{
@@ -60,12 +62,12 @@ Gentle camera slowly pans across this elegant ${PRODUCT.category.toLowerCase()} 
     }
   };
 
-  console.log('🚀 Enviando a Veo 3.1 API...');
+  console.log('🚀 Enviando a Veo 3.0 Fast API...');
   console.log('Narración:', narration);
   console.log('');
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:predictLongRunning?key=${API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/veo-3.0-fast-generate-001:predictLongRunning?key=${API_KEY}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
