@@ -306,8 +306,15 @@ NODE_ENV=production
 
 - **Especificaciones Técnicas Premium**
   - 8 specs siempre visibles con defaults inteligentes
-  - Formato, PEI, Absorción, Acabado, Tipo, Uso, Mohs, Composición
+  - Formato, PEI, Absorción, Acabado, Tipo, Uso, Mohs, Calidad de Exportación
   - 81 productos actualizados con specs scrapeadas de cesantoni.com.mx
+  - "Pasta Blanca" con label "Calidad de Exportación" para claridad
+
+- **Responsive Mobile Optimizado**
+  - Fix de barras negras en specs (overflow-x: hidden)
+  - Fuentes reducidas para móvil (1.2rem en valores)
+  - Grid de 2 columnas en specs para pantallas pequeñas
+  - Padding y gaps optimizados para touch
 
 - **Productos Relacionados**
   - 4 productos de la misma categoría
