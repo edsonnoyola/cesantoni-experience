@@ -458,6 +458,9 @@
         let spanishVoice = null;
         let allProducts = [];
 
+        // ===== CONVERSATION HISTORY =====
+        let chatHistory = []; // {user: "msg", terra: "json response"}
+
         // ===== PERSONALIZATION =====
         let customerName = '';
         let storeName = '';
@@ -845,32 +848,30 @@
                         customer_name: customerName,
                         store_name: storeName,
                         current_product_id: currentProduct?.id || null,
-                        visited_products: visitedProducts.map(p => p.name) // Feature 1 + 5
+                        visited_products: visitedProducts.map(p => p.name),
+                        history: chatHistory.slice(-6)
                     })
                 });
 
                 const data = await res.json();
 
-                // Feature 3: Show product in orb + card
+                // Save to history for context
+                chatHistory.push({ user: message, terra: data.speech });
+
+                // Show product in orb + card
                 if (data.product) {
                     showProduct(data.product);
                     currentProduct = data.product;
-                    addToVisited(data.product); // Feature 1
+                    addToVisited(data.product);
                 }
 
-                // Context-aware suggestions based on product
+                // Context-aware suggestions
                 if (data.product) {
                     updateSuggestions(getProductSuggestions(data.product));
                 }
 
-                const speechMsg = data.speech || `Disculpa ${customerName}, no entendi. Podrias repetirlo?`;
-
-                // Audio comes bundled from server - no second round-trip
-                if (data.audio) {
-                    speakWithAudio(speechMsg, data.audio);
-                } else {
-                    speak(speechMsg);
-                }
+                // Show text immediately, load voice in background
+                speak(data.speech || `Disculpa ${customerName}, no entendi. Podrias repetirlo?`);
 
             } catch (err) {
                 speak(`Disculpa ${customerName}, hubo un problema. Intenta de nuevo.`);

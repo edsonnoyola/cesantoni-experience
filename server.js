@@ -1330,7 +1330,7 @@ app.get('/terra', (req, res) => {
 
 app.post('/api/terra', async (req, res) => {
   try {
-    const { message, customer_name, store_name, current_product_id, visited_products } = req.body;
+    const { message, customer_name, store_name, current_product_id, visited_products, history } = req.body;
 
     if (!GOOGLE_API_KEY) {
       return res.status(500).json({ error: 'API no configurada' });
@@ -1408,15 +1408,31 @@ ESTILO DE RESPUESTA:
 
 JSON: {"intent":"recommend|lookup|question|greeting","speech":"respuesta","product_id":null,"action":"show_product|none"}`;
 
+    // Build conversation with history for context
+    const contents = [
+      { role: 'user', parts: [{ text: systemPrompt }] },
+      { role: 'model', parts: [{ text: '{"intent":"greeting","speech":"Listo, soy Terra.","product_id":null,"action":"none"}' }] }
+    ];
+
+    // Add conversation history (last 6 exchanges for memory)
+    if (history && history.length > 0) {
+      const recent = history.slice(-6);
+      for (const h of recent) {
+        contents.push({ role: 'user', parts: [{ text: h.user }] });
+        if (h.terra) contents.push({ role: 'model', parts: [{ text: h.terra }] });
+      }
+    }
+
+    // Current message
+    contents.push({ role: 'user', parts: [{ text: message }] });
+
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GOOGLE_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            parts: [{ text: systemPrompt + `\n\nCliente: "${message}"` }]
-          }],
+          contents,
           generationConfig: {
             temperature: 0.8,
             maxOutputTokens: 250
@@ -1452,37 +1468,11 @@ JSON: {"intent":"recommend|lookup|question|greeting","speech":"respuesta","produ
       productData = queryOne('SELECT id, name, slug, sku, category, type, format, finish, image_url FROM products WHERE id = ?', [parseInt(parsed.product_id)]);
     }
 
-    const speechText = parsed.speech || 'Disculpa, no entendi bien. Podrias decirlo de otra forma?';
-
-    // Generate TTS audio in parallel (don't block text response)
-    let audioContent = null;
-    try {
-      const ttsRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GOOGLE_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: `Habla en español mexicano, tono cálido y profesional: ${speechText.substring(0, 300)}` }] }],
-            generationConfig: {
-              responseModalities: ['AUDIO'],
-              speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } }
-            }
-          })
-        }
-      );
-      const ttsData = await ttsRes.json();
-      audioContent = ttsData.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
-    } catch (ttsErr) {
-      console.error('Terra TTS error:', ttsErr);
-    }
-
     res.json({
       intent: parsed.intent || 'question',
-      speech: speechText,
+      speech: parsed.speech || 'Disculpa, no entendi bien. Podrias decirlo de otra forma?',
       product: productData,
-      action: parsed.action || 'none',
-      audio: audioContent
+      action: parsed.action || 'none'
     });
 
   } catch (err) {
