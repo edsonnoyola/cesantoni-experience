@@ -643,9 +643,10 @@
             precio: urlParams.get('precio') || ''
         };
         
-        // Get SKU from URL path
+        // Get SKU from URL - try query param first, then path
         const pathParts = window.location.pathname.split('/');
-        const sku = pathParts[pathParts.length - 1];
+        const pathSku = pathParts[pathParts.length - 1].replace('.html', '');
+        const sku = urlParams.get('sku') || (pathSku !== 'landing' ? pathSku : null);
         
         // State
         let product = null;
