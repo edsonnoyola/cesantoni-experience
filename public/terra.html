@@ -624,7 +624,12 @@
                             })
                         });
                         const introData = await introRes.json();
-                        speak(introData.speech || `${customerName}, este es ${scannedProduct.name}. Preguntame lo que quieras.`);
+                        const introSpeech = introData.speech || `${customerName}, este es ${scannedProduct.name}. Preguntame lo que quieras.`;
+                        if (introData.audio) {
+                            speakWithAudio(introSpeech, introData.audio);
+                        } else {
+                            speak(introSpeech);
+                        }
 
                         updateSuggestions([
                             'Es resistente al agua?',
@@ -774,6 +779,23 @@
             ttsAudio.play();
         }
 
+        // Direct audio playback - no extra API call needed
+        function speakWithAudio(text, base64Audio) {
+            synth.cancel();
+            if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
+
+            app.className = 'app speaking';
+            speechText.className = 'speech-text';
+            speechText.textContent = text;
+            soundSpeak();
+
+            try {
+                playPCMAudio(base64Audio);
+            } catch (e) {
+                speakFallback(text);
+            }
+        }
+
         function speakFallback(text) {
             const utter = new SpeechSynthesisUtterance(text);
             utter.lang = 'es-MX';
@@ -841,7 +863,14 @@
                     updateSuggestions(getProductSuggestions(data.product));
                 }
 
-                speak(data.speech || `Disculpa ${customerName}, no entendi. Podrias repetirlo?`);
+                const speechMsg = data.speech || `Disculpa ${customerName}, no entendi. Podrias repetirlo?`;
+
+                // Audio comes bundled from server - no second round-trip
+                if (data.audio) {
+                    speakWithAudio(speechMsg, data.audio);
+                } else {
+                    speak(speechMsg);
+                }
 
             } catch (err) {
                 speak(`Disculpa ${customerName}, hubo un problema. Intenta de nuevo.`);

@@ -1436,11 +1436,37 @@ JSON: {"intent":"recommend|lookup|question|greeting","speech":"respuesta","produ
       productData = queryOne('SELECT id, name, slug, sku, category, type, format, finish, image_url FROM products WHERE id = ?', [parseInt(parsed.product_id)]);
     }
 
+    const speechText = parsed.speech || 'Disculpa, no entendi bien. Podrias decirlo de otra forma?';
+
+    // Generate TTS audio in parallel (don't block text response)
+    let audioContent = null;
+    try {
+      const ttsRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GOOGLE_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `Habla en español mexicano, tono cálido y profesional: ${speechText.substring(0, 300)}` }] }],
+            generationConfig: {
+              responseModalities: ['AUDIO'],
+              speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } }
+            }
+          })
+        }
+      );
+      const ttsData = await ttsRes.json();
+      audioContent = ttsData.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
+    } catch (ttsErr) {
+      console.error('Terra TTS error:', ttsErr);
+    }
+
     res.json({
       intent: parsed.intent || 'question',
-      speech: parsed.speech || 'Disculpa, no entendi bien. Podrias decirlo de otra forma?',
+      speech: speechText,
       product: productData,
-      action: parsed.action || 'none'
+      action: parsed.action || 'none',
+      audio: audioContent
     });
 
   } catch (err) {
