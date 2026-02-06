@@ -878,9 +878,9 @@ app.post('/api/video/generate', async (req, res) => {
         };
       }
       
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:predictLongRunning?key=${GOOGLE_API_KEY}`;
-      console.log('🚀 Enviando request a Veo API...');
-      
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/veo-2.0-generate-001:predictLongRunning?key=${GOOGLE_API_KEY}`;
+      console.log('🚀 Enviando request a Veo 2.0 API...');
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -913,8 +913,8 @@ app.post('/api/video/generate', async (req, res) => {
           instances: [{ prompt: prompt }],
           parameters: { aspectRatio: "16:9", sampleCount: 1 }
         };
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:predictLongRunning?key=${GOOGLE_API_KEY}`;
-        
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/veo-2.0-generate-001:predictLongRunning?key=${GOOGLE_API_KEY}`;
+
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
