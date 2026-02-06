@@ -1,19 +1,22 @@
 # CESANTONI EXPERIENCE - Sistema QR + Video AI
 
-## Versión 2.6.0 | Febrero 2026
+## Versión 2.7.0 | 5 Febrero 2026
 
 ---
 
 ## Resumen Ejecutivo
 
-Sistema completo para Cesantoni que genera landing pages personalizadas por tienda y producto, códigos QR/NFC únicos para tracking, videos con IA usando Veo 3.1, y asistente de chat con Gemini.
+Sistema completo para Cesantoni que genera landing pages premium personalizadas por tienda y producto, códigos QR/NFC únicos para tracking, videos con IA usando Veo 3.0, y asistente de chat con Gemini.
 
 **Métricas:**
-- 123 productos con datos enriquecidos
+- 123 productos con datos enriquecidos y galerías
+- 81 productos con specs técnicas completas
+- 122 productos con productos relacionados
+- 19 videos generados con IA (Veo 3.0/2.0)
 - 407 tiendas con datos de contacto
 - 16 distribuidores
-- 13 videos generados con IA
 - Videos almacenados en Google Cloud Storage
+- Landing page premium con diseño gold/negro
 - Chat IA con Gemini 2.0 Flash
 
 **URLs:**
@@ -282,6 +285,39 @@ NODE_ENV=production
 ---
 
 ## Changelog
+
+### v2.7.0 (5 Feb 2026)
+- **Landing Page Premium Rediseñada**
+  - Video hero fullscreen con overlay elegante
+  - Logo oficial Cesantoni en header y footer
+  - Paleta gold/negro premium (Cormorant Garamond + Montserrat)
+  - Animaciones fadeInUp y scroll indicator
+  - Header fijo con efecto blur al scroll
+
+- **Galería de Productos**
+  - Grid responsive de imágenes del producto
+  - Lightbox con navegación por teclado (←/→/Esc)
+  - Imágenes filtradas (solo del producto, sin logos/iconos)
+  - 123 productos con galerías actualizadas
+
+- **Descripciones Duales**
+  - Hero: descripción inspiracional/emocional
+  - Producto: descripción técnica auto-generada según specs
+
+- **Especificaciones Técnicas Premium**
+  - 8 specs siempre visibles con defaults inteligentes
+  - Formato, PEI, Absorción, Acabado, Tipo, Uso, Mohs, Composición
+  - 81 productos actualizados con specs scrapeadas de cesantoni.com.mx
+
+- **Productos Relacionados**
+  - 4 productos de la misma categoría
+  - Cards con hover effect
+  - 122 productos con relacionados generados
+
+- **Videos Regenerados**
+  - 19 videos con Veo 3.0/2.0 usando imágenes reales
+  - Videos que coinciden con el color/textura del producto
+  - Almacenados en Google Cloud Storage
 
 ### v2.6.0 (3 Feb 2026)
 - Visualizador de espacios: ver piso en sala/cocina/baño/recámara/terraza
