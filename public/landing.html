@@ -680,6 +680,81 @@
             .gallery-grid { grid-template-columns: 1fr 1fr; }
         }
 
+        /* Chat IA */
+        .chat-container { position: fixed; bottom: 25px; left: 25px; z-index: 99; }
+        .chat-fab {
+            width: 56px; height: 56px; border-radius: 50%;
+            background: var(--gold); border: none; color: var(--black);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 20px rgba(201,169,98,0.4);
+            transition: all 0.3s ease;
+        }
+        .chat-fab:hover { transform: scale(1.1); box-shadow: 0 6px 30px rgba(201,169,98,0.5); }
+        .chat-window {
+            display: none; position: absolute; bottom: 70px; left: 0;
+            width: 340px; max-height: 460px; background: var(--charcoal);
+            border: 1px solid var(--gray-dark); flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        .chat-window.open { display: flex; }
+        .chat-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 18px; background: var(--gold); color: var(--black);
+        }
+        .chat-header-title { font-weight: 600; font-size: 0.85rem; letter-spacing: 0.05em; }
+        .chat-close {
+            background: none; border: none; color: var(--black);
+            font-size: 1.1rem; cursor: pointer; padding: 0; line-height: 1;
+        }
+        .chat-messages {
+            flex: 1; overflow-y: auto; padding: 16px;
+            display: flex; flex-direction: column; gap: 10px;
+            max-height: 280px; min-height: 120px;
+        }
+        .chat-msg {
+            padding: 10px 14px; font-size: 0.85rem; line-height: 1.5;
+            max-width: 85%; word-wrap: break-word;
+        }
+        .chat-msg.bot {
+            background: var(--gray-dark); color: var(--gray-light);
+            align-self: flex-start; border-left: 3px solid var(--gold);
+        }
+        .chat-msg.user {
+            background: var(--gold-dark); color: var(--black);
+            align-self: flex-end;
+        }
+        .chat-msg.typing { opacity: 0.6; font-style: italic; }
+        .chat-suggestions {
+            display: flex; gap: 6px; padding: 8px 16px; flex-wrap: wrap;
+        }
+        .chat-suggestions button {
+            background: var(--gray-dark); border: 1px solid var(--gray);
+            color: var(--gray-light); padding: 5px 10px; font-size: 0.7rem;
+            cursor: pointer; transition: all 0.2s ease;
+        }
+        .chat-suggestions button:hover { border-color: var(--gold); color: var(--gold); }
+        .chat-input-row {
+            display: flex; border-top: 1px solid var(--gray-dark);
+        }
+        .chat-input-row input {
+            flex: 1; background: var(--black); border: none; color: var(--white);
+            padding: 12px 16px; font-size: 0.85rem; outline: none;
+            font-family: 'Montserrat', sans-serif;
+        }
+        .chat-input-row input::placeholder { color: var(--gray); }
+        .chat-send {
+            background: var(--gold); border: none; color: var(--black);
+            padding: 12px 16px; cursor: pointer; font-size: 1rem;
+            transition: background 0.2s;
+        }
+        .chat-send:hover { background: var(--gold-light); }
+
+        @media (max-width: 768px) {
+            .chat-container { left: 15px; bottom: 15px; }
+            .chat-window { width: calc(100vw - 30px); left: 0; }
+            .chat-fab { width: 48px; height: 48px; }
+        }
+
         /* Hide sections without data */
         .hidden { display: none !important; }
     </style>
@@ -834,6 +909,31 @@
     <div class="error-state" id="error-state" style="display: none;">
         <h1>Producto no encontrado</h1>
         <p>El producto que buscas no existe o fue removido.</p>
+    </div>
+
+    <!-- Chat IA -->
+    <div class="chat-container" id="chat-container">
+        <div class="chat-window" id="chat-window">
+            <div class="chat-header">
+                <span class="chat-header-title">Asistente Cesantoni</span>
+                <button class="chat-close" onclick="toggleChat()">✕</button>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <div class="chat-msg bot">Hola, soy tu asistente Cesantoni. Preguntame sobre este producto.</div>
+            </div>
+            <div class="chat-suggestions" id="chat-suggestions">
+                <button onclick="sendSuggestion(this)">¿Es resistente?</button>
+                <button onclick="sendSuggestion(this)">¿Donde se puede usar?</button>
+                <button onclick="sendSuggestion(this)">¿Como se limpia?</button>
+            </div>
+            <div class="chat-input-row">
+                <input type="text" id="chat-input" placeholder="Escribe tu pregunta..." onkeydown="if(event.key==='Enter')sendChat()">
+                <button class="chat-send" onclick="sendChat()">➤</button>
+            </div>
+        </div>
+        <button class="chat-fab" id="chat-fab" onclick="toggleChat()">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
+        </button>
     </div>
 
     <!-- WhatsApp CTA -->
@@ -1183,6 +1283,82 @@
         window.addEventListener('scroll', () => {
             document.getElementById('header').classList.toggle('scrolled', window.scrollY > 100);
         });
+
+        // Chat IA
+        function toggleChat() {
+            const win = document.getElementById('chat-window');
+            win.classList.toggle('open');
+        }
+
+        function sendSuggestion(btn) {
+            document.getElementById('chat-input').value = btn.textContent;
+            document.getElementById('chat-suggestions').style.display = 'none';
+            sendChat();
+        }
+
+        async function sendChat() {
+            const input = document.getElementById('chat-input');
+            const msg = input.value.trim();
+            if (!msg) return;
+
+            const messages = document.getElementById('chat-messages');
+
+            // User message
+            const userDiv = document.createElement('div');
+            userDiv.className = 'chat-msg user';
+            userDiv.textContent = msg;
+            messages.appendChild(userDiv);
+            input.value = '';
+
+            // Typing indicator
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'chat-msg bot typing';
+            typingDiv.textContent = 'Escribiendo...';
+            messages.appendChild(typingDiv);
+            messages.scrollTop = messages.scrollHeight;
+
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: msg,
+                        product: product ? {
+                            name: product.name,
+                            category: product.category,
+                            type: product.type,
+                            format: product.format,
+                            finish: product.finish,
+                            price: product.base_price,
+                            description: product.description,
+                            pei: product.pei,
+                            uses: product.usage || product.uses
+                        } : null,
+                        store: store ? {
+                            name: store.name,
+                            address: store.address,
+                            city: store.city,
+                            state: store.state,
+                            phone: store.phone || store.whatsapp
+                        } : null
+                    })
+                });
+                const data = await res.json();
+                typingDiv.remove();
+
+                const botDiv = document.createElement('div');
+                botDiv.className = 'chat-msg bot';
+                botDiv.textContent = data.reply || 'Lo siento, no pude responder. Intenta de nuevo.';
+                messages.appendChild(botDiv);
+            } catch (err) {
+                typingDiv.remove();
+                const errDiv = document.createElement('div');
+                errDiv.className = 'chat-msg bot';
+                errDiv.textContent = 'Error de conexion. Intenta de nuevo.';
+                messages.appendChild(errDiv);
+            }
+            messages.scrollTop = messages.scrollHeight;
+        }
 
         // Init
         init();

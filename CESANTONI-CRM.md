@@ -6,7 +6,7 @@
 
 ## Resumen Ejecutivo
 
-Sistema completo para Cesantoni que genera landing pages premium personalizadas por tienda y producto, códigos QR/NFC únicos para tracking, videos con IA usando Veo 3.0, y asistente de chat con Gemini.
+Sistema completo para Cesantoni que genera landing pages premium personalizadas por tienda y producto, códigos QR/NFC únicos para tracking, videos con IA (Veo 2.0/3.0), y asistente de chat con Gemini.
 
 **Métricas:**
 - 123 productos con datos enriquecidos y galerías
@@ -48,7 +48,7 @@ Sistema completo para Cesantoni que genera landing pages premium personalizadas 
 │   │        │        │        │        │        │        │   │
 │ ┌─▼──┐ ┌───▼──┐ ┌───▼──┐ ┌───▼──┐ ┌───▼──┐ ┌───▼──┐     │
 │ │SQL │ │Veo   │ │ GCS  │ │Gemini│ │ QR   │ │ NFC  │     │
-│ │ite │ │ 3.1  │ │Videos│ │ Chat │ │Code  │ │ Tags │     │
+│ │ite │ │2.0/3 │ │Videos│ │ Chat │ │Code  │ │ Tags │     │
 │ └────┘ └──────┘ └──────┘ └──────┘ └──────┘ └──────┘     │
 │                                                              │
 └─────────────────────────────────────────────────────────────┘
@@ -87,86 +87,56 @@ cesantoni-crm/
 
 ## Funcionalidades del Landing (/p/:slug)
 
-### 1. Contenido Dinámico
-- Hero con imagen del producto
-- Video con IA (si existe)
-- Beneficios personalizados por tipo/categoría
-- Especificaciones técnicas
-- Galería de imágenes
-- Productos similares (upselling)
-- Información de tienda
-- Botón WhatsApp
+### 1. Video Hero Fullscreen
+- Video generado con IA (Veo) como fondo si existe
+- Fallback a imagen del producto si no hay video
+- Overlay con gradiente negro
+- Tag de categoría, título del producto, descripción inspiracional
+- Animación fadeInUp escalonada
+- Scroll indicator animado
 
-### 2. Calculadora de m²
-- Input de metros cuadrados
-- Calcula cajas necesarias
-- Calcula piezas totales
-- Muestra costo total
-- Botón para generar cotización
+### 2. Galería de Imágenes
+- Grid responsive de imágenes del producto
+- Lightbox con navegación (click, flechas ←/→, Esc)
+- Se oculta si no hay galería
 
-### 3. Sistema de Favoritos
-- Botón corazón para guardar
-- Almacenamiento en localStorage
-- Página `/favoritos.html` para ver todos
-- Compartir favoritos por WhatsApp
+### 3. Información del Producto
+- Imagen principal con borde dorado decorativo
+- Categoría, nombre, formato + acabado
+- Descripción técnica auto-generada según specs del producto
+- 4 mini-specs destacadas (PEI, Mohs, Absorción, Uso)
 
-### 4. Comparador de Productos
-- Agregar hasta 4 productos
-- Badge flotante con contador
-- Página `/comparar.html` con tabla lado a lado
-- Compara: precio, formato, tipo, resistencia, etc.
+### 4. Beneficios
+- 3 cards fijas: Resistencia Superior, Diseño Único, Garantía Premium
+- Hover con barra dorada animada + translateY
 
-### 5. Compartir
-- WhatsApp: mensaje pre-formateado
-- Email: asunto y cuerpo con detalles
-- Copiar link: al portapapeles
+### 5. Especificaciones Técnicas
+- Grid de 8 specs siempre visibles con defaults inteligentes
+- Formato, PEI, Absorción, Acabado, Tipo, Uso, Mohs, Calidad de Exportación
+- Fondo cream/blanco para contraste
 
-### 6. Solicitar Muestra
-- Modal con formulario
-- Campos: nombre, teléfono, email, dirección
-- Se guarda en base de datos
-- Notificación al vendedor
+### 6. Productos Relacionados
+- 4 productos de la misma categoría
+- Cards con imagen, nombre, categoría
+- Hover con scale + translateY
+- Link a su landing individual
 
-### 7. Cotización Instantánea
-- Genera cotización con datos del cálculo
-- Campos: nombre, email, teléfono
-- Se guarda en base de datos
+### 7. Información de Tienda
+- Nombre, dirección, teléfono
+- Mapa de Google Maps embebido (si hay lat/lng)
+- Promo banner dorado (si viene en URL params)
 
-### 8. Descuento por Escaneo
-- Modal automático en primera visita (5 seg)
-- Código de descuento 5% único
-- Válido solo en tienda actual
-- Se guarda en localStorage para no repetir
+### 8. WhatsApp CTA
+- Botón flotante fijo (esquina inferior derecha)
+- Mensaje pre-formateado con nombre del producto
+- Solo aparece si hay número de WhatsApp
 
 ### 9. Chat IA (Gemini 2.0 Flash)
-- Botón flotante en esquina inferior izquierda
-- Responde sobre el producto actual
-- Conoce: características, instalación, mantenimiento, precios
-- Sugerencias rápidas pre-configuradas
-- Contexto de tienda incluido
-
-### 10. Visualizador de Espacios
-- Tabs: Sala, Cocina, Baño, Recámara, Terraza
-- Muestra imagen del espacio con overlay del piso
-- Textura del producto se superpone en el piso
-- Ayuda al cliente a visualizar el resultado
-
-### 11. Meses Sin Intereses (MSI)
-- Cards con opciones: 3, 6 y 12 meses
-- Se actualiza automáticamente con la calculadora
-- Muestra monto mensual por opción
-- Logos de bancos participantes
-
-### 12. Stock en Tiempo Real
-- Indicador visual (verde/amarillo/rojo)
-- Muestra cajas disponibles en tienda
-- Se actualiza según tienda seleccionada
-- Alerta de "últimas unidades"
-
-### 13. Notificación al Vendedor
-- Badge automático cuando cliente escanea
-- Registra el escaneo en sesión
-- Preparado para integración WhatsApp Business API
+- Botón flotante dorado en esquina inferior izquierda
+- Ventana de chat con mensajes estilo bot/usuario
+- 3 sugerencias rápidas: resistencia, uso, limpieza
+- Endpoint `/api/chat` con contexto de producto + tienda
+- Respuestas en español mexicano, máx 3 oraciones
 
 ---
 
@@ -190,7 +160,7 @@ GET    /api/distributors          # Lista distribuidores
 
 ### Videos
 ```
-POST   /api/video/generate        # Generar con Veo 3.1
+POST   /api/video/generate        # Generar con Veo 2.0/3.0
 GET    /api/videos                # Lista videos
 ```
 
@@ -276,7 +246,7 @@ user_agent, referrer, utm_source, utm_medium, utm_campaign
 
 ```
 BASE_URL=https://cesantoni-experience.onrender.com
-GOOGLE_API_KEY=AIza...           # Para Veo 3.1 y Gemini
+GOOGLE_API_KEY=AIza...           # Para Veo 2.0/3.0 y Gemini
 GCS_BUCKET=cesantoni-videos
 GCS_CREDENTIALS={"type":"service_account",...}
 NODE_ENV=production
@@ -327,22 +297,10 @@ NODE_ENV=production
   - Almacenados en Google Cloud Storage
 
 ### v2.6.0 (3 Feb 2026)
-- Visualizador de espacios: ver piso en sala/cocina/baño/recámara/terraza
-- Meses sin intereses: calculador 3/6/12 MSI
-- Stock en tiempo real: disponibilidad en tienda
-- Notificación al vendedor: badge cuando escanean QR/NFC
-
-### v2.5.0 (3 Feb 2026)
-- Calculadora de m² con costo total
-- Sistema de favoritos con localStorage
-- Comparador de hasta 4 productos
-- Compartir por WhatsApp/Email/Link
-- Solicitar muestra gratis (modal + API)
-- Cotización instantánea (modal + API)
-- Sistema de reviews/opiniones
-- Descuento 5% en primer escaneo
-- Chat IA con Gemini 2.0 Flash
-- Páginas: /comparar.html, /favoritos.html
+- Endpoints backend para: samples, quotes, reviews, promotions
+- Chat IA backend con Gemini 2.0 Flash (`/api/chat`)
+- Tracking de scans QR/NFC con analytics
+- Páginas admin: comparar.html, favoritos.html, productos-edit.html
 
 ### v2.4.0 (3 Feb 2026)
 - Google Cloud Storage para videos
