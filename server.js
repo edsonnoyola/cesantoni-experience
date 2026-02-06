@@ -1321,6 +1321,134 @@ app.get('/api/products/:id/reviews', (req, res) => {
 });
 
 // =====================================================
+// TERRA - Asistente de Voz Figital
+// =====================================================
+
+app.get('/terra', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'terra.html'));
+});
+
+app.post('/api/terra', async (req, res) => {
+  try {
+    const { message, current_product_id } = req.body;
+
+    if (!GOOGLE_API_KEY) {
+      return res.status(500).json({ error: 'API no configurada' });
+    }
+
+    // Get current product context if viewing one
+    let currentProduct = null;
+    if (current_product_id) {
+      currentProduct = queryOne('SELECT * FROM products WHERE id = ?', [parseInt(current_product_id)]);
+    }
+
+    // Get all products for recommendations (name, category, key specs)
+    const products = query(`
+      SELECT id, name, slug, sku, category, type, format, finish, pei,
+             water_absorption, mohs, usage, image_url, description
+      FROM products WHERE active = 1 ORDER BY name
+    `);
+
+    // Build product catalog summary for Gemini
+    const catalog = products.map(p =>
+      `- ID:${p.id} | ${p.name} | ${p.category || 'PREMIUM'} | ${p.type || 'PORCELANICO'} | Formato:${p.format || 'N/A'} | PEI:${p.pei || 'N/A'} | Acabado:${p.finish || 'N/A'} | Uso:${p.usage || 'INT/EXT'}`
+    ).join('\n');
+
+    const systemPrompt = `Eres Terra, la asistente de voz de Cesantoni.
+Personalidad: profesional y elegante, como una experta en diseno de interiores. Hablas en espanol mexicano natural.
+Tu tono es calido pero sofisticado. Nunca usas emojis.
+
+CATALOGO DE PRODUCTOS DISPONIBLES:
+${catalog}
+
+${currentProduct ? `PRODUCTO QUE EL CLIENTE ESTA VIENDO AHORA:
+Nombre: ${currentProduct.name}
+Categoria: ${currentProduct.category}
+Tipo: ${currentProduct.type}
+Formato: ${currentProduct.format}
+Acabado: ${currentProduct.finish}
+PEI: ${currentProduct.pei}
+Uso: ${currentProduct.usage}
+Descripcion: ${currentProduct.description || 'Piso premium Cesantoni'}
+` : ''}
+
+INSTRUCCIONES CRITICAS:
+1. Si el usuario busca algo especifico (cocina, bano, exterior, madera, marmol, etc), recomienda EL MEJOR producto del catalogo para esa necesidad.
+2. Si menciona un numero, busca el producto con ese ID.
+3. Si pregunta sobre el producto actual, responde con lo que sabes.
+4. Respuestas CORTAS: maximo 2-3 oraciones porque se leen en voz alta.
+5. Siempre menciona el nombre del producto.
+6. Si recomiendas un producto, explica brevemente por que es bueno para su necesidad.
+
+RESPONDE UNICAMENTE EN JSON VALIDO (sin markdown, sin backticks):
+{"intent":"recommend|lookup|question|greeting","speech":"lo que diras en voz alta","product_id":null,"action":"show_product|none"}
+
+- intent: tipo de consulta
+- speech: tu respuesta hablada (CORTA, natural, como si platicaras)
+- product_id: ID numerico del producto a mostrar (null si no aplica)
+- action: "show_product" si hay que mostrar un producto, "none" si no`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: systemPrompt },
+              { text: `Cliente dice: "${message}"` }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 300
+          }
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (data.error) {
+      console.error('Terra Gemini error:', data.error);
+      return res.json({ speech: 'Disculpa, tuve un problema. Podrias repetir tu pregunta?', intent: 'error', product: null, action: 'none' });
+    }
+
+    const rawReply = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    // Parse JSON from Gemini response
+    let parsed;
+    try {
+      // Clean potential markdown wrapping
+      const cleaned = rawReply.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+      parsed = JSON.parse(cleaned);
+    } catch (e) {
+      // If JSON parsing fails, use raw text as speech
+      console.log('Terra parse error, raw:', rawReply);
+      parsed = { intent: 'question', speech: rawReply.substring(0, 200), product_id: null, action: 'none' };
+    }
+
+    // If there's a product_id, fetch the full product
+    let productData = null;
+    if (parsed.product_id) {
+      productData = queryOne('SELECT id, name, slug, sku, category, type, format, finish, image_url FROM products WHERE id = ?', [parseInt(parsed.product_id)]);
+    }
+
+    res.json({
+      intent: parsed.intent || 'question',
+      speech: parsed.speech || 'Disculpa, no entendi bien. Podrias decirlo de otra forma?',
+      product: productData,
+      action: parsed.action || 'none'
+    });
+
+  } catch (err) {
+    console.error('Terra error:', err);
+    res.json({ speech: 'Hubo un error de conexion. Intenta de nuevo.', intent: 'error', product: null, action: 'none' });
+  }
+});
+
+// =====================================================
 // AI CHAT - Asistente Cesantoni
 // =====================================================
 

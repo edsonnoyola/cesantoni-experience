@@ -1,12 +1,12 @@
 # CESANTONI EXPERIENCE - Sistema QR + Video AI
 
-## Versión 2.7.0 | 5 Febrero 2026
+## Versión 2.8.0 | 5 Febrero 2026
 
 ---
 
 ## Resumen Ejecutivo
 
-Sistema completo para Cesantoni que genera landing pages premium personalizadas por tienda y producto, códigos QR/NFC únicos para tracking, videos con IA (Veo 2.0/3.0), y asistente de chat con Gemini.
+Sistema completo para Cesantoni que genera landing pages premium personalizadas por tienda y producto, códigos QR/NFC únicos para tracking, videos con IA (Veo 2.0/3.0), asistente de chat con Gemini, y Terra: asistente de voz figital.
 
 **Métricas:**
 - 123 productos con datos enriquecidos y galerías
@@ -70,6 +70,7 @@ cesantoni-crm/
 ├── public/
 │   ├── index.html            # Dashboard principal
 │   ├── landing.html          # Landing con todas las features
+│   ├── terra.html            # Asistente de voz figital Terra
 │   ├── comparar.html         # Comparador de productos
 │   ├── favoritos.html        # Lista de favoritos
 │   ├── qr-tiendas.html       # Generador de QRs
@@ -183,6 +184,14 @@ POST   /api/reviews               # Crear review
 GET    /api/products/:id/reviews  # Reviews por producto
 ```
 
+### Terra (Asistente de Voz)
+```
+GET    /terra                     # Página de Terra
+POST   /api/terra                 # Enviar mensaje a Terra
+       Body: { message, current_product_id }
+       Response: { intent, speech, product, action }
+```
+
 ### Chat IA
 ```
 POST   /api/chat                  # Enviar mensaje al asistente
@@ -255,6 +264,24 @@ NODE_ENV=production
 ---
 
 ## Changelog
+
+### v2.8.0 (5 Feb 2026)
+- **Terra - Asistente de Voz Figital**
+  - Interfaz de voz con orbe animado gold/negro
+  - Web Speech API: reconocimiento y sintesis de voz en espanol mexicano
+  - Gemini 2.0 Flash con catalogo completo de productos
+  - Recomienda productos segun necesidad del cliente
+  - Busqueda por numero de exhibicion
+  - Muestra mini-card del producto con link a landing
+  - Sugerencias rapidas contextuales
+  - Fallback de texto para navegadores sin microfono
+  - Endpoint `/api/terra` con respuesta JSON estructurada
+  - Voz femenina, personalidad profesional elegante
+
+- **Chat IA en Landing**
+  - Boton flotante dorado en esquina inferior izquierda
+  - Ventana de chat con sugerencias rapidas
+  - Contexto de producto + tienda
 
 ### v2.7.0 (5 Feb 2026)
 - **Landing Page Premium Rediseñada**
