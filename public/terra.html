@@ -215,6 +215,50 @@
         }
         .app.listening .mic-label { color: #E74C3C; }
 
+        /* Scan button */
+        .scan-btn {
+            position: absolute; right: 20px; bottom: 100px;
+            width: 48px; height: 48px; border-radius: 50%;
+            background: var(--gray-dark); border: 1px solid var(--gold);
+            color: var(--gold); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s; z-index: 10;
+        }
+        .scan-btn:hover { background: var(--gold); color: var(--black); }
+        .scan-btn svg { width: 22px; height: 22px; }
+
+        /* QR Scanner overlay */
+        .qr-scanner {
+            position: fixed; inset: 0; z-index: 300;
+            background: rgba(0,0,0,0.95);
+            display: none; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .qr-scanner.show { display: flex; }
+        .qr-scanner video {
+            width: 280px; height: 280px; object-fit: cover;
+            border: 2px solid var(--gold); border-radius: 12px;
+        }
+        .qr-scanner-label {
+            color: var(--gold); font-size: 0.8rem; margin-top: 16px;
+            letter-spacing: 0.1em; text-transform: uppercase;
+        }
+        .qr-scanner-close {
+            margin-top: 24px; background: none; border: 1px solid var(--gray);
+            color: var(--white); padding: 10px 30px; cursor: pointer;
+            font-family: 'Montserrat', sans-serif; font-size: 0.8rem;
+        }
+        .nfc-badge {
+            position: absolute; left: 20px; bottom: 100px;
+            background: var(--gray-dark); border: 1px solid var(--gold);
+            color: var(--gold); padding: 6px 10px; border-radius: 20px;
+            font-size: 0.6rem; letter-spacing: 0.1em; display: none;
+            align-items: center; gap: 4px;
+        }
+        .nfc-badge.show { display: flex; }
+        .nfc-dot { width: 6px; height: 6px; border-radius: 50%; background: #4CAF50; animation: nfcPulse 2s infinite; }
+        @keyframes nfcPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
         /* Suggestions */
         .suggestions {
             display: flex; flex-wrap: wrap; justify-content: center;
@@ -413,6 +457,17 @@
             </div>
         </div>
 
+        <!-- Scan QR button -->
+        <button class="scan-btn" id="scan-btn" onclick="openScanner()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/>
+                <rect x="7" y="7" width="10" height="10" rx="1"/>
+            </svg>
+        </button>
+
+        <!-- NFC active badge -->
+        <div class="nfc-badge" id="nfc-badge"><div class="nfc-dot"></div> NFC activo</div>
+
         <!-- Mic -->
         <div class="mic-area">
             <button class="mic-btn" id="mic-btn" onclick="toggleListening()">
@@ -438,6 +493,13 @@
                 <button onclick="sendText(document.getElementById('text-input').value)">&#10148;</button>
             </div>
         </div>
+    </div>
+
+    <!-- QR Scanner overlay -->
+    <div class="qr-scanner" id="qr-scanner">
+        <video id="qr-video" autoplay playsinline></video>
+        <div class="qr-scanner-label">Apunta al QR del piso</div>
+        <button class="qr-scanner-close" onclick="closeScanner()">Cerrar</button>
     </div>
 
     <script>
@@ -999,8 +1061,118 @@
             suggestionsEl.style.display = 'flex';
         }
 
+        // ===== QR SCANNER (in-app, no external libs) =====
+        let scannerStream = null;
+        let scannerInterval = null;
+
+        function openScanner() {
+            const scanner = document.getElementById('qr-scanner');
+            const video = document.getElementById('qr-video');
+            scanner.classList.add('show');
+
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                .then(stream => {
+                    scannerStream = stream;
+                    video.srcObject = stream;
+
+                    // Use BarcodeDetector if available (Chrome/Android)
+                    if ('BarcodeDetector' in window) {
+                        const detector = new BarcodeDetector({ formats: ['qr_code'] });
+                        scannerInterval = setInterval(async () => {
+                            try {
+                                const barcodes = await detector.detect(video);
+                                if (barcodes.length > 0) {
+                                    handleScannedURL(barcodes[0].rawValue);
+                                }
+                            } catch (e) {}
+                        }, 500);
+                    }
+                })
+                .catch(err => {
+                    closeScanner();
+                    speak('No pude abrir la camara. Intenta escanear el QR con tu camara normal.');
+                });
+        }
+
+        function closeScanner() {
+            const scanner = document.getElementById('qr-scanner');
+            scanner.classList.remove('show');
+            if (scannerInterval) { clearInterval(scannerInterval); scannerInterval = null; }
+            if (scannerStream) { scannerStream.getTracks().forEach(t => t.stop()); scannerStream = null; }
+        }
+
+        function handleScannedURL(url) {
+            closeScanner();
+            try {
+                const parsed = new URL(url);
+                const scannedSlug = parsed.searchParams.get('product') || parsed.searchParams.get('producto');
+                if (scannedSlug) {
+                    loadProductBySlug(scannedSlug);
+                    return;
+                }
+                // Maybe it's a landing URL like /p/slug
+                const pathMatch = parsed.pathname.match(/\/p\/(.+)/);
+                if (pathMatch) {
+                    loadProductBySlug(pathMatch[1]);
+                    return;
+                }
+            } catch (e) {}
+            speak('No reconoci ese QR. Intenta con otro.');
+        }
+
+        async function loadProductBySlug(slug) {
+            if (!allProducts.length) {
+                try { const r = await fetch('/api/products'); allProducts = await r.json(); } catch(e) {}
+            }
+            const product = allProducts.find(p =>
+                p.slug === slug || p.sku === slug || String(p.id) === slug
+            );
+            if (product) {
+                currentProduct = product;
+                showProduct(product);
+                addToVisited(product);
+                soundProduct();
+
+                // Ask Terra to introduce it
+                processMessage(`Acabo de escanear el piso ${product.name}. Presentalo brevemente.`);
+            } else {
+                speak(`No encontre ese producto. Preguntame por nombre y te ayudo.`);
+            }
+        }
+
+        // ===== NFC LISTENER (Android Chrome - runs in background) =====
+        function initNFC() {
+            if ('NDEFReader' in window) {
+                const reader = new NDEFReader();
+                reader.scan().then(() => {
+                    document.getElementById('nfc-badge').classList.add('show');
+
+                    reader.onreading = (event) => {
+                        for (const record of event.message.records) {
+                            if (record.recordType === 'url') {
+                                const decoder = new TextDecoder();
+                                handleScannedURL(decoder.decode(record.data));
+                                return;
+                            }
+                            if (record.recordType === 'text') {
+                                const decoder = new TextDecoder();
+                                const text = decoder.decode(record.data);
+                                if (text.startsWith('http')) {
+                                    handleScannedURL(text);
+                                    return;
+                                }
+                            }
+                        }
+                    };
+                }).catch(err => {
+                    // NFC not available or permission denied - silently ignore
+                });
+            }
+        }
+
         // ===== START =====
         initWelcome();
+        initNFC();
     </script>
 </body>
 </html>
