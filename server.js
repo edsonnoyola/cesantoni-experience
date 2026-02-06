@@ -808,51 +808,77 @@ app.post('/api/video/generate', async (req, res) => {
   
   const { product_id, product_name, image_url } = req.body;
   let { product_description } = req.body;
-  
-  // Si no viene descripción, buscarla en la DB
-  if (!product_description && product_id) {
-    const product = queryOne('SELECT description FROM products WHERE id = ?', [product_id]);
-    if (product && product.description) {
-      product_description = product.description;
+
+  // Buscar datos completos del producto en DB
+  let dbProduct = null;
+  if (product_id) {
+    dbProduct = queryOne('SELECT * FROM products WHERE id = ?', [product_id]);
+    if (dbProduct && dbProduct.description && !product_description) {
+      product_description = dbProduct.description;
       console.log('📝 Descripción obtenida de DB');
     }
   }
   const videoId = Date.now();
   const slug = (product_name || 'video').toLowerCase().replace(/\s+/g, '_');
-  
+
   console.log('🎬 Generando video para:', product_name);
-  console.log('📷 Imagen de referencia:', image_url);
   res.json({ success: true, videoId, slug, message: 'Generando video...' });
 
   try {
-    // Descargar imagen del producto y convertir a base64
+    // Buscar imagen close-up del piso real (patrón _C1) en la galería
+    let tileImageUrl = image_url;
+    if (dbProduct && dbProduct.gallery) {
+      try {
+        const gallery = JSON.parse(dbProduct.gallery || '[]');
+        const productNameClean = (product_name || '').toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+        // Buscar imagen C1 que coincida con el nombre del producto
+        const c1Image = gallery.find(url => {
+          const urlUpper = url.toUpperCase();
+          return urlUpper.includes('_C1') && (urlUpper.includes(productNameClean) || urlUpper.includes(productNameClean.replace(/_/g, '')));
+        });
+        // Fallback: cualquier imagen C1
+        const anyC1 = gallery.find(url => url.toUpperCase().includes('_C1'));
+        if (c1Image) {
+          tileImageUrl = c1Image;
+          console.log('🎯 Usando imagen close-up del piso:', c1Image);
+        } else if (anyC1) {
+          tileImageUrl = anyC1;
+          console.log('🎯 Usando imagen C1 de galería:', anyC1);
+        }
+      } catch (e) {
+        console.log('⚠️ Error parseando galería:', e.message);
+      }
+    }
+
+    // Descargar imagen del piso y convertir a base64
     let imageBase64 = null;
     let imageMimeType = 'image/jpeg';
-    
-    if (image_url) {
-      console.log('📥 Descargando imagen del producto...');
+
+    if (tileImageUrl) {
+      console.log('📥 Descargando imagen close-up del piso:', tileImageUrl);
       try {
-        const imgResponse = await fetch(image_url);
+        const imgResponse = await fetch(tileImageUrl);
         const imgBuffer = await imgResponse.arrayBuffer();
         imageBase64 = Buffer.from(imgBuffer).toString('base64');
-        
-        // Detectar mime type
-        if (image_url.includes('.png')) imageMimeType = 'image/png';
-        else if (image_url.includes('.webp')) imageMimeType = 'image/webp';
-        
+
+        if (tileImageUrl.includes('.png')) imageMimeType = 'image/png';
+        else if (tileImageUrl.includes('.webp')) imageMimeType = 'image/webp';
+
         console.log('✅ Imagen descargada y convertida a base64');
       } catch (imgErr) {
         console.log('⚠️ No se pudo descargar imagen, continuando sin referencia:', imgErr.message);
       }
     }
 
-    // Construir prompt con narración para que Veo genere la voz
-    let prompt = `Cinematic slow motion video of ceramic tiles and interior design. Gentle camera movement. Professional architecture photography style. Elegant home decor. Soft ambient lighting. No people.`;
-    
-    // Si hay descripción, agregar narración al prompt
+    // Prompt enfocado en mostrar el piso real
+    const finish = dbProduct?.finish || 'mate';
+    const category = dbProduct?.category || 'ceramico';
+    const format = dbProduct?.format || '';
+    let prompt = `Cinematic close-up video of this exact ceramic tile. Camera slowly pans across the tile surface showing the texture, pattern and ${finish} finish. Then camera pulls back to reveal the tile installed in an elegant room. Soft ambient lighting highlights the tile details. Professional interior design photography. No people. No text.`;
+
     if (product_description) {
-      prompt = `A warm female voice with Mexican Spanish accent narrates: "${product_description}". Cinematic slow motion video showcasing elegant ceramic floor tiles. Gentle camera pan. Soft piano music in background. Professional interior design photography. Elegant ambient lighting. No people.`;
-      console.log('🎤 Prompt incluye narración de voz');
+      prompt = `Cinematic close-up video of this exact ${category} tile called "${product_name}". Camera slowly pans across the tile surface showing every detail of its unique pattern and ${finish} finish. Then pulls back to reveal it beautifully installed in a modern room. ${product_description}. Soft ambient lighting. Professional photography. No people. No text.`;
+      console.log('🎤 Prompt con descripción del producto');
     }
 
     let result;
