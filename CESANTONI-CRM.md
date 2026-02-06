@@ -61,6 +61,7 @@ Asistente de voz en el celular del cliente. Funciona como "tu amiga experta en p
 
 ### Que funciona
 - Pantalla de bienvenida pide nombre del cliente
+- **Auto-resume sesión**: si ya dio su nombre (24h), salta welcome al escanear nuevo producto
 - Personalización: usa el nombre del cliente en toda la conversación
 - Reconocimiento de voz (Web Speech API es-MX)
 - Orbe animado gold/negro con imagen del producto
@@ -73,6 +74,9 @@ Asistente de voz en el celular del cliente. Funciona como "tu amiga experta en p
 - Sonidos sutiles (Web Audio API)
 - Fallback de texto para navegadores sin micrófono
 - Auto-carga producto desde URL: `/terra?product=slug&store=tienda`
+- **Escáner QR integrado**: botón en Terra abre cámara, escanea QR sin salir de la app
+- **NFC auto-detección**: en Android Chrome, lee NFC tags automáticamente en background
+- Personalidad "amiga experta": platicadora, hace preguntas, guía al cliente
 
 ### Voz - Gemini 2.5 Flash TTS
 - Voz natural generada con Gemini 2.5 Flash TTS Preview (voz "Kore")
@@ -80,14 +84,22 @@ Asistente de voz en el celular del cliente. Funciona como "tu amiga experta en p
 - Audio se reproduce en background (texto aparece primero)
 - Fallback a Web Speech API si TTS no disponible
 - **Requiere**: API key con permiso "Generative Language API" (ya configurado)
-- **Cloud Text-to-Speech API**: Habilitada pero NO funciona con la API key actual (requiere permisos adicionales). Se usa Gemini TTS en su lugar.
+
+### Customer Journey en Tienda
+1. Cliente escanea QR de entrada → Terra pide nombre (solo la primera vez)
+2. Camina por la tienda → usa botón QR de Terra o acerca cel a NFC
+3. Terra carga cada piso SIN salir de la app → lo presenta y platica
+4. Cliente pregunta lo que quiera → Terra responde con knowledge base
+5. Al final → resumen por WhatsApp con todos los pisos vistos
 
 ### Que falta / Issues conocidos
-- Respuestas a veces se cortan (modelo gemini-2.0-flash con 500 tokens, monitorear)
+- Respuestas a veces se cortan (gemini-2.0-flash, 500 tokens, monitorear)
 - Voz TTS tarda ~3-4 seg en generarse (texto aparece inmediato)
-- Personalidad: ajustada a "amiga experta" pero seguir iterando el tono
+- Seguir iterando personalidad/tono
+- Generar QR stickers per-producto para imprimir en tienda (qr-tiendas.html)
 - Números de exhibición (display_number) no asignados todavía
-- No hay "always listening" - es push-to-talk
+- NFC no funciona en iPhone (limitación de Apple, usar QR scanner)
+- BarcodeDetector API no disponible en Firefox/Safari (funciona en Chrome/Android)
 
 ### URLs de Terra
 ```
