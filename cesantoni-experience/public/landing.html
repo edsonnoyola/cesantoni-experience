@@ -25,7 +25,8 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html { scroll-behavior: smooth; }
+        html { scroll-behavior: smooth; overflow-x: hidden; }
+        body { overflow-x: hidden; }
 
         body {
             font-family: 'Montserrat', sans-serif;
@@ -664,11 +665,15 @@
         }
 
         @media (max-width: 768px) {
-            section { padding: 70px 25px; }
+            section { padding: 70px 25px; overflow-x: hidden; }
             .header { padding: 15px 25px; }
             .video-hero-content { padding: 0 25px 60px; }
             .benefits-grid { grid-template-columns: 1fr; }
-            .specs-grid { grid-template-columns: repeat(2, 1fr); }
+            .specs { overflow: hidden; }
+            .specs-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .spec-item { padding: 20px 15px; }
+            .spec-value { font-size: 1.2rem; white-space: nowrap; }
+            .spec-label { font-size: 0.6rem; }
             .related-grid { grid-template-columns: 1fr 1fr; }
             .product-specs-mini { grid-template-columns: 1fr; }
             .whatsapp-cta { right: 15px; bottom: 15px; padding: 14px 20px; }
