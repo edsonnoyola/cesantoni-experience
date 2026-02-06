@@ -1420,7 +1420,7 @@ RESPONDE SOLO JSON (corto): {"intent":"recommend|lookup|question|greeting","spee
     contents.push({ role: 'user', parts: [{ text: message }] });
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GOOGLE_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1428,7 +1428,7 @@ RESPONDE SOLO JSON (corto): {"intent":"recommend|lookup|question|greeting","spee
           contents,
           generationConfig: {
             temperature: 0.8,
-            maxOutputTokens: 400
+            maxOutputTokens: 500
           }
         })
       }
