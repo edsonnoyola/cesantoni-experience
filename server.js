@@ -1330,7 +1330,7 @@ app.get('/terra', (req, res) => {
 
 app.post('/api/terra', async (req, res) => {
   try {
-    const { message, customer_name, store_name, current_product_id } = req.body;
+    const { message, customer_name, store_name, current_product_id, visited_products } = req.body;
 
     if (!GOOGLE_API_KEY) {
       return res.status(500).json({ error: 'API no configurada' });
@@ -1377,6 +1377,9 @@ Uso: ${currentProduct.usage}
 Descripcion: ${currentProduct.description || 'Piso premium Cesantoni'}
 ` : ''}
 
+PRODUCTOS QUE ${clientName.toUpperCase()} YA VIO EN ESTA VISITA:
+${visited_products && visited_products.length > 0 ? visited_products.map((name, i) => `${i+1}. ${name}`).join('\n') : 'Ninguno todavia'}
+
 INSTRUCCIONES CRITICAS:
 1. Si el usuario busca algo especifico (cocina, bano, exterior, madera, marmol, etc), recomienda EL MEJOR producto del catalogo para esa necesidad.
 2. Si menciona un numero, busca el producto con ese ID.
@@ -1385,6 +1388,9 @@ INSTRUCCIONES CRITICAS:
 5. Siempre menciona el nombre del producto.
 6. Si recomiendas un producto, explica brevemente por que es bueno para su necesidad.
 7. Usa el nombre del cliente (${clientName}) de forma natural para personalizar la experiencia.
+8. Si pide COMPARAR con el anterior, compara el producto actual vs el ultimo que vio. Menciona diferencias clave (PEI, acabado, uso).
+9. NO repitas productos que ya vio, a menos que pida verlos de nuevo.
+10. Si ya vio varios productos, puedes referenciarlos: "${clientName}, este es parecido al que viste antes..."
 
 RESPONDE UNICAMENTE EN JSON VALIDO (sin markdown, sin backticks):
 {"intent":"recommend|lookup|question|greeting","speech":"lo que diras en voz alta","product_id":null,"action":"show_product|none"}
