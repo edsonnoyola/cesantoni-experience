@@ -426,9 +426,9 @@
 
         <!-- Suggestions -->
         <div class="suggestions" id="suggestions">
-            <button class="suggestion-btn" onclick="sendText(this.textContent)">Busco piso para cocina</button>
-            <button class="suggestion-btn" onclick="sendText(this.textContent)">Quiero algo para exterior</button>
-            <button class="suggestion-btn" onclick="sendText(this.textContent)">Que piso es mas resistente?</button>
+            <button class="suggestion-btn" onclick="sendText(this.textContent)">Quiero remodelar mi cocina</button>
+            <button class="suggestion-btn" onclick="sendText(this.textContent)">Tengo ninos y mascotas</button>
+            <button class="suggestion-btn" onclick="sendText(this.textContent)">Busco algo elegante para mi sala</button>
         </div>
 
         <!-- Text fallback -->
@@ -632,10 +632,10 @@
                         }
 
                         updateSuggestions([
-                            'Es resistente al agua?',
-                            'Como se limpia?',
-                            'Sirve para exterior?',
-                            'Recomiendame algo similar'
+                            'Me gusta! Cuentame mas',
+                            'Sirve para mi cocina?',
+                            'Se limpia facil?',
+                            'Que mas opciones hay?'
                         ]);
                     } catch (e) {
                         speak(`${customerName}, este es ${scannedProduct.name}. Preguntame lo que quieras sobre este piso.`);
@@ -646,7 +646,7 @@
 
             // Default greeting when no product scanned
             const storeGreet = storeName ? ` a ${storeName}` : ' a Cesantoni';
-            const greeting = `Hola ${customerName}, te doy la bienvenida${storeGreet}. Soy Terra, tu asistente personal. Hoy vas a vivir una experiencia figital: yo te guio por la tienda, y cada piso que te interese te explico sus materiales, resistencia, acabados, todo. Dime, que espacio quieres transformar?`;
+            const greeting = `Hola ${customerName}, que gusto! Soy Terra, tu amiga experta en pisos aqui${storeGreet}. Yo te voy a ayudar a encontrar el piso perfecto. Cuentame, que tienes en mente? Vas a remodelar algun espacio en especial?`;
 
             speechText.textContent = greeting;
             setTimeout(() => speak(greeting), 600);
@@ -948,46 +948,35 @@
             const suggestions = [];
             const cat = (product.category || '').toLowerCase();
             const finish = (product.finish || '').toLowerCase();
-            const usage = (product.usage || '').toLowerCase();
 
-            // Always: how to clean
-            suggestions.push('Como se limpia este piso?');
-
-            // Based on finish
-            if (finish.includes('mate') || finish.includes('textur')) {
-                suggestions.push('Es antiderrapante?');
-            } else if (finish.includes('brill') || finish.includes('pulid')) {
-                suggestions.push('Se resbala mucho?');
-            }
-
-            // Based on category/type
+            // Conversational suggestions based on product
             if (cat.includes('mader') || cat.includes('wood')) {
-                suggestions.push('Es mejor que madera real?');
-            } else if (cat.includes('marmol') || cat.includes('marble') || cat.includes('piedra') || cat.includes('stone')) {
-                suggestions.push('Es mejor que marmol natural?');
+                suggestions.push('Es mejor que poner madera real?');
+            } else if (cat.includes('marmol') || cat.includes('marble') || cat.includes('piedra')) {
+                suggestions.push('Se ve igual que marmol real?');
             }
 
-            // Usage-based
-            if (usage.includes('ext')) {
-                suggestions.push('Resiste heladas?');
-            } else {
-                suggestions.push('Sirve para exterior?');
+            if (finish.includes('mate') || finish.includes('textur')) {
+                suggestions.push('No me voy a resbalar verdad?');
+            } else if (finish.includes('brill') || finish.includes('pulid')) {
+                suggestions.push('Se marca mucho con las huellas?');
             }
 
-            // If they've seen others
+            suggestions.push('Como lo cuido y limpio?');
+
             if (visitedProducts.length >= 2) {
-                suggestions.push('Comparalo con el anterior');
+                suggestions.push('Cual me conviene mas de los que vi?');
+            } else {
+                suggestions.push('Que mas me recomiendas?');
             }
 
-            // General useful
-            suggestions.push('Para que espacio es ideal?');
+            suggestions.push('Lo puedo poner en mi bano?');
 
-            // WhatsApp if they've seen several
             if (visitedProducts.length >= 3) {
                 suggestions.push('Mandame el resumen por WhatsApp');
             }
 
-            return suggestions.slice(0, 4); // Max 4 suggestions
+            return suggestions.slice(0, 4);
         }
 
         function updateSuggestions(items) {
