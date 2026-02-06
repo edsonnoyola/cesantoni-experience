@@ -872,6 +872,70 @@
         let gallery = [];
         let currentImageIndex = 0;
 
+        function generateTechnicalDescription(p) {
+            const parts = [];
+
+            // Tipo de producto
+            if (p.type) {
+                parts.push(`Fabricado en ${p.type.toLowerCase()}`);
+            } else if (p.category === 'MADERA') {
+                parts.push('Porcelanico tipo madera de alta definicion');
+            } else if (p.category === 'MARMOL' || p.category === 'MÁRMOL') {
+                parts.push('Porcelanico tipo marmol con vetas naturales');
+            } else if (p.category === 'PIEDRA') {
+                parts.push('Porcelanico tipo piedra con textura autentica');
+            } else if (p.category === 'CEMENTO') {
+                parts.push('Porcelanico tipo cemento de estilo industrial');
+            } else {
+                parts.push('Porcelanico de alta calidad');
+            }
+
+            // Formato
+            if (p.format) {
+                parts.push(`en formato ${p.format}`);
+            }
+
+            // Acabado
+            if (p.finish) {
+                parts.push(`con acabado ${p.finish.toLowerCase()}`);
+            }
+
+            // Resistencia PEI
+            if (p.pei) {
+                const peiDesc = {
+                    '1': 'para trafico muy ligero',
+                    '2': 'para trafico ligero residencial',
+                    '3': 'para trafico moderado',
+                    '4': 'para alto trafico comercial',
+                    '5': 'para trafico intenso industrial'
+                };
+                parts.push(`. Resistencia PEI ${p.pei} ${peiDesc[p.pei] || ''}`);
+            }
+
+            // Uso
+            if (p.usage || p.uses) {
+                const uso = p.usage || p.uses;
+                parts.push(`. Ideal para uso en ${uso.toLowerCase()}`);
+            } else {
+                parts.push('. Apto para interiores y exteriores');
+            }
+
+            // Pasta/Tipo base
+            if (p.type && p.type.toLowerCase().includes('rectificado')) {
+                parts.push('. Bordes rectificados para juntas minimas');
+            }
+
+            // Absorcion de agua
+            if (p.water_absorption) {
+                parts.push(`. Absorcion de agua ${p.water_absorption}`);
+            }
+
+            // Cierre
+            parts.push('. Cumple con los mas altos estandares de calidad Cesantoni.');
+
+            return parts.join(' ').replace(/\s+\./g, '.').replace(/\.\s*\./g, '.');
+        }
+
         async function init() {
             if (!sku) {
                 showError();
@@ -950,7 +1014,7 @@
             document.getElementById('product-type').textContent = product.category || 'Porcelanico Premium';
             document.getElementById('product-name').textContent = product.name;
             document.getElementById('product-format').textContent = product.format ? `${product.format} | ${product.finish || 'Acabado Premium'}` : 'Formato Premium';
-            document.getElementById('product-description').textContent = product.description || 'Un piso de la mas alta calidad que transforma cualquier espacio.';
+            document.getElementById('product-description').textContent = generateTechnicalDescription(product);
 
             // Mini specs
             const miniSpecs = [];
