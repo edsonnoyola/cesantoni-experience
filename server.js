@@ -1554,22 +1554,27 @@ app.post('/api/tts', async (req, res) => {
       return res.status(500).json({ error: 'API no configurada' });
     }
 
+    // Use Gemini 2.5 Flash TTS - same Generative Language API, no extra permissions needed
     const response = await fetch(
-      `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GOOGLE_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          input: { text: text.substring(0, 500) },
-          voice: {
-            languageCode: 'es-MX',
-            name: 'es-MX-Neural2-A'
-          },
-          audioConfig: {
-            audioEncoding: 'MP3',
-            speakingRate: 1.0,
-            pitch: 0.5,
-            volumeGainDb: 0
+          contents: [{
+            parts: [{
+              text: `Habla en español mexicano, con tono cálido, profesional y elegante, como una experta en diseño de interiores. Di lo siguiente: ${text.substring(0, 500)}`
+            }]
+          }],
+          generationConfig: {
+            responseModalities: ['AUDIO'],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: 'Kore'
+                }
+              }
+            }
           }
         })
       }
@@ -1582,7 +1587,12 @@ app.post('/api/tts', async (req, res) => {
       return res.status(500).json({ error: 'TTS no disponible', detail: data.error.message || data.error.status, fallback: true });
     }
 
-    res.json({ audioContent: data.audioContent });
+    const audioData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (!audioData) {
+      return res.status(500).json({ error: 'No audio generated', fallback: true });
+    }
+
+    res.json({ audioContent: audioData, format: 'pcm' });
 
   } catch (err) {
     console.error('TTS error:', err);
