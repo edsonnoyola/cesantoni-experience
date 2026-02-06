@@ -870,16 +870,11 @@ app.post('/api/video/generate', async (req, res) => {
       }
     }
 
-    // Prompt enfocado en mostrar el piso real
+    // Prompt enfocado en mostrar el piso real - SIN TEXTO/LETRAS
     const finish = dbProduct?.finish || 'mate';
     const category = dbProduct?.category || 'ceramico';
-    const format = dbProduct?.format || '';
-    let prompt = `Cinematic close-up video of this exact ceramic tile. Camera slowly pans across the tile surface showing the texture, pattern and ${finish} finish. Then camera pulls back to reveal the tile installed in an elegant room. Soft ambient lighting highlights the tile details. Professional interior design photography. No people. No text.`;
-
-    if (product_description) {
-      prompt = `Cinematic close-up video of this exact ${category} tile called "${product_name}". Camera slowly pans across the tile surface showing every detail of its unique pattern and ${finish} finish. Then pulls back to reveal it beautifully installed in a modern room. ${product_description}. Soft ambient lighting. Professional photography. No people. No text.`;
-      console.log('🎤 Prompt con descripción del producto');
-    }
+    let prompt = `Slow cinematic video starting as an extreme close-up of this exact tile surface, showing its real texture and ${finish} finish in detail. Camera slowly pulls back to reveal the tile beautifully installed on a floor in an elegant modern room with soft ambient lighting. Absolutely no text, no letters, no words, no logos, no watermarks anywhere in the video. No people. Professional interior design cinematography.`;
+    console.log('🎬 Prompt (sin texto):', prompt.substring(0, 100));
 
     let result;
     try {
