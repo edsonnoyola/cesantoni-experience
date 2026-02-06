@@ -498,11 +498,15 @@
         // ===== WELCOME SCREEN =====
         function initWelcome() {
             const saved = localStorage.getItem('terra_customer');
+            let hasSession = false;
+
             if (saved) {
                 try {
                     const data = JSON.parse(saved);
                     if (data.name && data.timestamp > Date.now() - 86400000) {
+                        customerName = data.name;
                         document.getElementById('welcome-name').value = data.name;
+                        hasSession = true;
                     }
                 } catch (e) {}
             }
@@ -519,6 +523,14 @@
                         }
                     })
                     .catch(() => {});
+            }
+
+            // Auto-skip welcome if returning user scans a product
+            if (hasSession) {
+                document.getElementById('welcome-screen').style.display = 'none';
+                audioCtx.resume().catch(() => {});
+                initTerra();
+                return;
             }
 
             setTimeout(() => document.getElementById('welcome-name').focus(), 500);
