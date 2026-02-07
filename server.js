@@ -883,7 +883,8 @@ app.post('/api/video/generate', async (req, res) => {
         }],
         parameters: {
           aspectRatio: "16:9",
-          sampleCount: 1
+          sampleCount: 1,
+          negativePrompt: "text, letters, words, logos, watermarks, blurry, low quality"
         }
       };
       
@@ -891,8 +892,10 @@ app.post('/api/video/generate', async (req, res) => {
         console.log('🎯 Usando imagen como primer frame del video');
         console.log('📊 Tamaño imagen:', Math.round(imageBase64.length / 1024), 'KB');
         requestBody.instances[0].image = {
-          bytesBase64Encoded: imageBase64,
-          mimeType: imageMimeType
+          inlineData: {
+            data: imageBase64,
+            mimeType: imageMimeType
+          }
         };
       }
       
