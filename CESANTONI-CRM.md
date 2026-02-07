@@ -1,6 +1,6 @@
 # CESANTONI EXPERIENCE - Sistema QR + Video AI + Terra
 
-## Versión 2.9.0 | 6 Febrero 2026
+## Versión 2.9.1 | 6 Febrero 2026
 
 ---
 
@@ -140,16 +140,72 @@ Audio: PCM 24kHz 16-bit mono, se convierte a WAV en frontend
 
 ## Landing Page (/p/:slug)
 
-### Que funciona
-1. **Video Hero Fullscreen** - Video IA (Veo) o imagen, overlay gradiente, categoría, título, descripción
+### Diseño y Estilo Visual
+Cada landing debe verse como una página de producto de lujo (estilo Porcelanosa, Cotto d'Este). Colores: negro (#0a0a0a), dorado (#C5A572), blanco. Tipografía serif elegante para títulos, sans-serif para cuerpo.
+
+### Secciones (orden exacto)
+1. **Video Hero Fullscreen (100vh)** - Video IA ocupa toda la pantalla, overlay gradiente oscuro, categoría en badge dorado, nombre del producto grande (serif), descripción, flecha "Descubre"
 2. **Galería de Imágenes** - Grid responsive, lightbox con navegación (click, ←/→/Esc)
 3. **Información del Producto** - Imagen con borde dorado, categoría, nombre, formato, descripción técnica, 4 mini-specs
 4. **Beneficios** - 3 cards: Resistencia, Diseño, Garantía
 5. **Especificaciones Técnicas** - Grid 8 specs con defaults inteligentes
 6. **Productos Relacionados** - 4 productos misma categoría con links
 7. **Información de Tienda** - Nombre, dirección, teléfono, mapa Google Maps
-8. **WhatsApp CTA** - Botón flotante derecha, mensaje pre-formateado
-9. **Chat IA** - Botón flotante izquierda, Gemini 2.0 Flash, 3 sugerencias, contexto producto+tienda
+8. **WhatsApp CTA** - Botón flotante verde, esquina inferior derecha (sube si hay botón Terra)
+9. **Habla con Terra CTA** - Botón flotante dorado, esquina inferior derecha, ícono micrófono. Abre Terra en nueva pestaña con producto y tienda como contexto
+10. **Chat IA** - Botón flotante izquierda, Gemini 2.0 Flash, 3 sugerencias, contexto producto+tienda
+
+### Video Hero - ESPECIFICACIÓN CRÍTICA
+
+El video hero es lo más importante de la landing. Debe mostrar **exactamente el piso real del producto** instalado en un ambiente (sala, comedor, baño, etc.).
+
+**Cómo se genera el video:**
+- Se usa **Veo 2.0 image-to-video** (`veo-2.0-generate-001:predictLongRunning`)
+- La **imagen de referencia** (primer frame) es el **RENDER del cuarto** del producto (imagen principal `image_url` o `Render_` de la galería). Esta imagen ya muestra el piso correcto instalado en un ambiente real
+- El prompt SOLO describe **movimiento de cámara**, NO describe la escena (la imagen ya tiene todo)
+- Veo anima esa imagen con un dolly forward sutil
+
+**Reglas del video:**
+- El piso en el video DEBE ser exactamente el mismo piso del producto (mismo color, patrón, vetas, formato, acabado)
+- NO debe mostrar un piso genérico - debe ser fiel a la imagen de referencia
+- Movimiento de cámara: dolly forward lento, cinematográfico
+- SIN texto, letras, logos ni watermarks en el video
+- SIN personas
+- Iluminación suave y natural
+
+**Formato de imagen para Veo API (Gemini API):**
+```json
+{
+  "instances": [{
+    "prompt": "Slow dolly forward camera movement. No changes to the scene.",
+    "image": {
+      "bytesBase64Encoded": "<base64 del render>",
+      "mimeType": "image/jpeg"
+    }
+  }],
+  "parameters": {
+    "aspectRatio": "16:9",
+    "sampleCount": 1,
+    "resizeMode": "crop",
+    "negativePrompt": "text, letters, words, logos, watermarks, people"
+  }
+}
+```
+
+**IMPORTANTE - Formato de imagen:**
+- Usar `bytesBase64Encoded` (formato Gemini API). NO usar `inlineData` (ese es formato Vertex AI, no soportado)
+- La imagen debe ser el render del cuarto con el piso instalado, NO la imagen C1/close-up del piso suelto
+- Si falla la generación con imagen, NO reintentar sin imagen (genera basura genérica)
+
+**Selección de imagen para video:**
+1. Buscar en galería una imagen con "RENDER" en el nombre que coincida con el producto (tamaño completo, no thumbnails -150x/-300x)
+2. Si no hay, usar `image_url` principal del producto
+3. La imagen elegida debe mostrar el piso instalado en un ambiente/habitación
+
+**Persistencia del video:**
+- El video se sube a GCS: `gs://cesantoni-videos/videos/{slug}.mp4`
+- Se guarda la URL en `products.video_url`
+- Bug conocido: a veces el video se sube a GCS pero el UPDATE a la DB falla (Render free tier puede reiniciar durante generación). Verificar siempre que `video_url` no sea null después de generar
 
 ---
 
