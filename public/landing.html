@@ -1018,67 +1018,40 @@
         let currentImageIndex = 0;
 
         function generateTechnicalDescription(p) {
-            const parts = [];
+            const details = [];
 
-            // Tipo de producto
-            if (p.type) {
-                parts.push(`Fabricado en ${p.type.toLowerCase()}`);
-            } else if (p.category === 'MADERA') {
-                parts.push('Porcelanico tipo madera de alta definicion');
-            } else if (p.category === 'MARMOL' || p.category === 'MÁRMOL') {
-                parts.push('Porcelanico tipo marmol con vetas naturales');
-            } else if (p.category === 'PIEDRA') {
-                parts.push('Porcelanico tipo piedra con textura autentica');
-            } else if (p.category === 'CEMENTO') {
-                parts.push('Porcelanico tipo cemento de estilo industrial');
-            } else {
-                parts.push('Porcelanico de alta calidad');
-            }
+            // Formato y acabado - lo que mas importa al comprador
+            if (p.format) details.push(`Formato ${p.format}`);
+            if (p.finish) details.push(`acabado ${p.finish.toLowerCase()}`);
+            if (p.type) details.push(p.type.toLowerCase());
 
-            // Formato
-            if (p.format) {
-                parts.push(`en formato ${p.format}`);
-            }
+            let desc = details.length > 0 ? details.join(', ') + '. ' : '';
 
-            // Acabado
-            if (p.finish) {
-                parts.push(`con acabado ${p.finish.toLowerCase()}`);
-            }
-
-            // Resistencia PEI
+            // PEI con explicacion util
             if (p.pei) {
-                const peiDesc = {
-                    '1': 'para trafico muy ligero',
-                    '2': 'para trafico ligero residencial',
-                    '3': 'para trafico moderado',
-                    '4': 'para alto trafico comercial',
-                    '5': 'para trafico intenso industrial'
-                };
-                parts.push(`. Resistencia PEI ${p.pei} ${peiDesc[p.pei] || ''}`);
+                const peiUse = { '1': 'baños', '2': 'recámaras', '3': 'salas y comedores', '4': 'cocinas y comercios', '5': 'alto tráfico comercial' };
+                desc += `PEI ${p.pei}: ideal para ${peiUse[p.pei] || 'uso general'}. `;
             }
+
+            // Absorcion - solo si existe
+            if (p.water_absorption) {
+                const abs = parseFloat(p.water_absorption);
+                if (abs <= 0.5) desc += 'Absorción <0.5% — apto para exteriores y zonas húmedas. ';
+                else if (abs <= 3) desc += `Absorción ${p.water_absorption} — resistente a humedad. `;
+            }
+
+            // Mohs
+            if (p.mohs) desc += `Dureza Mohs ${p.mohs}. `;
 
             // Uso
-            if (p.usage || p.uses) {
-                const uso = p.usage || p.uses;
-                parts.push(`. Ideal para uso en ${uso.toLowerCase()}`);
-            } else {
-                parts.push('. Apto para interiores y exteriores');
+            if (p.usage) desc += `Uso: ${p.usage}. `;
+
+            // Piezas por caja
+            if (p.pieces_per_box && p.sqm_per_box) {
+                desc += `${p.pieces_per_box} pzas/caja (${p.sqm_per_box} m²). `;
             }
 
-            // Pasta/Tipo base
-            if (p.type && p.type.toLowerCase().includes('rectificado')) {
-                parts.push('. Bordes rectificados para juntas minimas');
-            }
-
-            // Absorcion de agua
-            if (p.water_absorption) {
-                parts.push(`. Absorcion de agua ${p.water_absorption}`);
-            }
-
-            // Cierre
-            parts.push('. Cumple con los mas altos estandares de calidad Cesantoni.');
-
-            return parts.join(' ').replace(/\s+\./g, '.').replace(/\.\s*\./g, '.');
+            return desc.trim() || `${p.category || 'Porcelánico'} Cesantoni.`;
         }
 
         async function init() {
@@ -1093,9 +1066,19 @@
                 if (!res.ok) throw new Error('Product not found');
                 product = await res.json();
 
-                // Parse gallery
+                // Parse gallery - deduplicate and filter out tiny thumbnails
                 try {
-                    gallery = JSON.parse(product.gallery || '[]');
+                    const rawGallery = JSON.parse(product.gallery || '[]');
+                    const seen = new Set();
+                    gallery = rawGallery.filter(url => {
+                        // Skip tiny thumbnails
+                        if (/-150x\d+/.test(url) || /-100x\d+/.test(url)) return false;
+                        // Deduplicate by base filename (ignore size suffix like -1024x870)
+                        const base = url.split('/').pop().replace(/-\d+x\d+/, '').replace(/\.\w+$/, '').toLowerCase();
+                        if (seen.has(base)) return false;
+                        seen.add(base);
+                        return true;
+                    });
                 } catch (e) { gallery = []; }
 
                 // Find store
