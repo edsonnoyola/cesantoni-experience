@@ -1129,11 +1129,17 @@
             document.getElementById('page-title').textContent = `${product.name} | Cesantoni Premium`;
 
             // Hero
+            const heroSection = document.getElementById('video-hero');
+            const heroVideo = document.getElementById('hero-video');
+            // Always set background image as fallback
+            heroSection.style.background = `url('${product.image_url}') center/cover`;
             if (product.video_url) {
-                document.getElementById('hero-video').src = product.video_url;
+                heroVideo.poster = product.image_url;
+                heroVideo.src = product.video_url;
+                heroVideo.load();
+                heroVideo.play().catch(e => console.log('Autoplay blocked:', e));
             } else {
-                document.getElementById('video-hero').style.background = `url('${product.image_url}') center/cover`;
-                document.getElementById('hero-video').style.display = 'none';
+                heroVideo.style.display = 'none';
             }
 
             document.getElementById('hero-tag').textContent = product.category || 'Piso Premium';
