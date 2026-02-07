@@ -869,9 +869,9 @@ app.post('/api/video/generate', async (req, res) => {
       }
     }
 
-    // Prompt: animar la escena del render - SIN TEXTO/LETRAS
-    let prompt = `Animate this interior design scene with slow cinematic camera movement. Subtle dolly forward through the room. The floor tiles must stay exactly as shown in the image. Soft natural lighting, gentle shadows moving. No text, no letters, no logos, no watermarks. No people. Keep the scene exactly as the reference image but with gentle motion.`;
-    console.log('🎬 Prompt (animar render):', prompt.substring(0, 80));
+    // Prompt: SOLO movimiento de cámara - la imagen ya tiene la escena completa
+    let prompt = `Slow dolly forward camera movement. No changes to the scene.`;
+    console.log('🎬 Prompt:', prompt);
 
     let result;
     try {
@@ -884,7 +884,8 @@ app.post('/api/video/generate', async (req, res) => {
         parameters: {
           aspectRatio: "16:9",
           sampleCount: 1,
-          negativePrompt: "text, letters, words, logos, watermarks, blurry, low quality"
+          resizeMode: "crop",
+          negativePrompt: "text, letters, words, logos, watermarks, people"
         }
       };
       
@@ -927,36 +928,8 @@ app.post('/api/video/generate', async (req, res) => {
         throw new Error(result.error.message);
       }
     } catch (apiErr) {
-      // Si falla con imagen, intentar sin ella
-      if (imageBase64) {
-        console.log('⚠️ Reintentando sin imagen...', apiErr.message);
-        const requestBody = {
-          instances: [{ prompt: prompt }],
-          parameters: { aspectRatio: "16:9", sampleCount: 1 }
-        };
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/veo-2.0-generate-001:predictLongRunning?key=${GOOGLE_API_KEY}`;
-
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody)
-        });
-        
-        const responseText = await response.text();
-        console.log('📡 Retry status:', response.status);
-        
-        if (!responseText) {
-          throw new Error('Respuesta vacía en retry');
-        }
-        
-        result = JSON.parse(responseText);
-        
-        if (result.error) {
-          throw new Error(result.error.message);
-        }
-      } else {
-        throw apiErr;
-      }
+      console.log('❌ Error en Veo API:', apiErr.message);
+      throw apiErr;
     }
 
     if (!result || !result.name) {
