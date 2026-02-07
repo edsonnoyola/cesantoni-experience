@@ -733,6 +733,10 @@ app.get('/p/:sku', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'landing.html'));
 });
 
+app.get('/landing/:slug', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+});
+
 app.get('/api/landing/:identifier', (req, res) => {
   try {
     // Buscar por SKU o por slug
