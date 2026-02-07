@@ -1301,13 +1301,18 @@
         }
 
         function trackScan() {
+            const params = new URLSearchParams(window.location.search);
             fetch(`${API}/track/scan`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    product_sku: product.sku,
+                    product_id: product.id,
                     store_id: store?.id || null,
-                    session_id: Math.random().toString(36).substr(2, 9)
+                    session_id: Math.random().toString(36).substr(2, 9),
+                    source: params.get('source') || 'qr',
+                    utm_source: params.get('utm_source') || null,
+                    utm_medium: params.get('utm_medium') || null,
+                    utm_campaign: params.get('utm_campaign') || null
                 })
             }).catch(() => {});
         }
