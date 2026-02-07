@@ -17,6 +17,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Version/health check
+app.get('/api/health', (req, res) => res.json({ version: 'v3.2.1', commit: 'e9bdc1f', terra_routes: true }));
+
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
   const fullPath = path.join(__dirname, dir);
