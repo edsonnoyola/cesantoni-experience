@@ -1188,7 +1188,7 @@
             document.getElementById('product-type').textContent = product.category || 'Porcelanico Premium';
             document.getElementById('product-name').textContent = product.name;
             document.getElementById('product-format').textContent = product.format ? `${product.format} | ${product.finish || 'Acabado Premium'}` : 'Formato Premium';
-            document.getElementById('product-description').textContent = generateTechnicalDescription(product);
+            document.getElementById('product-description').textContent = product.tech_description || generateTechnicalDescription(product);
 
             // Mini specs
             const miniSpecs = [];

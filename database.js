@@ -128,6 +128,13 @@ async function initDB() {
     // Columna ya existe
   }
 
+  // Agregar columna tech_description para descripción técnica única generada con IA
+  try {
+    db.run(`ALTER TABLE products ADD COLUMN tech_description TEXT`);
+  } catch (e) {
+    // Columna ya existe
+  }
+
   db.run(`
     CREATE TABLE IF NOT EXISTS whatsapp_clicks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
