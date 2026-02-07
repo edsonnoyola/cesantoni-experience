@@ -1,6 +1,6 @@
 # CESANTONI EXPERIENCE - CRM + Landing Pages + Video AI + Terra
 
-## Versión 3.1.0 | 7 Febrero 2026
+## Versión 3.2.0 | 7 Febrero 2026
 
 ---
 
@@ -10,11 +10,12 @@ Sistema completo para **Cesantoni Porcelanato Premium**: CRM con gestión de lan
 
 **Métricas:**
 - 123 productos con datos enriquecidos y galerías scrapeadas de cesantoni.com.mx
-- 123 descripciones únicas generadas con IA (Gemini 2.0 Flash, tono aspiracional/sensorial)
+- 123 descripciones aspiracionales únicas (Gemini 2.0 Flash, tono sensorial estilo AD México)
+- 123 descripciones técnicas únicas generadas con IA (beneficios de venta, no specs crudos)
 - 81 productos con specs técnicas completas (PEI, Mohs, absorción, etc.)
 - 122 productos con productos relacionados
-- 72 videos generados con IA (Veo 2.0) — **TODOS necesitan regeneración** con prompt anti-texto actualizado
-- 51 productos sin video (pendientes por rate limit de Veo)
+- **50 videos regenerados** con prompt anti-texto (Veo 2.0) — sin texto quemado
+- **73 videos pendientes** por rate limit de Veo (se resetea diario)
 - 407 tiendas con datos de contacto y ubicación
 - 16 distribuidores
 
@@ -51,8 +52,10 @@ cesantoni-crm/
 │   └── productos-edit.html   # Editor de productos
 ├── scripts/
 │   ├── generate-all-videos.js     # Generación masiva de videos con Veo 2.0
-│   ├── regenerate-old-videos.js   # Regenera 19 videos viejos con texto quemado
-│   ├── generate-descriptions.js   # Genera descripciones únicas con Gemini
+│   ├── regenerate-old-videos.js   # Regenera videos viejos con texto quemado
+│   ├── regenerate-all-videos.js   # Regenera TODOS los videos (prompt anti-texto)
+│   ├── generate-descriptions.js   # Genera descripciones aspiracionales con Gemini
+│   ├── generate-tech-descriptions.js  # Genera descripciones técnicas únicas con Gemini
 │   ├── update-product-types.js
 │   ├── add-related-products.js
 │   └── migrate-videos-to-gcs.js
@@ -106,7 +109,7 @@ Página de producto de lujo. Cada producto de Cesantoni tiene su propia landing 
 
 1. **Header** - Logo Cesantoni izquierda, badge categoría (MÁRMOL, MADERA, etc.) derecha
 2. **Video Hero Fullscreen (100vh)** - Video IA del piso ocupa toda la pantalla como fondo, overlay gradiente oscuro de abajo, badge categoría dorado, nombre del producto en tipografía serif grande, descripción del producto, flecha "DESCUBRE" que scrollea
-3. **Galería de Imágenes** - Grid responsive con todas las fotos del producto (renders, close-ups, ambientes), click abre lightbox con navegación ←/→/Esc
+3. **Galería de Imágenes** - Grid responsive con fotos deduplicadas (máximo 1 close-up C1), click abre lightbox con navegación ←/→/Esc
 4. **Información del Producto** - Imagen principal con borde dorado, categoría, nombre, formato (ej: 60x120cm), descripción técnica, 4 mini-specs destacados
 5. **Beneficios** - 3 cards con iconos: Resistencia Superior, Diseño Exclusivo, Garantía Cesantoni
 6. **Especificaciones Técnicas** - Grid de 8 specs: PEI, Absorción, Mohs, Formato, Acabado, Uso, Tipo, Resistencia
@@ -139,24 +142,40 @@ Página de producto de lujo. Cada producto de Cesantoni tiene su propia landing 
 
 ## Descripciones de Producto - ESPECIFICACIÓN
 
-### Estilo
-Las descripciones son **aspiracionales y sensoriales**, estilo revista AD México / Porcelanosa. NO son técnicas.
+### 1. Descripción Aspiracional (campo: `description`)
+Texto emocional/sensorial en el hero de la landing. Estilo AD México / Porcelanosa.
 
-### Generación
 - **Script:** `node scripts/generate-descriptions.js`
 - **Modelo:** Gemini 2.0 Flash, temperature 0.9
 - **Longitud:** 2-3 oraciones, máximo 50 palabras
-
-### Reglas del copy
 - Hacer que el lector SIENTA cómo se vería su hogar con este piso
 - Evocar emociones: luz de la mañana, pies descalzos, cena con amigos
-- Mencionar colores o texturas de forma poética (NO specs técnicos)
 - **Palabras PROHIBIDAS:** "alta gama", "declaración de estilo", "fusión perfecta", "evoca", "atemporal", "porcelánico"
 - NO empezar con el nombre del producto
-- Español
 
-### Ejemplo bueno
-> "Siente la calidez acogedora de un viñedo bajo tus pies. Merlot Wood: la textura profunda de la madera, inundada por la luz dorada de la tarde, crea un refugio donde cada momento se saborea con plenitud."
+> Ejemplo: "Siente la calidez acogedora de un viñedo bajo tus pies. Merlot Wood: la textura profunda de la madera, inundada por la luz dorada de la tarde, crea un refugio donde cada momento se saborea con plenitud."
+
+### 2. Descripción Técnica (campo: `tech_description`)
+Ficha técnica de venta en la sección de información del producto. Convierte specs en beneficios concretos.
+
+- **Script:** `node scripts/generate-tech-descriptions.js`
+- **Modelo:** Gemini 2.0 Flash
+- **Longitud:** máximo 2 oraciones, 40 palabras
+- Tercera persona, sin "tú", sin "elegí", sin testimoniales
+- Cada producto debe leerse COMPLETAMENTE diferente (como BMW describe cada modelo)
+- **PROHIBIDO:** "elegí", "te recomiendo", "olvídate", "sin preocupaciones", "alta calidad", "máximos estándares"
+- Si no hay `tech_description`, el landing usa fallback generando beneficios desde las specs (PEI, Mohs, absorción, acabado)
+
+> Ejemplo: "Superficie PEI 4 que mantiene su aspecto intacto en cocinas y pasillos de alto tráfico. Absorción menor al 0.5%: apto para baños y exteriores."
+
+### Persistencia de descripciones
+Las descripciones se guardan en la DB de Render pero **se pierden con restart**. Para restaurarlas:
+```bash
+# Regenerar aspiracionales
+node scripts/generate-descriptions.js
+# Regenerar técnicas
+node scripts/generate-tech-descriptions.js
+```
 
 ---
 
@@ -423,7 +442,7 @@ GET    /api/analytics/overview    # Métricas generales
 
 ### Tabla: products
 ```sql
-id, sku, name, slug, description, category, format, finish,
+id, sku, name, slug, description, tech_description, category, format, finish,
 type, pei, water_absorption, mohs, usage, image_url, video_url,
 gallery (JSON array de URLs), related_products (JSON array de IDs),
 base_price, active, created_at, updated_at
@@ -477,25 +496,32 @@ NODE_ENV=production
 
 ## Pendientes / TODO
 
-- [ ] **Regenerar TODOS los 72 videos** con prompt anti-texto actualizado (Veo genera texto en videos)
-- [ ] **Generar 51 videos faltantes** (rate limit de Veo alcanzado)
-- [ ] Total: ~123 videos por generar/regenerar cuando se resetee cuota de Veo
+- [x] ~~Regenerar videos con prompt anti-texto~~ → 50 listos
+- [ ] **Regenerar 73 videos restantes** (rate limit de Veo alcanzado, se resetea diario ~50/día)
+- [ ] **Napoli sigue con texto** — Veo insiste en poner letras en algunos renders, regenerar hasta que salga limpio
 - [ ] Repoblar tabla landings (se pierden con restart de Render, considerar persistencia)
+- [ ] Considerar guardar descriptions/tech_descriptions en archivo local como backup (se pierden con restart)
 
 ---
 
 ## Changelog
 
+### v3.2.0 (7 Feb 2026)
+- **123 tech descriptions únicas** generadas con IA (Gemini 2.0 Flash)
+  - Campo `tech_description` en DB — beneficios de venta, no specs crudos
+  - Cada producto se lee diferente (sin copy genérico repetido)
+  - Script: `node scripts/generate-tech-descriptions.js`
+- **50 videos regenerados** con prompt anti-texto reforzado (Veo 2.0)
+  - 73 pendientes por rate limit diario de Veo (~50/día)
+  - Script masivo: `node scripts/regenerate-all-videos.js`
+- **Galería deduplicada**: filtra thumbnails, limita close-ups C1 a máximo 1
+- **Fallback técnico inteligente**: si no hay `tech_description`, genera beneficios desde specs (PEI→tráfico, Mohs→rayones, absorción→humedad, acabado→practicidad)
+
 ### v3.1.0 (7 Feb 2026)
 - **Ruta /landing/:slug** agregada (además de /p/:sku)
-- **Prompt anti-texto reforzado** para Veo 2.0:
-  - Prompt positivo: "No text, no words, no titles, no overlays"
-  - Negative prompt expandido: typography, writing, captions, subtitles, etc.
-- **Script regenerate-old-videos.js** para regenerar 19 videos con texto quemado
-- **123 descripciones regeneradas** con tono aspiracional/sensorial (Gemini 2.0 Flash)
-  - Estilo: Porcelanosa / AD México, poético, emocional
-  - Prohibido: specs técnicos, "alta gama", "fusión perfecta", "atemporal"
-- **Script generate-descriptions.js** para regeneración masiva de descripciones
+- **Prompt anti-texto reforzado** para Veo 2.0
+- **123 descripciones aspiracionales** regeneradas (Gemini 2.0 Flash, tono sensorial)
+- **Script generate-descriptions.js** para regeneración masiva
 
 ### v3.0.0 (6 Feb 2026)
 - **Generación masiva de videos con Veo 2.0 image-to-video**
