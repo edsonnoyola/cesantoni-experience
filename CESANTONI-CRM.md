@@ -1,6 +1,6 @@
 # CESANTONI EXPERIENCE - CRM + Landing Pages + Video AI + Terra
 
-## Versión 3.0.0 | 6 Febrero 2026
+## Versión 3.1.0 | 7 Febrero 2026
 
 ---
 
@@ -10,10 +10,11 @@ Sistema completo para **Cesantoni Porcelanato Premium**: CRM con gestión de lan
 
 **Métricas:**
 - 123 productos con datos enriquecidos y galerías scrapeadas de cesantoni.com.mx
-- 123 landings creados en el CRM (tabla landings)
+- 123 descripciones únicas generadas con IA (Gemini 2.0 Flash, tono aspiracional/sensorial)
 - 81 productos con specs técnicas completas (PEI, Mohs, absorción, etc.)
 - 122 productos con productos relacionados
-- ~60 videos generados con IA (Veo 2.0 image-to-video), ~62 pendientes por rate limit
+- 72 videos generados con IA (Veo 2.0) — **TODOS necesitan regeneración** con prompt anti-texto actualizado
+- 51 productos sin video (pendientes por rate limit de Veo)
 - 407 tiendas con datos de contacto y ubicación
 - 16 distribuidores
 
@@ -49,7 +50,9 @@ cesantoni-crm/
 │   ├── admin.html            # Admin (redirige a QR)
 │   └── productos-edit.html   # Editor de productos
 ├── scripts/
-│   ├── generate-all-videos.js # Generación masiva de videos con Veo 2.0
+│   ├── generate-all-videos.js     # Generación masiva de videos con Veo 2.0
+│   ├── regenerate-old-videos.js   # Regenera 19 videos viejos con texto quemado
+│   ├── generate-descriptions.js   # Genera descripciones únicas con Gemini
 │   ├── update-product-types.js
 │   ├── add-related-products.js
 │   └── migrate-videos-to-gcs.js
@@ -88,10 +91,10 @@ Dashboard central para gestionar todas las landings de productos. Muestra métri
 
 ---
 
-## Landing Page (/p/:slug)
+## Landing Page (/p/:slug y /landing/:slug)
 
 ### Qué es
-Página de producto de lujo. Cada producto de Cesantoni tiene su propia landing accesible via `/p/{slug}`. Todas usan el MISMO template (`public/landing.html`) que se llena dinámicamente con los datos del producto via API.
+Página de producto de lujo. Cada producto de Cesantoni tiene su propia landing accesible via `/p/{sku}` o `/landing/{slug}`. Todas usan el MISMO template (`public/landing.html`) que se llena dinámicamente con los datos del producto via API.
 
 ### Diseño y Estilo Visual
 - **Estilo**: Lujo, premium (referencia: Porcelanosa, Cotto d'Este)
@@ -115,19 +118,45 @@ Página de producto de lujo. Cada producto de Cesantoni tiene su propia landing 
 
 ### URLs de Landing
 ```
-/p/alabama                          # Landing de Alabama
-/p/calacatta-black                  # Landing de Calacatta Black
-/p/botticelli?tienda=polanco        # Landing con info de tienda
-/p/{slug}?tienda={store_slug}       # Formato general
+/p/CES-ALABAMA                         # Landing por SKU
+/p/alabama                              # Landing por slug
+/landing/alabama                        # Landing por slug (ruta alternativa)
+/p/calacatta-black                      # Landing de Calacatta Black
+/p/botticelli?tienda=polanco            # Landing con info de tienda
+/p/{slug}?tienda={store_slug}           # Formato general
+/landing/{slug}?tienda={store_slug}     # Formato alternativo
 ```
 
 ### Cómo funciona técnicamente
-1. `landing.html` lee el slug de la URL
-2. Llama a `GET /api/products` y busca el producto por slug
+1. `landing.html` lee el slug/sku del último segmento de la URL
+2. Llama a `GET /api/landing/{identifier}` que busca por SKU o slug (case-insensitive)
 3. Si viene `?tienda=`, llama a `GET /api/stores` y busca la tienda
 4. Llena todas las secciones dinámicamente con JavaScript
 5. Si `product.video_url` existe → carga video en el hero con autoplay, muted, loop
 6. Si no hay video → muestra `image_url` como fondo estático del hero
+
+---
+
+## Descripciones de Producto - ESPECIFICACIÓN
+
+### Estilo
+Las descripciones son **aspiracionales y sensoriales**, estilo revista AD México / Porcelanosa. NO son técnicas.
+
+### Generación
+- **Script:** `node scripts/generate-descriptions.js`
+- **Modelo:** Gemini 2.0 Flash, temperature 0.9
+- **Longitud:** 2-3 oraciones, máximo 50 palabras
+
+### Reglas del copy
+- Hacer que el lector SIENTA cómo se vería su hogar con este piso
+- Evocar emociones: luz de la mañana, pies descalzos, cena con amigos
+- Mencionar colores o texturas de forma poética (NO specs técnicos)
+- **Palabras PROHIBIDAS:** "alta gama", "declaración de estilo", "fusión perfecta", "evoca", "atemporal", "porcelánico"
+- NO empezar con el nombre del producto
+- Español
+
+### Ejemplo bueno
+> "Siente la calidez acogedora de un viñedo bajo tus pies. Merlot Wood: la textura profunda de la madera, inundada por la luz dorada de la tarde, crea un refugio donde cada momento se saborea con plenitud."
 
 ---
 
@@ -149,16 +178,21 @@ El video hero es **lo más importante** de la landing. Debe mostrar **exactament
 6. Se sube a Google Cloud Storage (GCS)
 7. Se guarda la URL en `products.video_url`
 
-**Prompt del video (SOLO movimiento, NO describe la escena):**
+**Prompt del video (OBLIGATORIO - anti-texto reforzado):**
 ```
-Slow dolly forward camera movement. No changes to the scene.
+Slow cinematic dolly forward. No text, no words, no titles, no overlays. Only camera movement over the existing scene.
+```
+
+**Negative prompt (OBLIGATORIO):**
+```
+text, letters, words, titles, logos, watermarks, captions, subtitles, overlays, typography, writing, people, humans
 ```
 
 **Request body para Veo API:**
 ```json
 {
   "instances": [{
-    "prompt": "Slow dolly forward camera movement. No changes to the scene.",
+    "prompt": "Slow cinematic dolly forward. No text, no words, no titles, no overlays. Only camera movement over the existing scene.",
     "image": {
       "bytesBase64Encoded": "<base64 del render del cuarto>",
       "mimeType": "image/jpeg"
@@ -167,7 +201,7 @@ Slow dolly forward camera movement. No changes to the scene.
   "parameters": {
     "aspectRatio": "16:9",
     "sampleCount": 1,
-    "negativePrompt": "text, letters, words, logos, watermarks, people"
+    "negativePrompt": "text, letters, words, titles, logos, watermarks, captions, subtitles, overlays, typography, writing, people, humans"
   }
 }
 ```
@@ -181,7 +215,7 @@ POST https://generativelanguage.googleapis.com/v1beta/models/veo-2.0-generate-00
 - El piso DEBE ser **exactamente** el mismo del producto (mismo color, patrón, vetas, formato, acabado)
 - **NO** debe mostrar un piso genérico - debe ser fiel al render de referencia
 - Movimiento de cámara: **dolly forward lento**, cinematográfico
-- **SIN** texto, letras, logos ni watermarks
+- **SIN** texto, letras, logos, watermarks, títulos, overlays — **CERO texto en el video**
 - **SIN** personas
 - Iluminación suave y natural
 
@@ -192,6 +226,7 @@ POST https://generativelanguage.googleapis.com/v1beta/models/veo-2.0-generate-00
 - **NO usar la imagen C1 (close-up del piso suelto)** → Usar el RENDER del cuarto con el piso instalado
 - **NO hacer fallback sin imagen** → Si falla con imagen, no reintentar sin imagen (genera video genérico basura)
 - **NO poner el nombre del producto en el prompt** → Veo puede poner texto/letras en el video
+- **Incluir "No text" en el prompt positivo** → El negative prompt solo NO es suficiente para evitar texto
 
 ### Selección de imagen para video
 1. Buscar en `gallery` del producto una imagen con "RENDER" en el nombre (tamaño completo, no thumbnails -150x/-300x)
@@ -216,15 +251,29 @@ if (product.video_url) {
 }
 ```
 
-### Script de generación masiva
+### Scripts de generación de videos
+
+**Generar videos para productos SIN video:**
 ```bash
 node scripts/generate-all-videos.js
 ```
-- Lee todos los productos sin video de la API
-- Genera slug del nombre si no tiene
-- Descarga render → Veo 2.0 → descarga video → sube GCS → actualiza DB
-- Uno por uno para evitar rate limits
+
+**Regenerar los 19 videos viejos con texto quemado:**
+```bash
+node scripts/regenerate-old-videos.js
+```
+
+**Regenerar TODOS los videos (limpiar video_url primero):**
+Para regenerar todos, primero limpiar video_url de todos los productos y luego correr generate-all-videos.js.
+
 - Rate limit de Veo: ~50 videos/día (puede variar)
+- Cada video tarda ~2-5 minutos en generarse
+
+### Sincronización de videos desde GCS
+Al reiniciar Render, las video_url en la DB se pierden. El server tiene `syncVideosFromGCS()` que se ejecuta al arrancar:
+1. Lista todos los archivos en `gs://cesantoni-videos/videos/`
+2. Busca el producto correspondiente por slug
+3. Si el producto no tiene video_url pero el .mp4 existe en GCS, lo asigna
 
 ### Bug conocido: video_url no se guarda en DB
 A veces el video se sube a GCS exitosamente pero el UPDATE de `video_url` en la DB no persiste (Render free tier reinicia durante la generación larga). **Siempre verificar** que `video_url` no sea null después de generar. Si es null pero el video existe en GCS, actualizar manualmente via:
@@ -327,6 +376,7 @@ GET    /api/products/:id          # Detalle de un producto
 PUT    /api/products/:id          # Actualizar producto (nombre, video_url, etc.)
 DELETE /api/products/:id/video    # Borrar video de un producto
 GET    /api/products/:id/reviews  # Reviews del producto
+GET    /api/landing/:identifier   # Busca producto por SKU o slug (case-insensitive)
 ```
 
 ### Landings
@@ -420,15 +470,36 @@ NODE_ENV=production
 - **Spin down**: Server se duerme tras inactividad, primer request tarda ~30s en despertar
 - **DB**: SQLite in-memory (sql.js) - se recarga desde archivo en cada restart
 - **Videos**: Google Cloud Storage (persistente, no se pierde en restart)
+- **Sync automático**: `syncVideosFromGCS()` al arrancar recupera video_url de GCS
 - **Dominio**: cesantoni-experience.onrender.com
+
+---
+
+## Pendientes / TODO
+
+- [ ] **Regenerar TODOS los 72 videos** con prompt anti-texto actualizado (Veo genera texto en videos)
+- [ ] **Generar 51 videos faltantes** (rate limit de Veo alcanzado)
+- [ ] Total: ~123 videos por generar/regenerar cuando se resetee cuota de Veo
+- [ ] Repoblar tabla landings (se pierden con restart de Render, considerar persistencia)
 
 ---
 
 ## Changelog
 
+### v3.1.0 (7 Feb 2026)
+- **Ruta /landing/:slug** agregada (además de /p/:sku)
+- **Prompt anti-texto reforzado** para Veo 2.0:
+  - Prompt positivo: "No text, no words, no titles, no overlays"
+  - Negative prompt expandido: typography, writing, captions, subtitles, etc.
+- **Script regenerate-old-videos.js** para regenerar 19 videos con texto quemado
+- **123 descripciones regeneradas** con tono aspiracional/sensorial (Gemini 2.0 Flash)
+  - Estilo: Porcelanosa / AD México, poético, emocional
+  - Prohibido: specs técnicos, "alta gama", "fusión perfecta", "atemporal"
+- **Script generate-descriptions.js** para regeneración masiva de descripciones
+
 ### v3.0.0 (6 Feb 2026)
 - **Generación masiva de videos con Veo 2.0 image-to-video**
-  - 60+ videos generados usando render del cuarto como primer frame
+  - 72 videos generados usando render del cuarto como primer frame
   - Prompt mínimo: solo movimiento de cámara (dolly forward)
   - Fix formato: bytesBase64Encoded (no inlineData) para Gemini API
   - Script `generate-all-videos.js` para generación en lote
@@ -437,6 +508,7 @@ NODE_ENV=production
   - Fix video hero: load() + play() para autoplay dinámico
   - Video hero muestra el piso exacto del producto (no genérico)
 - **CRM poblado**: 123 landings creados en tabla landings
+- **syncVideosFromGCS()**: auto-recupera video URLs de GCS al reiniciar Render
 - **Documentación completa** del sistema
 
 ### v2.9.0 (6 Feb 2026)
