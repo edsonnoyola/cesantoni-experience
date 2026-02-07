@@ -1018,40 +1018,58 @@
         let currentImageIndex = 0;
 
         function generateTechnicalDescription(p) {
-            const details = [];
+            const benefits = [];
 
-            // Formato y acabado - lo que mas importa al comprador
-            if (p.format) details.push(`Formato ${p.format}`);
-            if (p.finish) details.push(`acabado ${p.finish.toLowerCase()}`);
-            if (p.type) details.push(p.type.toLowerCase());
-
-            let desc = details.length > 0 ? details.join(', ') + '. ' : '';
-
-            // PEI con explicacion util
+            // PEI → resistencia al uso diario
             if (p.pei) {
-                const peiUse = { '1': 'baños', '2': 'recámaras', '3': 'salas y comedores', '4': 'cocinas y comercios', '5': 'alto tráfico comercial' };
-                desc += `PEI ${p.pei}: ideal para ${peiUse[p.pei] || 'uso general'}. `;
+                const pei = parseInt(p.pei);
+                if (pei >= 4) benefits.push('Soporta alto tráfico sin desgastarse — ideal para cocinas, pasillos y comercios.');
+                else if (pei === 3) benefits.push('Resistente al tráfico diario de toda tu familia.');
+                else if (pei <= 2) benefits.push('Diseñado para espacios de bajo tráfico como baños y recámaras.');
             }
 
-            // Absorcion - solo si existe
+            // Absorción → humedad
             if (p.water_absorption) {
                 const abs = parseFloat(p.water_absorption);
-                if (abs <= 0.5) desc += 'Absorción <0.5% — apto para exteriores y zonas húmedas. ';
-                else if (abs <= 3) desc += `Absorción ${p.water_absorption} — resistente a humedad. `;
+                if (abs <= 0.5) benefits.push('No absorbe humedad — úsalo en baños, cocinas, terrazas y albercas sin preocuparte.');
+                else if (abs <= 3) benefits.push('Baja absorción de humedad, resistente a salpicaduras y limpieza con agua.');
+                else benefits.push('Para espacios interiores secos.');
             }
 
-            // Mohs
-            if (p.mohs) desc += `Dureza Mohs ${p.mohs}. `;
-
-            // Uso
-            if (p.usage) desc += `Uso: ${p.usage}. `;
-
-            // Piezas por caja
-            if (p.pieces_per_box && p.sqm_per_box) {
-                desc += `${p.pieces_per_box} pzas/caja (${p.sqm_per_box} m²). `;
+            // Mohs → rayones
+            if (p.mohs) {
+                const mohs = parseInt(p.mohs);
+                if (mohs >= 7) benefits.push('Altamente resistente a rayones — ni mascotas, ni muebles, ni tacones lo marcan.');
+                else if (mohs >= 5) benefits.push('Resistente a rayones del uso cotidiano.');
             }
 
-            return desc.trim() || `${p.category || 'Porcelánico'} Cesantoni.`;
+            // Acabado → beneficio práctico
+            if (p.finish) {
+                const f = p.finish.toUpperCase();
+                if (f.includes('MATE')) benefits.push('Acabado mate: antiderrapante natural, no refleja y disimula huellas.');
+                else if (f.includes('PULIDO') || f.includes('BRILLANTE')) benefits.push('Acabado pulido: brillo elegante que amplifica la luz de tus espacios.');
+                else if (f.includes('LAPPATO') || f.includes('SEMI')) benefits.push('Acabado semi-pulido: el balance perfecto entre brillo y practicidad.');
+                else if (f.includes('TEXTUR') || f.includes('STRUTT') || f.includes('ANTIDERRAPANTE')) benefits.push('Textura antiderrapante: seguro para exteriores y zonas mojadas.');
+            }
+
+            // Tipo rectificado
+            if (p.type && p.type.toLowerCase().includes('rectificado')) {
+                benefits.push('Bordes rectificados para juntas mínimas — se ve como una sola pieza continua.');
+            }
+
+            // Uso interior/exterior
+            if (p.usage) {
+                const u = p.usage.toLowerCase();
+                if (u.includes('ext') && u.includes('int')) benefits.push('Versátil: funciona tanto en interiores como en exteriores.');
+                else if (u.includes('ext')) benefits.push('Apto para exteriores: resiste sol, lluvia y cambios de temperatura.');
+            }
+
+            // Formato como dato útil (no como oración)
+            if (p.format && benefits.length > 0) {
+                benefits.push(`Formato ${p.format} — menos juntas, espacios más amplios y limpios.`);
+            }
+
+            return benefits.length > 0 ? benefits.join(' ') : 'Porcelánico premium Cesantoni.';
         }
 
         async function init() {
