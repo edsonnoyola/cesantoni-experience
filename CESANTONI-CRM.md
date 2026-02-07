@@ -1,6 +1,6 @@
 # CESANTONI EXPERIENCE - CRM + Landing Pages + Video AI + Terra
 
-## Versión 3.2.0 | 7 Febrero 2026
+## Versión 3.3.0 | 7 Febrero 2026
 
 ---
 
@@ -18,6 +18,7 @@ Sistema completo para **Cesantoni Porcelanato Premium**: CRM con gestión de lan
 - **73 videos pendientes** por rate limit de Veo (se resetea diario)
 - 407 tiendas con datos de contacto y ubicación
 - 16 distribuidores
+- **Terra Insights**: logging de conversaciones + resumen IA en dashboard
 
 **URLs:**
 - **Producción:** https://cesantoni-experience.onrender.com
@@ -40,7 +41,7 @@ cesantoni-crm/
 ├── data/
 │   └── cesantoni.db          # Base de datos SQLite
 ├── public/
-│   ├── index.html            # CRM Dashboard - Gestión de Landings
+│   ├── index.html            # CRM Dashboard - Gestión de Landings + Terra Insights
 │   ├── landing.html          # Template landing page premium (una sola para todos los productos)
 │   ├── terra.html            # Asistente de voz figital Terra
 │   ├── comparar.html         # Comparador de productos
@@ -70,21 +71,23 @@ cesantoni-crm/
 Dashboard central para gestionar todas las landings de productos. Muestra métricas de cobertura (cuántos landings creados, cuántos con video, % cobertura), buscador, y acceso rápido a cada landing.
 
 ### Funcionalidades
-- **Métricas en tiempo real**: Landings creados, Con video, Productos totales, % Cobertura
-- **Lista de landings**: Cada producto aparece con su imagen, nombre, status de video
+- **Métricas en tiempo real**: Escaneos, Clicks WhatsApp, Conversión, Tiendas activas, Promos
+- **Mapa de calor**: Escaneos por estado en mapa de México
+- **Tendencia**: Gráfica de escaneos diarios
+- **Rankings**: Top productos, tiendas y estados por escaneos
+- **Terra Insights**: Resumen IA de conversaciones + feed de últimas preguntas de clientes
+- **Alertas y Promociones**: Resumen de promos activas
 - **Búsqueda**: Filtrar por nombre
-- **Crear Landing**: Botón para crear landing de un producto
-- **Acceso directo**: Click en landing abre la landing page del producto
 
 ### Flujo completo del CRM
-1. **Dashboard** (index.html) → ver todos los landings y métricas
+1. **Dashboard** (index.html) → ver métricas, Terra Insights, rankings
 2. **Editor de Productos** (productos-edit.html) → editar datos, galerías, specs, generar video
 3. **Generador de QR** (qr-tiendas.html) → seleccionar productos + tiendas → generar PDF con QRs
 4. **NFC Tags** (nfc.html) → gestionar tags NFC para productos en tienda
 
 ### URLs del CRM
 ```
-/index.html           # Dashboard principal - Gestión de Landings
+/index.html           # Dashboard principal - Métricas + Terra Insights
 /qr-tiendas.html      # Generador de QR por tienda (selecciona productos + tiendas → PDF)
 /productos-edit.html   # Editor de productos (datos, galería, specs, video)
 /nfc.html             # Gestor de NFC tags
@@ -108,16 +111,17 @@ Página de producto de lujo. Cada producto de Cesantoni tiene su propia landing 
 ### Secciones (orden exacto de arriba a abajo)
 
 1. **Header** - Logo Cesantoni izquierda, badge categoría (MÁRMOL, MADERA, etc.) derecha
-2. **Video Hero Fullscreen (100vh)** - Video IA del piso ocupa toda la pantalla como fondo, overlay gradiente oscuro de abajo, badge categoría dorado, nombre del producto en tipografía serif grande, descripción del producto, flecha "DESCUBRE" que scrollea
+2. **Video Hero Fullscreen (100vh)** - Video IA del piso ocupa toda la pantalla como fondo, overlay gradiente oscuro de abajo, badge categoría dorado, nombre del producto en tipografía serif grande, descripción aspiracional, flecha "DESCUBRE" que scrollea
 3. **Galería de Imágenes** - Grid responsive con fotos deduplicadas (máximo 1 close-up C1), click abre lightbox con navegación ←/→/Esc
-4. **Información del Producto** - Imagen principal con borde dorado, categoría, nombre, formato (ej: 60x120cm), descripción técnica, 4 mini-specs destacados
+4. **Información del Producto** - Imagen principal con borde dorado, categoría, nombre, formato (ej: 60x120cm), `tech_description` (IA) o fallback desde specs, 4 mini-specs destacados
 5. **Beneficios** - 3 cards con iconos: Resistencia Superior, Diseño Exclusivo, Garantía Cesantoni
 6. **Especificaciones Técnicas** - Grid de 8 specs: PEI, Absorción, Mohs, Formato, Acabado, Uso, Tipo, Resistencia
 7. **Productos Relacionados** - 4 productos de la misma categoría con imagen y link a su landing
 8. **Información de Tienda** - Si viene ?tienda= en URL: nombre, dirección, teléfono, mapa Google Maps
-9. **WhatsApp CTA** - Botón flotante verde, esquina inferior derecha. Sube si hay botón Terra. Mensaje pre-formateado con nombre del producto
-10. **Habla con Terra CTA** - Botón flotante dorado con ícono micrófono, esquina inferior derecha. Abre Terra en nueva pestaña pasando producto y tienda como contexto via URL params
-11. **Chat IA** - Botón flotante izquierda (ícono chat), abre ventana de chat. Gemini 2.0 Flash con contexto del producto + tienda. 3 sugerencias rápidas
+9. **WhatsApp CTA** - Botón flotante verde, esquina inferior derecha. Mensaje pre-formateado con nombre del producto
+10. **Habla con Terra CTA** - Botón flotante dorado con ícono micrófono. Abre Terra con contexto
+11. **Chat IA** - Botón flotante izquierda (ícono chat), abre ventana de chat. Gemini 2.0 Flash con contexto del producto + tienda
+12. **Tracking automático** - Al cargar, envía POST /api/track/scan con product_id, store_id, UTM params
 
 ### URLs de Landing
 ```
@@ -137,6 +141,7 @@ Página de producto de lujo. Cada producto de Cesantoni tiene su propia landing 
 4. Llena todas las secciones dinámicamente con JavaScript
 5. Si `product.video_url` existe → carga video en el hero con autoplay, muted, loop
 6. Si no hay video → muestra `image_url` como fondo estático del hero
+7. Registra scan automáticamente via POST /api/track/scan (product_id + store_id + UTM)
 
 ---
 
@@ -277,16 +282,14 @@ if (product.video_url) {
 node scripts/generate-all-videos.js
 ```
 
-**Regenerar los 19 videos viejos con texto quemado:**
+**Regenerar TODOS los videos con prompt anti-texto:**
 ```bash
-node scripts/regenerate-old-videos.js
+node scripts/regenerate-all-videos.js
 ```
-
-**Regenerar TODOS los videos (limpiar video_url primero):**
-Para regenerar todos, primero limpiar video_url de todos los productos y luego correr generate-all-videos.js.
 
 - Rate limit de Veo: ~50 videos/día (puede variar)
 - Cada video tarda ~2-5 minutos en generarse
+- **GCS key local:** `gcs-credentials.json` (no `gcs-key.json`)
 
 ### Sincronización de videos desde GCS
 Al reiniciar Render, las video_url en la DB se pierden. El server tiene `syncVideosFromGCS()` que se ejecuta al arrancar:
@@ -329,6 +332,7 @@ Asistente de voz IA en el celular del cliente dentro de la tienda física. Funci
 - **Escáner QR integrado**: botón en Terra abre cámara, escanea QR sin salir de la app
 - **NFC auto-detección**: en Android Chrome, lee NFC tags automáticamente en background
 - **Personalidad**: "amiga experta" - cálida, platicadora, hace preguntas, traduce técnico a simple
+- **Logging de conversaciones**: cada pregunta/respuesta se guarda en `terra_conversations`
 
 ### Customer Journey en Tienda
 1. Cliente llega a tienda → escanea **QR de entrada** → Terra pide nombre (solo primera vez)
@@ -336,6 +340,12 @@ Asistente de voz IA en el celular del cliente dentro de la tienda física. Funci
 3. Terra carga cada piso **sin salir de la app** → lo presenta y platica sobre él
 4. Cliente **pregunta lo que quiera** → Terra responde con knowledge base completo
 5. Al final → **resumen por WhatsApp** con todos los pisos vistos + links a landings
+
+### Terra Insights (Dashboard CRM)
+Sección en el dashboard que muestra:
+- **Resumen IA**: Gemini analiza todas las preguntas y genera: temas top, productos consultados, preocupaciones de clientes, oportunidades de venta
+- **Feed de últimas preguntas**: quién preguntó, qué preguntó, sobre qué producto, en qué tienda
+- **Productos y tiendas más consultados**: tags con conteo
 
 ### Voz - Gemini 2.5 Flash TTS
 - Voz natural generada con Gemini 2.5 Flash TTS Preview (voz "Kore")
@@ -369,9 +379,13 @@ Body: {
   store_name: string,
   current_product_id: number,
   visited_products: string[],
-  history: [{user: string, terra: string}]  // últimos 6
+  history: [{user: string, terra: string}],
+  session_id: string
 }
 Response: { intent, speech, product, action }
+
+GET  /api/terra/conversations?days=30     # Lista preguntas de clientes
+GET  /api/terra/summary?days=7            # Resumen IA de conversaciones
 
 POST /api/tts
 Body: { text: string }
@@ -386,13 +400,35 @@ Response: { audioContent: base64_pcm, format: "pcm" }
 
 ---
 
+## QR Codes
+
+### Generación de PDFs con QRs
+Se generan localmente con Node.js (pdfkit + qrcode). No se generan en el server.
+
+```bash
+# Instalar dependencias locales (no se suben a Render)
+npm install pdfkit  # solo local
+```
+
+### Formato del QR
+Cada QR apunta a: `https://cesantoni-experience.onrender.com/p/{SKU}?tienda={store_slug}`
+- El `?tienda=` carga info de la tienda en la landing (dirección, WhatsApp, mapa)
+- El scan se registra automáticamente en la DB al cargar la landing
+
+### PDF generado
+- Ejemplo: `QR-Cesantoni-Galerias-Zacatecas.pdf` (en Desktop)
+- 6 QRs por página (2 columnas x 3 filas)
+- Nombre del producto + SKU debajo de cada QR
+
+---
+
 ## API Endpoints
 
 ### Productos
 ```
 GET    /api/products              # Lista todos (con gallery, specs, video_url)
 GET    /api/products/:id          # Detalle de un producto
-PUT    /api/products/:id          # Actualizar producto (nombre, video_url, etc.)
+PUT    /api/products/:id          # Actualizar producto (nombre, video_url, tech_description, etc.)
 DELETE /api/products/:id/video    # Borrar video de un producto
 GET    /api/products/:id/reviews  # Reviews del producto
 GET    /api/landing/:identifier   # Busca producto por SKU o slug (case-insensitive)
@@ -419,6 +455,32 @@ POST   /api/video/generate        # Generar video con Veo 2.0 (async, responde i
 GET    /api/videos                # Lista videos locales
 ```
 
+### Tracking
+```
+POST   /api/track/scan            # Registrar scan QR/NFC (product_id, store_id, source, UTM)
+POST   /api/scans                 # Registrar scan (alternativo)
+DELETE /api/admin/scans           # Borrar todos los scans y clicks (reset métricas)
+```
+
+### Terra
+```
+POST   /api/terra                 # Chat con Terra (Gemini)
+GET    /api/terra/conversations   # Lista conversaciones loggeadas
+GET    /api/terra/summary         # Resumen IA de conversaciones
+POST   /api/tts                   # Text-to-speech (Gemini TTS)
+```
+
+### Analytics
+```
+GET    /api/analytics/overview    # Métricas generales (scans, clicks, top productos/tiendas/estados)
+GET    /api/analytics/by-source   # NFC vs QR stats
+```
+
+### Health
+```
+GET    /api/health                # Version y status del server
+```
+
 ### Muestras, Cotizaciones, Reviews
 ```
 POST   /api/samples               # Solicitar muestra
@@ -427,13 +489,6 @@ PUT    /api/samples/:id           # Actualizar status
 POST   /api/quotes                # Crear cotización
 GET    /api/quotes                # Lista cotizaciones (admin)
 POST   /api/reviews               # Crear review
-```
-
-### Analytics
-```
-POST   /api/scans                 # Registrar scan QR/NFC
-GET    /api/analytics/by-source   # NFC vs QR stats
-GET    /api/analytics/overview    # Métricas generales
 ```
 
 ---
@@ -448,6 +503,12 @@ gallery (JSON array de URLs), related_products (JSON array de IDs),
 base_price, active, created_at, updated_at
 ```
 
+### Tabla: terra_conversations
+```sql
+id, session_id, customer_name, store_name, product_id, product_name,
+question, answer, intent, created_at
+```
+
 ### Tabla: landings
 ```sql
 id, product_id (FK → products.id), title, description, promo_text,
@@ -460,7 +521,7 @@ id, name, slug, distributor_id, distributor_name,
 address, city, state, whatsapp, phone, email, lat, lng
 ```
 
-### Tabla: sample_requests, quotes, reviews, scans
+### Tabla: scans, whatsapp_clicks, sample_requests, quotes, reviews
 (Ver server.js para esquemas completos)
 
 ---
@@ -486,25 +547,46 @@ NODE_ENV=production
 - **Hosting**: Render.com (free tier)
 - **Deploy**: Auto-deploy desde GitHub main branch
 - **Tiempo de deploy**: ~3-5 minutos
-- **Spin down**: Server se duerme tras inactividad, primer request tarda ~30s en despertar
+- **Spin down**: Server se duerme tras inactividad, primer request tarda ~30-50s en despertar
 - **DB**: SQLite in-memory (sql.js) - se recarga desde archivo en cada restart
 - **Videos**: Google Cloud Storage (persistente, no se pierde en restart)
 - **Sync automático**: `syncVideosFromGCS()` al arrancar recupera video_url de GCS
 - **Dominio**: cesantoni-experience.onrender.com
+- **Pipeline minutes**: El free tier tiene límite mensual de minutos de build. Si se agotan, los deploys fallan con "Build blocked - out of pipeline minutes". Se resetean al inicio del ciclo de facturación.
 
 ---
 
 ## Pendientes / TODO
 
 - [x] ~~Regenerar videos con prompt anti-texto~~ → 50 listos
-- [ ] **Regenerar 73 videos restantes** (rate limit de Veo alcanzado, se resetea diario ~50/día)
-- [ ] **Napoli sigue con texto** — Veo insiste en poner letras en algunos renders, regenerar hasta que salga limpio
-- [ ] Repoblar tabla landings (se pierden con restart de Render, considerar persistencia)
-- [ ] Considerar guardar descriptions/tech_descriptions en archivo local como backup (se pierden con restart)
+- [x] ~~123 tech descriptions únicas con IA~~
+- [x] ~~Terra conversation logging~~
+- [x] ~~Terra Insights en dashboard CRM~~
+- [x] ~~Fix scan tracking (product_id en vez de product_sku)~~
+- [x] ~~QR PDF generado para Cesantoni Galerías Zacatecas~~
+- [ ] **Deploy pendiente** — Render sin pipeline minutes. Al resetear, hacer Manual Deploy para activar: Terra Insights, scan tracking fix, health endpoint, galería deduplicada
+- [ ] **Regenerar 73 videos restantes** (rate limit de Veo, se resetea diario ~50/día)
+- [ ] **Napoli sigue con texto** — Veo insiste en poner letras, regenerar hasta que salga limpio
+- [ ] Repoblar tabla landings (se pierden con restart de Render)
+- [ ] Guardar descriptions/tech_descriptions en archivo local como backup (se pierden con restart)
+- [ ] Considerar upgrade de Render ($7/mes) para evitar límite de pipeline minutes
 
 ---
 
 ## Changelog
+
+### v3.3.0 (7 Feb 2026) — PENDIENTE DE DEPLOY
+- **Terra Conversation Logging**: tabla `terra_conversations` guarda cada pregunta/respuesta
+  - session_id, customer_name, store_name, product_name, question, answer, intent
+  - Endpoints: GET /api/terra/conversations, GET /api/terra/summary
+- **Terra Insights en Dashboard**: sección nueva en index.html
+  - Resumen IA (Gemini analiza preguntas → temas, oportunidades, insights)
+  - Feed de últimas preguntas con cliente, producto, tienda
+  - Productos y tiendas más consultados
+- **Fix scan tracking**: landing ahora envía `product_id` (antes mandaba `product_sku` y no se guardaba)
+- **QR PDF generado**: 74 QRs para Cesantoni Galerías Zacatecas (productos con video)
+- **Health endpoint**: GET /api/health para verificar versión deployada
+- **Render sin pipeline minutes**: deploys bloqueados hasta reset del ciclo
 
 ### v3.2.0 (7 Feb 2026)
 - **123 tech descriptions únicas** generadas con IA (Gemini 2.0 Flash)
