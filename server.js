@@ -1323,6 +1323,72 @@ app.get('/terra', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'terra.html'));
 });
 
+// Terra conversations - MUST be before POST /api/terra
+app.get('/api/terra/conversations', (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const rows = query(`
+      SELECT id, session_id, customer_name, store_name, product_name, question, answer, intent, created_at
+      FROM terra_conversations
+      WHERE created_at >= datetime('now', '-' || ? || ' days')
+      ORDER BY created_at DESC
+      LIMIT 500
+    `, [days]);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/terra/summary', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 7;
+    const rows = query(`
+      SELECT customer_name, store_name, product_name, question, intent, created_at
+      FROM terra_conversations
+      WHERE created_at >= datetime('now', '-' || ? || ' days')
+      ORDER BY created_at DESC
+      LIMIT 200
+    `, [days]);
+
+    if (rows.length === 0) {
+      return res.json({ summary: 'No hay conversaciones en los últimos ' + days + ' días.', total: 0, conversations: [] });
+    }
+
+    const total = rows.length;
+    const uniqueCustomers = new Set(rows.filter(r => r.customer_name).map(r => r.customer_name)).size;
+    const topProducts = {};
+    rows.forEach(r => { if (r.product_name) topProducts[r.product_name] = (topProducts[r.product_name] || 0) + 1; });
+    const topStores = {};
+    rows.forEach(r => { if (r.store_name) topStores[r.store_name] = (topStores[r.store_name] || 0) + 1; });
+
+    const questions = rows.map(r => `[${r.customer_name || 'Anónimo'}${r.product_name ? ' sobre ' + r.product_name : ''}]: ${r.question}`).join('\n');
+
+    const aiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: `Analiza estas ${total} preguntas de clientes al asistente Terra de Cesantoni (pisos porcelanato premium). Dame un resumen ejecutivo en español:\n\n1. **Temas más preguntados** (top 5)\n2. **Productos más consultados** (top 5)\n3. **Preocupaciones principales** de los clientes\n4. **Oportunidades de venta**\n5. **Insight no obvio**\n\nPreguntas:\n${questions}\n\nResponde conciso, con bullets. Máximo 300 palabras.` }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 1000 }
+        })
+      }
+    );
+    const aiData = await aiRes.json();
+    const summary = aiData.candidates?.[0]?.content?.parts?.[0]?.text || 'No se pudo generar resumen.';
+
+    res.json({
+      summary, total, unique_customers: uniqueCustomers, days,
+      top_products: Object.entries(topProducts).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([name, count]) => ({ name, count })),
+      top_stores: Object.entries(topStores).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, count]) => ({ name, count })),
+      recent: rows.slice(0, 20)
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/terra', async (req, res) => {
   try {
     const { message, customer_name, store_name, current_product_id, visited_products, history } = req.body;
@@ -1475,93 +1541,6 @@ RESPONDE SOLO JSON (corto): {"intent":"recommend|lookup|question|greeting","spee
   } catch (err) {
     console.error('Terra error:', err);
     res.json({ speech: 'Hubo un error de conexion. Intenta de nuevo.', intent: 'error', product: null, action: 'none' });
-  }
-});
-
-// =====================================================
-// TERRA CONVERSATIONS - Analytics
-// =====================================================
-
-// List all Terra conversations
-app.get('/api/terra/conversations', (req, res) => {
-  try {
-    const days = parseInt(req.query.days) || 30;
-    const rows = query(`
-      SELECT id, session_id, customer_name, store_name, product_name, question, answer, intent, created_at
-      FROM terra_conversations
-      WHERE created_at >= datetime('now', '-${days} days')
-      ORDER BY created_at DESC
-      LIMIT 500
-    `);
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Terra summary - AI-generated insights
-app.get('/api/terra/summary', async (req, res) => {
-  try {
-    const days = parseInt(req.query.days) || 7;
-    const rows = query(`
-      SELECT customer_name, store_name, product_name, question, intent, created_at
-      FROM terra_conversations
-      WHERE created_at >= datetime('now', '-${days} days')
-      ORDER BY created_at DESC
-      LIMIT 200
-    `);
-
-    if (rows.length === 0) {
-      return res.json({ summary: 'No hay conversaciones en los últimos ' + days + ' días.', total: 0, conversations: [] });
-    }
-
-    // Stats
-    const total = rows.length;
-    const uniqueCustomers = new Set(rows.filter(r => r.customer_name).map(r => r.customer_name)).size;
-    const topProducts = {};
-    rows.forEach(r => { if (r.product_name) topProducts[r.product_name] = (topProducts[r.product_name] || 0) + 1; });
-    const topStores = {};
-    rows.forEach(r => { if (r.store_name) topStores[r.store_name] = (topStores[r.store_name] || 0) + 1; });
-
-    // Generate AI summary
-    const questions = rows.map(r => `[${r.customer_name || 'Anónimo'}${r.product_name ? ' sobre ' + r.product_name : ''}]: ${r.question}`).join('\n');
-
-    const aiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: `Analiza estas ${total} preguntas de clientes al asistente Terra de Cesantoni (pisos porcelanato premium). Dame un resumen ejecutivo en español:
-
-1. **Temas más preguntados** (top 5 con % aproximado)
-2. **Productos más consultados** (top 5)
-3. **Preocupaciones principales** de los clientes
-4. **Oportunidades de venta** que detectas
-5. **Dato sorprendente** o insight no obvio
-
-Preguntas:
-${questions}
-
-Responde conciso, con bullets. Máximo 300 palabras.` }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 1000 }
-        })
-      }
-    );
-    const aiData = await aiRes.json();
-    const summary = aiData.candidates?.[0]?.content?.parts?.[0]?.text || 'No se pudo generar resumen.';
-
-    res.json({
-      summary,
-      total,
-      unique_customers: uniqueCustomers,
-      days,
-      top_products: Object.entries(topProducts).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([name, count]) => ({ name, count })),
-      top_stores: Object.entries(topStores).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, count]) => ({ name, count })),
-      recent: rows.slice(0, 20)
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
 });
 
