@@ -1097,18 +1097,12 @@
                 if (!res.ok) throw new Error('Product not found');
                 product = await res.json();
 
-                // Parse gallery - deduplicate, skip thumbnails, max 1 close-up
+                // Parse gallery - deduplicate, skip thumbnails, limit C1 close-ups
                 try {
                     const rawGallery = JSON.parse(product.gallery || '[]');
                     const seen = new Set();
-                    let closeUpCount = 0;
-                    // Sort: renders first, then others, close-ups last
-                    const sorted = [...rawGallery].sort((a, b) => {
-                        const aRender = /render/i.test(a) ? 0 : 1;
-                        const bRender = /render/i.test(b) ? 0 : 1;
-                        return aRender - bRender;
-                    });
-                    gallery = sorted.filter(url => {
+                    let c1Count = 0;
+                    gallery = rawGallery.filter(url => {
                         // Skip tiny thumbnails
                         if (/-150x\d+/.test(url) || /-100x\d+/.test(url)) return false;
                         // Deduplicate by base name (strip size suffixes, scale tags, etc)
@@ -1120,12 +1114,9 @@
                             .toLowerCase();
                         if (seen.has(base)) return false;
                         seen.add(base);
-                        // Only allow 1 close-up (non-render, non-environment image)
-                        const isRender = /render|sala|cocina|comedor|ba[nñ]o|recamara|terraza|exterior|interior|estancia|fachada|hd/i.test(url);
-                        if (!isRender) {
-                            closeUpCount++;
-                            if (closeUpCount > 1) return false;
-                        }
+                        // Only limit C1 close-up textures (the plain tile swatch) to 1
+                        const isC1 = /[_-]c1|close.?up|swatch|muestra/i.test(url);
+                        if (isC1) { c1Count++; if (c1Count > 1) return false; }
                         return true;
                     });
                 } catch (e) { gallery = []; }
