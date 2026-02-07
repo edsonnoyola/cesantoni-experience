@@ -10,9 +10,10 @@ Sistema completo para Cesantoni: landing pages premium, QR/NFC tracking, videos 
 
 **Métricas:**
 - 123 productos con datos enriquecidos y galerías
+- 123 landings creados en el CRM (tabla landings)
 - 81 productos con specs técnicas completas
 - 122 productos con productos relacionados
-- 19 videos generados con IA (Veo 3.0/2.0)
+- ~60 videos generados con IA (Veo 2.0 image-to-video)
 - 407 tiendas con datos de contacto
 - 16 distribuidores
 
@@ -206,6 +207,38 @@ El video hero es lo más importante de la landing. Debe mostrar **exactamente el
 - El video se sube a GCS: `gs://cesantoni-videos/videos/{slug}.mp4`
 - Se guarda la URL en `products.video_url`
 - Bug conocido: a veces el video se sube a GCS pero el UPDATE a la DB falla (Render free tier puede reiniciar durante generación). Verificar siempre que `video_url` no sea null después de generar
+
+**Script de generación masiva:**
+- `scripts/generate-all-videos.js` - genera videos para todos los productos sin video
+- Proceso: descarga render → envía a Veo 2.0 → espera resultado → descarga video → sube a GCS → actualiza DB
+- Va uno por uno para evitar rate limits
+- Run: `node scripts/generate-all-videos.js`
+
+---
+
+## CRM - Gestión de Landings (index.html)
+
+Dashboard central del sistema. Muestra todos los landings creados, métricas de cobertura de video, y permite gestionar cada landing.
+
+### Flujo del CRM
+1. **Gestión de Landings** (index.html) - Dashboard con todos los productos como landings, métricas (landings creados, con video, cobertura), búsqueda
+2. **Generador de QR** (qr-tiendas.html) - Selecciona productos + tiendas → genera PDF con QRs para imprimir
+3. **Editor de Productos** (productos-edit.html) - Editar datos, galerías, specs de cada producto
+4. **Terra** (terra.html) - Asistente de voz para clientes en tienda
+
+### Tablas relacionadas
+- `products` - Datos maestros del producto (nombre, slug, imagen, video_url, galería, specs)
+- `landings` - Registro de landing por producto (product_id, title, description, video_url, image_url, active)
+- `stores` - Tiendas con datos de contacto y ubicación
+- `scans` - Tracking de escaneos QR/NFC
+
+### URLs del CRM
+```
+/index.html          # Dashboard - Gestión de Landings
+/qr-tiendas.html     # Generador de QR por tienda
+/productos-edit.html  # Editor de productos
+/admin.html          # Admin (redirige a QR)
+```
 
 ---
 
