@@ -31,13 +31,13 @@ async function downloadImage(url) {
 async function generateVideo(imgBase64, mimeType) {
   const body = {
     instances: [{
-      prompt: 'Slow dolly forward camera movement. No changes to the scene.',
+      prompt: 'Slow cinematic dolly forward. No text, no words, no titles, no overlays. Only camera movement over the existing scene.',
       image: { bytesBase64Encoded: imgBase64, mimeType }
     }],
     parameters: {
       aspectRatio: '16:9',
       sampleCount: 1,
-      negativePrompt: 'text, letters, words, logos, watermarks, people'
+      negativePrompt: 'text, letters, words, titles, logos, watermarks, captions, subtitles, overlays, typography, writing, people, humans'
     }
   };
 

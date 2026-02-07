@@ -874,7 +874,7 @@ app.post('/api/video/generate', async (req, res) => {
     }
 
     // Prompt: SOLO movimiento de cámara - la imagen ya tiene la escena completa
-    let prompt = `Slow dolly forward camera movement. No changes to the scene.`;
+    let prompt = `Slow cinematic dolly forward. No text, no words, no titles, no overlays. Only camera movement over the existing scene.`;
     console.log('🎬 Prompt:', prompt);
 
     let result;
@@ -888,7 +888,7 @@ app.post('/api/video/generate', async (req, res) => {
         parameters: {
           aspectRatio: "16:9",
           sampleCount: 1,
-          negativePrompt: "text, letters, words, logos, watermarks, people"
+          negativePrompt: "text, letters, words, titles, logos, watermarks, captions, subtitles, overlays, typography, writing, people, humans"
         }
       };
       
