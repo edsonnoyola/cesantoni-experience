@@ -1018,58 +1018,71 @@
         let currentImageIndex = 0;
 
         function generateTechnicalDescription(p) {
-            const benefits = [];
+            // Pick only the 2-3 most distinctive benefits for THIS product
+            const pool = [];
 
-            // PEI → resistencia al uso diario
+            // PEI
             if (p.pei) {
                 const pei = parseInt(p.pei);
-                if (pei >= 4) benefits.push('Soporta alto tráfico sin desgastarse — ideal para cocinas, pasillos y comercios.');
-                else if (pei === 3) benefits.push('Resistente al tráfico diario de toda tu familia.');
-                else if (pei <= 2) benefits.push('Diseñado para espacios de bajo tráfico como baños y recámaras.');
+                if (pei >= 5) pool.push({ priority: 3, text: 'Resistencia industrial: soporta el tráfico más intenso sin inmutarse.' });
+                else if (pei === 4) pool.push({ priority: 2, text: 'Aguanta el trajín diario de cocinas, pasillos y hasta locales comerciales.' });
+                else if (pei === 3) pool.push({ priority: 1, text: 'Pensado para el ritmo de tu hogar: salas, comedores y recámaras.' });
+                else pool.push({ priority: 1, text: 'Para espacios íntimos de bajo tráfico: baños y vestidores.' });
             }
 
-            // Absorción → humedad
+            // Absorción
             if (p.water_absorption) {
                 const abs = parseFloat(p.water_absorption);
-                if (abs <= 0.5) benefits.push('No absorbe humedad — úsalo en baños, cocinas, terrazas y albercas sin preocuparte.');
-                else if (abs <= 3) benefits.push('Baja absorción de humedad, resistente a salpicaduras y limpieza con agua.');
-                else benefits.push('Para espacios interiores secos.');
+                if (abs <= 0.1) pool.push({ priority: 3, text: 'Prácticamente impermeable — ponlo junto a la alberca o en la regadera sin pensarlo.' });
+                else if (abs <= 0.5) pool.push({ priority: 2, text: 'No absorbe agua: baños, cocinas y terrazas, sin preocupaciones.' });
+                else if (abs <= 3) pool.push({ priority: 1, text: 'Resistente a salpicaduras y fácil de trapear.' });
             }
 
-            // Mohs → rayones
+            // Mohs
             if (p.mohs) {
                 const mohs = parseInt(p.mohs);
-                if (mohs >= 7) benefits.push('Altamente resistente a rayones — ni mascotas, ni muebles, ni tacones lo marcan.');
-                else if (mohs >= 5) benefits.push('Resistente a rayones del uso cotidiano.');
+                if (mohs >= 8) pool.push({ priority: 3, text: 'Dureza excepcional: ni llaves, ni tacones, ni muebles lo rayan.' });
+                else if (mohs >= 6) pool.push({ priority: 2, text: 'Resistente a rayones — seguro con mascotas y niños.' });
+                else if (mohs >= 4) pool.push({ priority: 1, text: 'Superficie durable para el uso cotidiano.' });
             }
 
-            // Acabado → beneficio práctico
+            // Acabado
             if (p.finish) {
                 const f = p.finish.toUpperCase();
-                if (f.includes('MATE')) benefits.push('Acabado mate: antiderrapante natural, no refleja y disimula huellas.');
-                else if (f.includes('PULIDO') || f.includes('BRILLANTE')) benefits.push('Acabado pulido: brillo elegante que amplifica la luz de tus espacios.');
-                else if (f.includes('LAPPATO') || f.includes('SEMI')) benefits.push('Acabado semi-pulido: el balance perfecto entre brillo y practicidad.');
-                else if (f.includes('TEXTUR') || f.includes('STRUTT') || f.includes('ANTIDERRAPANTE')) benefits.push('Textura antiderrapante: seguro para exteriores y zonas mojadas.');
+                if (f.includes('MATE')) pool.push({ priority: 2, text: 'Acabado mate: no resbala, disimula huellas y se limpia fácil.' });
+                else if (f.includes('PULIDO') || f.includes('BRILLANTE')) pool.push({ priority: 2, text: 'Brillo pulido que refleja la luz y hace ver tus espacios más amplios.' });
+                else if (f.includes('LAPPATO') || f.includes('SEMI')) pool.push({ priority: 2, text: 'Semi-brillo elegante: luminoso pero práctico para el día a día.' });
+                else if (f.includes('TEXTUR') || f.includes('STRUTT') || f.includes('ANTIDERRAPANTE')) pool.push({ priority: 3, text: 'Textura antiderrapante: camina descalzo o mojado sin riesgo.' });
+                else if (f.includes('NATURAL')) pool.push({ priority: 1, text: 'Acabado natural que conserva la textura auténtica del material.' });
             }
 
-            // Tipo rectificado
+            // Rectificado
             if (p.type && p.type.toLowerCase().includes('rectificado')) {
-                benefits.push('Bordes rectificados para juntas mínimas — se ve como una sola pieza continua.');
+                pool.push({ priority: 2, text: 'Bordes perfectos para juntas mínimas — un piso que se ve continuo, sin interrupciones.' });
             }
 
-            // Uso interior/exterior
+            // Formato — solo si es grande
+            if (p.format) {
+                const dims = p.format.match(/(\d+)\s*x\s*(\d+)/);
+                if (dims) {
+                    const maxDim = Math.max(parseInt(dims[1]), parseInt(dims[2]));
+                    if (maxDim >= 120) pool.push({ priority: 2, text: `Gran formato ${p.format}: menos juntas, espacios visualmente más amplios.` });
+                    else if (maxDim >= 80) pool.push({ priority: 1, text: `Formato ${p.format} que equilibra cobertura y versatilidad.` });
+                }
+            }
+
+            // Uso exterior
             if (p.usage) {
                 const u = p.usage.toLowerCase();
-                if (u.includes('ext') && u.includes('int')) benefits.push('Versátil: funciona tanto en interiores como en exteriores.');
-                else if (u.includes('ext')) benefits.push('Apto para exteriores: resiste sol, lluvia y cambios de temperatura.');
+                if (u.includes('ext') && u.includes('int')) pool.push({ priority: 1, text: 'Del interior al exterior sin cambiar de piso — resiste sol y lluvia.' });
+                else if (u.includes('muro') || u.includes('pared')) pool.push({ priority: 1, text: 'También funciona en muros para un diseño integral.' });
             }
 
-            // Formato como dato útil (no como oración)
-            if (p.format && benefits.length > 0) {
-                benefits.push(`Formato ${p.format} — menos juntas, espacios más amplios y limpios.`);
-            }
+            // Sort by priority desc, take top 3
+            pool.sort((a, b) => b.priority - a.priority);
+            const top = pool.slice(0, 3).map(b => b.text);
 
-            return benefits.length > 0 ? benefits.join(' ') : 'Porcelánico premium Cesantoni.';
+            return top.length > 0 ? top.join(' ') : 'Porcelánico premium Cesantoni.';
         }
 
         async function init() {
