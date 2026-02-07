@@ -1631,9 +1631,45 @@ Si no sabes algo específico, sugiere contactar a un asesor por WhatsApp.
 // INICIO
 // =====================================================
 
+// Sync video URLs from GCS on startup (Render wipes filesystem on restart)
+async function syncVideosFromGCS() {
+  if (!gcsBucket) return;
+  try {
+    console.log('🔄 Sincronizando videos desde GCS...');
+    const [files] = await gcsBucket.getFiles({ prefix: 'videos/' });
+    const videoFiles = files.filter(f => f.name.endsWith('.mp4'));
+    console.log(`📦 ${videoFiles.length} videos encontrados en GCS`);
+
+    const products = query('SELECT id, name, slug, video_url FROM products');
+    let updated = 0;
+
+    for (const file of videoFiles) {
+      const filename = file.name.replace('videos/', '').replace('.mp4', '');
+      const gcsUrl = `https://storage.googleapis.com/${GCS_BUCKET}/${file.name}`;
+
+      // Find matching product by slug or name
+      const product = products.find(p => {
+        const slug = (p.slug || p.name || '').toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '');
+        const slugDash = (p.slug || p.name || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '');
+        return filename === slug || filename === slugDash || filename === p.slug;
+      });
+
+      if (product && !product.video_url) {
+        run('UPDATE products SET video_url = ? WHERE id = ?', [gcsUrl, product.id]);
+        updated++;
+      }
+    }
+
+    console.log(`✅ Sync GCS: ${updated} video_urls actualizados`);
+  } catch (err) {
+    console.log('⚠️ Error sync GCS:', err.message);
+  }
+}
+
 async function start() {
   await initDB();
-  
+  await syncVideosFromGCS();
+
   app.listen(PORT, () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════╗
