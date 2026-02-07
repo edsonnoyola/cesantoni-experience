@@ -22,35 +22,17 @@ async function generateTechDescription(product, index) {
   if (pieces_per_box) specs.push(`Piezas/caja: ${pieces_per_box}`);
   if (sqm_per_box) specs.push(`m²/caja: ${sqm_per_box}`);
 
-  // Vary the style instruction based on index to force variety
-  const styles = [
-    'Escribe como si fuera una ficha de una revista de arquitectura.',
-    'Escribe como un arquitecto explicándole a su cliente por qué eligió este piso.',
-    'Escribe como el copy de un showroom de lujo europeo.',
-    'Escribe como una recomendación personal de un experto en diseño interior.',
-    'Escribe como si fuera la descripción de un catálogo de hotel boutique.',
-    'Escribe como un diseñador que presenta este piso en una expo.',
-    'Escribe como si estuvieras convenciendo a alguien que duda entre este y otro.',
-    'Escribe como la ficha de un producto en una tienda online premium tipo Restoration Hardware.',
-  ];
-  const style = styles[index % styles.length];
+  const prompt = `Escribe la ficha técnica de venta de este piso Cesantoni. Máximo 2 oraciones, 40 palabras. Tercera persona, sin "tú", sin "elegí", sin testimoniales.
 
-  const prompt = `Eres copywriter de Cesantoni, marca de porcelanato premium en México. Escribe 2-3 oraciones (máximo 60 palabras) describiendo las características técnicas de este piso pero convertidas en BENEFICIOS que le importan al comprador.
+${name} | ${category || 'Pisos'} | ${specs.join(' | ')}
 
-Producto: ${name}
-Categoría: ${category || 'Pisos'}
-${specs.join('\n')}
+Convierte los datos en beneficios concretos. Ejemplos del tono correcto:
+- "Superficie PEI 4 que mantiene su aspecto intacto en cocinas y pasillos de alto tráfico. Absorción menor al 0.5%: apto para baños y exteriores."
+- "Gran formato 60x120 con juntas mínimas para un piso visualmente continuo. Acabado mate antiderrapante, ideal para familias con niños."
+- "Porcelánico rectificado que replica la veta del mármol sin su fragilidad. Resistente a rayones Mohs 7 y cero absorción de humedad."
 
-${style}
-
-Reglas:
-- Traduce cada spec en un beneficio real: PEI alto = aguanta el uso diario, absorción baja = no le pasa nada con el agua, Mohs alto = no se raya, mate = no resbala, rectificado = se ve continuo, formato grande = menos juntas
-- NO repitas frases genéricas como "alta calidad", "máximos estándares", "diseño exclusivo"
-- NO uses las mismas frases para todos los pisos - cada uno debe leerse COMPLETAMENTE diferente
-- Menciona el nombre del producto naturalmente si queda bien
-- Si no hay specs, habla de la categoría (madera = calidez, mármol = elegancia, piedra = carácter, cemento = estilo urbano)
-- Español, tono profesional pero cercano
-- Solo devuelve la descripción, nada más`;
+PROHIBIDO: "elegí", "te recomiendo", "olvídate", "sin preocupaciones", "alta calidad", "máximos estándares", "diseño exclusivo", asteriscos, markdown, opciones múltiples.
+Solo devuelve la descripción.`;
 
   const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`, {
     method: 'POST',
