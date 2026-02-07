@@ -528,6 +528,7 @@
         let storeName = '';
         let storeSlug = '';
         let storeWhatsapp = '';
+        const terraSessionId = 'terra-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6);
 
         // ===== SESSION HISTORY (Feature 1) =====
         let visitedProducts = []; // {id, name, slug, category, image_url}
@@ -697,7 +698,8 @@
                                 customer_name: customerName,
                                 store_name: storeName,
                                 current_product_id: scannedProduct.id,
-                                visited_products: []
+                                visited_products: [],
+                                session_id: terraSessionId
                             })
                         });
                         const introData = await introRes.json();
@@ -923,7 +925,8 @@
                         store_name: storeName,
                         current_product_id: currentProduct?.id || null,
                         visited_products: visitedProducts.map(p => p.name),
-                        history: chatHistory.slice(-6)
+                        history: chatHistory.slice(-6),
+                        session_id: terraSessionId
                     })
                 });
 
