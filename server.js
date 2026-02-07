@@ -893,10 +893,8 @@ app.post('/api/video/generate', async (req, res) => {
         console.log('🎯 Usando imagen como primer frame del video');
         console.log('📊 Tamaño imagen:', Math.round(imageBase64.length / 1024), 'KB');
         requestBody.instances[0].image = {
-          inlineData: {
-            data: imageBase64,
-            mimeType: imageMimeType
-          }
+          bytesBase64Encoded: imageBase64,
+          mimeType: imageMimeType
         };
       }
       
