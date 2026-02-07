@@ -92,6 +92,14 @@
         .promo-badge.active { background: #d4edda; color: #155724; }
         .promo-badge.expiring { background: #fff3cd; color: #856404; }
         
+        /* Terra conversations */
+        .terra-msg { padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.8rem; }
+        .terra-msg:last-child { border-bottom: none; }
+        .terra-msg .terra-q { color: #333; font-weight: 500; }
+        .terra-msg .terra-a { color: #888; font-size: 0.75rem; margin-top: 2px; }
+        .terra-msg .terra-meta { font-size: 0.65rem; color: #bbb; margin-top: 2px; }
+        .terra-stat { display: inline-block; background: #f5f5f5; border-radius: 12px; padding: 4px 10px; font-size: 0.75rem; margin: 2px; }
+
         /* Pages */
         .page { display: none; }
         .page.active { display: block; }
@@ -276,6 +284,28 @@
                 </div>
             </div>
             
+            <!-- Terra Insights -->
+            <div class="grid-2" style="margin-bottom:20px">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">🤖 Terra - Resumen IA</span>
+                        <span class="card-action" id="terra-refresh" onclick="loadTerraInsights()" style="cursor:pointer">Actualizar →</span>
+                    </div>
+                    <div id="terra-summary" style="font-size:0.85rem;line-height:1.5;color:#444;max-height:300px;overflow-y:auto">
+                        <span style="color:#aaa">Cargando insights de Terra...</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">💬 Últimas preguntas</span>
+                        <span style="font-size:0.7rem;color:#888" id="terra-total"></span>
+                    </div>
+                    <div id="terra-recent" style="max-height:300px;overflow-y:auto">
+                        <span style="color:#aaa;font-size:0.85rem">Sin conversaciones aún</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Alerts + Promos -->
             <div class="grid-2">
                 <div class="card">
@@ -625,11 +655,67 @@
             
             // Alerts
             renderAlerts();
-            
+
             // Promos summary
             renderPromosSummary();
+
+            // Terra Insights
+            loadTerraInsights();
         }
         
+        async function loadTerraInsights() {
+            const days = parseInt(document.getElementById('period').value) || 30;
+            try {
+                // Load conversations list
+                const convRes = await fetch(`/api/terra/conversations?days=${days}`);
+                const conversations = await convRes.json();
+
+                const recentEl = document.getElementById('terra-recent');
+                const totalEl = document.getElementById('terra-total');
+                totalEl.textContent = conversations.length + ' conversaciones';
+
+                if (conversations.length === 0) {
+                    recentEl.innerHTML = '<span style="color:#aaa;font-size:0.85rem">Sin conversaciones en este periodo. Cuando los clientes hablen con Terra, sus preguntas aparecerán aquí.</span>';
+                    document.getElementById('terra-summary').innerHTML = '<span style="color:#aaa">Sin datos suficientes para generar resumen.</span>';
+                    return;
+                }
+
+                // Show recent conversations
+                recentEl.innerHTML = conversations.slice(0, 15).map(c => `
+                    <div class="terra-msg">
+                        <div class="terra-q">${c.customer_name || 'Anónimo'}: "${c.question}"</div>
+                        <div class="terra-a">Terra: ${(c.answer || '').substring(0, 100)}${c.answer && c.answer.length > 100 ? '...' : ''}</div>
+                        <div class="terra-meta">${c.product_name ? '📦 ' + c.product_name : ''} ${c.store_name ? '🏪 ' + c.store_name : ''} · ${new Date(c.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+                    </div>
+                `).join('');
+
+                // Load AI summary
+                document.getElementById('terra-summary').innerHTML = '<span style="color:#aaa">Generando resumen con IA...</span>';
+                const sumRes = await fetch(`/api/terra/summary?days=${days}`);
+                const summary = await sumRes.json();
+
+                let html = '';
+                if (summary.top_products && summary.top_products.length > 0) {
+                    html += '<div style="margin-bottom:8px"><strong>Productos consultados:</strong> ';
+                    html += summary.top_products.slice(0, 5).map(p => `<span class="terra-stat">${p.name} (${p.count})</span>`).join(' ');
+                    html += '</div>';
+                }
+                if (summary.top_stores && summary.top_stores.length > 0) {
+                    html += '<div style="margin-bottom:8px"><strong>Tiendas:</strong> ';
+                    html += summary.top_stores.map(s => `<span class="terra-stat">${s.name} (${s.count})</span>`).join(' ');
+                    html += '</div>';
+                }
+                if (summary.summary) {
+                    html += '<div style="margin-top:10px;padding:10px;background:#f9f9f9;border-radius:8px;font-size:0.8rem;line-height:1.6;white-space:pre-wrap">' + summary.summary.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>') + '</div>';
+                }
+                document.getElementById('terra-summary').innerHTML = html || '<span style="color:#aaa">Sin resumen disponible.</span>';
+
+            } catch (e) {
+                console.error('Terra insights error:', e);
+                document.getElementById('terra-summary').innerHTML = '<span style="color:#aaa">Error cargando insights.</span>';
+            }
+        }
+
         function renderMexicoMap(stateData) {
             const stateScans = {};
             stateData.forEach(s => {
