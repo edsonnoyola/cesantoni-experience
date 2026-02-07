@@ -884,7 +884,6 @@ app.post('/api/video/generate', async (req, res) => {
         parameters: {
           aspectRatio: "16:9",
           sampleCount: 1,
-          resizeMode: "crop",
           negativePrompt: "text, letters, words, logos, watermarks, people"
         }
       };
