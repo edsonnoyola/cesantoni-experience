@@ -179,6 +179,23 @@ async function initDB() {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS terra_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT UNIQUE NOT NULL,
+      customer_name TEXT,
+      store_id INTEGER,
+      store_name TEXT,
+      products_visited TEXT,
+      conversation_count INTEGER DEFAULT 0,
+      recommendation TEXT,
+      whatsapp_sent INTEGER DEFAULT 0,
+      duration_minutes REAL,
+      started_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      ended_at TEXT
+    )
+  `);
+
   // Seed data
   seedData();
   

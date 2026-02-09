@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const https = require('https');
 const QRCode = require('qrcode');
 const fs = require('fs');
 const { initDB, query, queryOne, run, scalar } = require('./database');
@@ -661,6 +662,23 @@ app.post('/api/qr/generate', async (req, res) => {
     res.json({ url, qr_data: qrDataUrl, product: product.name, store: store.name });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Generate QR as PNG image
+app.get('/api/qr/img', async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url) return res.status(400).send('url required');
+    const buffer = await QRCode.toBuffer(url, {
+      width: 400, margin: 2,
+      errorCorrectionLevel: 'M',
+      color: { dark: '#000000', light: '#ffffff' }
+    });
+    res.set('Content-Type', 'image/png');
+    res.send(buffer);
+  } catch (err) {
+    res.status(500).send('QR error');
   }
 });
 
@@ -1392,9 +1410,186 @@ app.get('/api/terra/summary', async (req, res) => {
   }
 });
 
+// =====================================================
+// TERRA SESSIONS - Store Mode Tracking
+// =====================================================
+
+app.post('/api/terra/session', (req, res) => {
+  try {
+    const { action, session_id, customer_name, store_id, store_name, product } = req.body;
+
+    if (!session_id) return res.status(400).json({ error: 'session_id required' });
+
+    if (action === 'start') {
+      // Create or update session
+      const existing = queryOne('SELECT id FROM terra_sessions WHERE session_id = ?', [session_id]);
+      if (existing) {
+        run('UPDATE terra_sessions SET customer_name = ?, store_id = ?, store_name = ? WHERE session_id = ?',
+          [customer_name, store_id || null, store_name || null, session_id]);
+      } else {
+        run('INSERT INTO terra_sessions (session_id, customer_name, store_id, store_name, products_visited) VALUES (?, ?, ?, ?, ?)',
+          [session_id, customer_name, store_id || null, store_name || null, '[]']);
+      }
+      return res.json({ success: true });
+    }
+
+    if (action === 'scan_product') {
+      const session = queryOne('SELECT * FROM terra_sessions WHERE session_id = ?', [session_id]);
+      if (!session) return res.status(404).json({ error: 'Session not found' });
+
+      let visited = [];
+      try { visited = JSON.parse(session.products_visited || '[]'); } catch (e) {}
+
+      if (product && !visited.find(v => v.id === product.id)) {
+        visited.push({
+          id: product.id,
+          name: product.name,
+          category: product.category,
+          scanned_at: new Date().toISOString()
+        });
+        run('UPDATE terra_sessions SET products_visited = ?, conversation_count = conversation_count + 1 WHERE session_id = ?',
+          [JSON.stringify(visited), session_id]);
+      }
+      return res.json({ success: true, products_count: visited.length });
+    }
+
+    if (action === 'end') {
+      const session = queryOne('SELECT * FROM terra_sessions WHERE session_id = ?', [session_id]);
+      if (!session) return res.status(404).json({ error: 'Session not found' });
+
+      const startedAt = new Date(session.started_at);
+      const durationMin = (Date.now() - startedAt.getTime()) / 60000;
+
+      run('UPDATE terra_sessions SET ended_at = CURRENT_TIMESTAMP, duration_minutes = ? WHERE session_id = ?',
+        [Math.round(durationMin * 10) / 10, session_id]);
+      return res.json({ success: true, duration_minutes: durationMin });
+    }
+
+    if (action === 'whatsapp_sent') {
+      run('UPDATE terra_sessions SET whatsapp_sent = 1 WHERE session_id = ?', [session_id]);
+      return res.json({ success: true });
+    }
+
+    res.status(400).json({ error: 'Invalid action' });
+  } catch (err) {
+    console.error('Terra session error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/terra/sessions', (req, res) => {
+  try {
+    const { store, days, limit: lim } = req.query;
+    const d = parseInt(days) || 30;
+    const l = parseInt(lim) || 100;
+
+    let sql = `SELECT * FROM terra_sessions WHERE started_at >= datetime('now', '-${d} days')`;
+    const params = [];
+
+    if (store) {
+      sql += ' AND store_name LIKE ?';
+      params.push(`%${store}%`);
+    }
+
+    sql += ' ORDER BY started_at DESC LIMIT ?';
+    params.push(l);
+
+    const sessions = query(sql, params);
+
+    // Summary stats
+    const total = sessions.length;
+    const avgProducts = total > 0 ? sessions.reduce((sum, s) => {
+      try { return sum + JSON.parse(s.products_visited || '[]').length; } catch (e) { return sum; }
+    }, 0) / total : 0;
+    const avgDuration = total > 0 ? sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) / total : 0;
+    const whatsappSent = sessions.filter(s => s.whatsapp_sent).length;
+
+    res.json({
+      sessions,
+      summary: {
+        total_sessions: total,
+        avg_products_per_visit: Math.round(avgProducts * 10) / 10,
+        avg_duration_minutes: Math.round(avgDuration * 10) / 10,
+        whatsapp_sent: whatsappSent,
+        whatsapp_rate: total > 0 ? Math.round((whatsappSent / total) * 100) : 0
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// AI-powered WhatsApp summary
+app.post('/api/terra/whatsapp-summary', async (req, res) => {
+  try {
+    const { customer_name, store_name, visited_products, conversation_highlights, session_id } = req.body;
+
+    if (!visited_products || visited_products.length === 0) {
+      return res.status(400).json({ error: 'No products visited' });
+    }
+
+    const baseUrl = BASE_URL;
+
+    // Generate AI recommendation
+    let recommendation = '';
+    if (GOOGLE_API_KEY) {
+      try {
+        const productList = visited_products.map((p, i) =>
+          `${i + 1}. ${p.name} | ${p.category || 'Premium'} | ${p.format || ''} | PEI ${p.pei || 'N/A'} | ${p.finish || ''} | ${p.usage || ''}`
+        ).join('\n');
+
+        const aiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: `El cliente ${customer_name} visitó ${store_name || 'Cesantoni'} y vio estos pisos:\n${productList}\n\n${conversation_highlights ? 'Contexto de la conversación: ' + conversation_highlights : ''}\n\nGenera UNA recomendación personalizada en 1-2 oraciones cortas en español mexicano. Menciona por qué un piso específico le conviene basándote en las características técnicas. Sé directo y útil.` }] }],
+              generationConfig: { temperature: 0.5, maxOutputTokens: 150 }
+            })
+          }
+        );
+        const aiData = await aiRes.json();
+        recommendation = aiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      } catch (e) {
+        console.log('AI recommendation error:', e.message);
+      }
+    }
+
+    // Build WhatsApp message
+    let msg = `*Hola! Soy ${customer_name}*\n`;
+    msg += `Visite ${store_name || 'Cesantoni'} con Terra, mi guia de Cesantoni.\n\n`;
+    msg += `*Mis pisos favoritos:*\n\n`;
+
+    visited_products.forEach((p, i) => {
+      msg += `${i + 1}. *${p.name}* | ${p.category || 'Premium'} | ${p.format || ''}\n`;
+      msg += `   Ver: ${baseUrl}/p/${p.slug || p.sku || p.id}\n\n`;
+    });
+
+    if (recommendation) {
+      msg += `*Recomendacion de Terra:*\n${recommendation}\n\n`;
+    }
+
+    msg += `Me gustaria recibir una cotizacion!`;
+
+    // Mark session as WhatsApp sent
+    if (session_id) {
+      try {
+        run('UPDATE terra_sessions SET whatsapp_sent = 1, recommendation = ? WHERE session_id = ?',
+          [recommendation, session_id]);
+      } catch (e) {}
+    }
+
+    res.json({ message: msg, recommendation });
+  } catch (err) {
+    console.error('WhatsApp summary error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/terra', async (req, res) => {
   try {
-    const { message, customer_name, store_name, current_product_id, visited_products, history } = req.body;
+    const { message, customer_name, customer_gender, store_name, current_product_id, visited_products, visited_products_detail, history, store_mode } = req.body;
 
     if (!GOOGLE_API_KEY) {
       return res.status(500).json({ error: 'API no configurada' });
@@ -1407,9 +1602,9 @@ app.post('/api/terra', async (req, res) => {
     }
 
     const clientName = customer_name || 'cliente';
+    const visitedCount = visited_products ? visited_products.length : 0;
 
     // Smart catalog: only send relevant products to reduce tokens
-    // If viewing a product, send same-category products only. Otherwise send compact list.
     let catalogText = '';
     if (currentProduct) {
       const related = query(`
@@ -1432,6 +1627,31 @@ app.post('/api/terra', async (req, res) => {
     const productContext = currentProduct ? `
 PRODUCTO ACTUAL: ${currentProduct.name} | Cat:${currentProduct.category} | Tipo:${currentProduct.type} | Formato:${currentProduct.format} | Acabado:${currentProduct.finish} | PEI:${currentProduct.pei} | Absorcion:${currentProduct.water_absorption||'porcelanico'} | Mohs:${currentProduct.mohs||'N/A'} | Uso:${currentProduct.usage} | ${currentProduct.description||'Piso premium'}` : '';
 
+    // Rich visited products context (Phase 2c)
+    let visitedContext = 'Ninguno';
+    if (visited_products_detail && visited_products_detail.length > 0) {
+      visitedContext = 'PISOS VISTOS POR EL CLIENTE:\n' + visited_products_detail.map((p, i) =>
+        `${i + 1}. ${p.name} | ${p.category || 'Premium'} | ${p.format || ''} | PEI ${p.pei || 'N/A'} | ${p.finish || ''} | ${p.usage || ''}`
+      ).join('\n');
+    } else if (visited_products && visited_products.length > 0) {
+      visitedContext = visited_products.join(', ');
+    }
+
+    // Store-guide mode instructions (Phase 2d)
+    let modeInstruction = '';
+    if (store_mode) {
+      if (visitedCount === 0 && !currentProduct) {
+        modeInstruction = `MODO GUIA: El cliente esta recorriendo la tienda y AUN NO ha escaneado ningun piso. Si el cliente dice que quiere o para que espacio busca (ej: "quiero remodelar mi cocina"), recomienda 2-3 pisos ESPECIFICOS del catalogo por nombre, dile por que le convienen, y dile "vamos a buscarlos, escanea el QR del que te llame la atencion". Si no sabe que quiere, haz UNA pregunta de descubrimiento: que espacio, que estilo, si tiene mascotas/ninos.`;
+      } else if (visitedCount === 1 || (visitedCount === 0 && currentProduct)) {
+        modeInstruction = `MODO PRODUCTO: El cliente esta viendo un piso. Presentalo, explica sus mejores cualidades de forma simple, y pregunta si quiere ver mas opciones o tiene dudas.`;
+      } else if (visitedCount >= 2) {
+        modeInstruction = `MODO COMPARACION: El cliente ya vio ${visitedCount} pisos. Puedes comparar caracteristicas entre ellos, recomendar cual es mejor segun sus necesidades. Menciona diferencias especificas (PEI, acabado, uso).`;
+      }
+      if (visitedCount >= 3) {
+        modeInstruction += ` PROACTIVO: Sugiere enviar resumen por WhatsApp si no lo ha pedido. Di algo como "Ya llevas ${visitedCount} pisos, quieres que te mande el resumen por WhatsApp?"`;
+      }
+    }
+
     const systemPrompt = `Eres Terra, la amiga experta en pisos de Cesantoni. Eres como esa amiga que sabe TODO de decoracion y pisos y te ayuda con mucho gusto.
 
 PERSONALIDAD:
@@ -1444,7 +1664,8 @@ PERSONALIDAD:
 - Si el cliente no sabe que quiere, lo guias con preguntas, no lo bombardeas con opciones.
 - SIEMPRE termina con una pregunta o invitacion para seguir platicando.
 
-Cliente: ${clientName}. ${store_name ? 'Tienda: '+store_name : ''}
+Cliente: ${clientName} (${customer_gender === 'f' ? 'mujer, usa femenino: bienvenida/lista/conectada' : 'hombre, usa masculino: bienvenido/listo/conectado'}). ${store_name ? 'Tienda: '+store_name : ''}
+${modeInstruction}
 
 CONOCIMIENTO (usa para responder pero explicalo simple):
 PEI: 1=decorativo, 2=poco trafico, 3=toda la casa, 4=comercios/mucho trafico, 5=industrial.
@@ -1456,14 +1677,15 @@ Cesantoni: Empresa mexicana premium, tecnologia HD, gran formato, garantia.
 vs Madera real: no se hincha, resiste agua, cero mantenimiento, mismo look. vs Marmol: no se mancha, sin sellado.
 ${productContext}
 
-VISTOS: ${visited_products && visited_products.length > 0 ? visited_products.join(', ') : 'Ninguno'}
+VISTOS: ${visitedContext}
 
 CATALOGO:
 ${catalogText}
 
 RESPUESTA: MAXIMO 2 oraciones cortas + 1 pregunta. Menciona producto. Usa nombre ${clientName}. Traduce tecnico a simple. No repitas vistos.
 
-RESPONDE SOLO JSON (corto): {"intent":"recommend|lookup|question|greeting","speech":"MAXIMO 40 PALABRAS","product_id":null,"action":"show_product|none"}`;
+IMPORTANTE: Responde UNICAMENTE un objeto JSON valido. NADA de texto antes ni despues del JSON. SOLO el JSON.
+Formato EXACTO: {"intent":"recommend|lookup|question|greeting","speech":"MAXIMO 40 PALABRAS","product_id":null,"action":"show_product|none"}`;
 
     // Build conversation with history for context
     const contents = [
@@ -1492,7 +1714,7 @@ RESPONDE SOLO JSON (corto): {"intent":"recommend|lookup|question|greeting","spee
           contents,
           generationConfig: {
             temperature: 0.8,
-            maxOutputTokens: 500
+            maxOutputTokens: 200
           }
         })
       }
@@ -1507,16 +1729,35 @@ RESPONDE SOLO JSON (corto): {"intent":"recommend|lookup|question|greeting","spee
 
     const rawReply = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    // Parse JSON from Gemini response
+    // Parse JSON from Gemini response — handle multiple formats
     let parsed;
     try {
       // Clean potential markdown wrapping
       const cleaned = rawReply.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
       parsed = JSON.parse(cleaned);
     } catch (e) {
-      // If JSON parsing fails, use raw text as speech
-      console.log('Terra parse error, raw:', rawReply);
-      parsed = { intent: 'question', speech: rawReply.substring(0, 200), product_id: null, action: 'none' };
+      // Try to extract JSON object from mixed text+JSON response
+      const jsonMatch = rawReply.match(/\{[\s\S]*"speech"\s*:\s*"[^"]*"[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          parsed = JSON.parse(jsonMatch[0]);
+          console.log('Terra: extracted JSON from mixed response');
+        } catch (e2) {
+          // Extract just the speech value with regex
+          const speechMatch = rawReply.match(/"speech"\s*:\s*"([^"]*)"/);
+          if (speechMatch) {
+            parsed = { intent: 'question', speech: speechMatch[1], product_id: null, action: 'none' };
+          } else {
+            // Last resort: use plain text before JSON
+            const plainText = rawReply.replace(/\{[\s\S]*\}/, '').trim();
+            console.log('Terra parse error, raw:', rawReply.substring(0, 300));
+            parsed = { intent: 'question', speech: plainText || rawReply.substring(0, 200), product_id: null, action: 'none' };
+          }
+        }
+      } else {
+        console.log('Terra parse error, raw:', rawReply.substring(0, 300));
+        parsed = { intent: 'question', speech: rawReply.substring(0, 200), product_id: null, action: 'none' };
+      }
     }
 
     // If there's a product_id, fetch the full product
@@ -1534,9 +1775,14 @@ RESPONDE SOLO JSON (corto): {"intent":"recommend|lookup|question|greeting","spee
          message, parsed.speech || '', parsed.intent || 'question']);
     } catch (e) { console.log('Terra log error:', e.message); }
 
+    const speechText = parsed.speech || 'Disculpa, no entendi bien. Podrias decirlo de otra forma?';
+
+    // Fire TTS in background, but don't wait — respond immediately with text
+    preGenerateTTS(speechText);
+
     res.json({
       intent: parsed.intent || 'question',
-      speech: parsed.speech || 'Disculpa, no entendi bien. Podrias decirlo de otra forma?',
+      speech: speechText,
       product: productData,
       action: parsed.action || 'none'
     });
@@ -1548,8 +1794,42 @@ RESPONDE SOLO JSON (corto): {"intent":"recommend|lookup|question|greeting","spee
 });
 
 // =====================================================
-// TTS - Google Cloud Text-to-Speech Neural2
+// TTS - Gemini 2.5 Flash TTS with pre-generation cache
 // =====================================================
+
+// Pre-generation cache: terra AI response fires TTS in advance
+const ttsCache = new Map();
+
+function preGenerateTTS(text) {
+  if (!GOOGLE_API_KEY || !text) return;
+  const key = text.substring(0, 100);
+  const promise = fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GOOGLE_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: text.substring(0, 300) }] }],
+        generationConfig: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } }
+          }
+        }
+      })
+    }
+  ).then(r => r.json()).then(data => {
+    if (data.error) return null;
+    return data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
+  }).catch(() => null);
+
+  ttsCache.set(key, { promise, timestamp: Date.now() });
+
+  // Clean old entries (>60s)
+  for (const [k, v] of ttsCache) {
+    if (Date.now() - v.timestamp > 60000) ttsCache.delete(k);
+  }
+}
 
 app.post('/api/tts', async (req, res) => {
   try {
@@ -1560,29 +1840,32 @@ app.post('/api/tts', async (req, res) => {
     }
 
     if (!GOOGLE_API_KEY) {
-      return res.status(500).json({ error: 'API no configurada' });
+      return res.status(500).json({ error: 'API no configurada', fallback: true });
     }
 
-    // Use Gemini 2.5 Flash TTS - same Generative Language API, no extra permissions needed
+    // Check pre-generation cache first
+    const key = text.substring(0, 100);
+    const cached = ttsCache.get(key);
+    if (cached) {
+      ttsCache.delete(key);
+      const audioData = await cached.promise;
+      if (audioData) {
+        return res.json({ audioContent: audioData, format: 'pcm' });
+      }
+    }
+
+    // No cache hit — generate now
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GOOGLE_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `Habla en español mexicano, tono cálido y profesional: ${text.substring(0, 300)}`
-            }]
-          }],
+          contents: [{ parts: [{ text: text.substring(0, 300) }] }],
           generationConfig: {
             responseModalities: ['AUDIO'],
             speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: {
-                  voiceName: 'Kore'
-                }
-              }
+              voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } }
             }
           }
         })
@@ -1593,7 +1876,7 @@ app.post('/api/tts', async (req, res) => {
 
     if (data.error) {
       console.error('TTS error:', JSON.stringify(data.error));
-      return res.status(500).json({ error: 'TTS no disponible', detail: data.error.message || data.error.status, fallback: true });
+      return res.status(500).json({ error: 'TTS no disponible', fallback: true });
     }
 
     const audioData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
@@ -1764,6 +2047,18 @@ async function start() {
 ╚═══════════════════════════════════════════════════════╝
     `);
   });
+
+  // HTTPS server for camera access on mobile
+  try {
+    const sslKey = fs.readFileSync(path.join(__dirname, 'key.pem'));
+    const sslCert = fs.readFileSync(path.join(__dirname, 'cert.pem'));
+    const HTTPS_PORT = 3443;
+    https.createServer({ key: sslKey, cert: sslCert }, app).listen(HTTPS_PORT, () => {
+      console.log(`   🔒 HTTPS: https://192.168.100.5:${HTTPS_PORT}\n`);
+    });
+  } catch (e) {
+    console.log('   (HTTPS not available - no cert files)');
+  }
 }
 
 start().catch(console.error);

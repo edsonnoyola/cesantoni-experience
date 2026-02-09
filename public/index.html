@@ -306,6 +306,33 @@
                 </div>
             </div>
 
+            <!-- Terra Store Sessions (Phase 6) -->
+            <div class="grid-2" style="margin-bottom:20px">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">🏪 Visitas Terra</span>
+                        <span class="card-action" onclick="loadTerraSessions()">Actualizar →</span>
+                    </div>
+                    <div id="terra-sessions-stats" style="display:flex;justify-content:space-around;text-align:center;padding:12px 0;border-bottom:1px solid #f0f0f0;margin-bottom:8px">
+                        <div><div style="font-size:1.4rem;font-weight:700" id="ts-total">-</div><div style="font-size:0.65rem;color:#888">Visitas</div></div>
+                        <div><div style="font-size:1.4rem;font-weight:700" id="ts-avg-products">-</div><div style="font-size:0.65rem;color:#888">Pisos/visita</div></div>
+                        <div><div style="font-size:1.4rem;font-weight:700" id="ts-avg-duration">-</div><div style="font-size:0.65rem;color:#888">Min prom</div></div>
+                        <div><div style="font-size:1.4rem;font-weight:700" id="ts-wa-rate">-</div><div style="font-size:0.65rem;color:#888">WhatsApp %</div></div>
+                    </div>
+                    <div id="terra-sessions-list" style="max-height:200px;overflow-y:auto;font-size:0.8rem">
+                        <span style="color:#aaa">Cargando sesiones...</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">📊 Detalle de Visitas</span>
+                    </div>
+                    <div id="terra-sessions-detail" style="max-height:280px;overflow-y:auto;font-size:0.8rem">
+                        <span style="color:#aaa">Selecciona una visita para ver detalle</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Alerts + Promos -->
             <div class="grid-2">
                 <div class="card">
@@ -661,6 +688,9 @@
 
             // Terra Insights
             loadTerraInsights();
+
+            // Terra Store Sessions
+            loadTerraSessions();
         }
         
         async function loadTerraInsights() {
@@ -713,6 +743,70 @@
             } catch (e) {
                 console.error('Terra insights error:', e);
                 document.getElementById('terra-summary').innerHTML = '<span style="color:#aaa">Error cargando insights.</span>';
+            }
+        }
+
+        async function loadTerraSessions() {
+            const days = parseInt(document.getElementById('period').value) || 30;
+            try {
+                const res = await fetch(`/api/terra/sessions?days=${days}&limit=50`);
+                const data = await res.json();
+                const { sessions, summary } = data;
+
+                document.getElementById('ts-total').textContent = summary.total_sessions;
+                document.getElementById('ts-avg-products').textContent = summary.avg_products_per_visit;
+                document.getElementById('ts-avg-duration').textContent = summary.avg_duration_minutes + 'm';
+                document.getElementById('ts-wa-rate').textContent = summary.whatsapp_rate + '%';
+
+                const listEl = document.getElementById('terra-sessions-list');
+                if (sessions.length === 0) {
+                    listEl.innerHTML = '<span style="color:#aaa">Sin visitas Terra en este periodo.</span>';
+                    return;
+                }
+
+                listEl.innerHTML = sessions.slice(0, 20).map(s => {
+                    let productsCount = 0;
+                    try { productsCount = JSON.parse(s.products_visited || '[]').length; } catch(e) {}
+                    const dur = s.duration_minutes ? Math.round(s.duration_minutes) + ' min' : 'activa';
+                    const wa = s.whatsapp_sent ? '✅ WhatsApp' : '';
+                    const date = new Date(s.started_at).toLocaleDateString('es-MX', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+                    return `<div style="padding:6px 0;border-bottom:1px solid #f0f0f0;cursor:pointer" onclick="showSessionDetail('${s.session_id}')">
+                        <strong>${s.customer_name || 'Anónimo'}</strong> — ${s.store_name || 'Sin tienda'}
+                        <div style="font-size:0.7rem;color:#888">${productsCount} pisos · ${dur} ${wa} · ${date}</div>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                console.error('Terra sessions error:', e);
+            }
+        }
+
+        async function showSessionDetail(sessionId) {
+            const detailEl = document.getElementById('terra-sessions-detail');
+            try {
+                const res = await fetch(`/api/terra/sessions?days=90&limit=200`);
+                const data = await res.json();
+                const session = data.sessions.find(s => s.session_id === sessionId);
+                if (!session) { detailEl.innerHTML = '<span style="color:#aaa">Sesión no encontrada</span>'; return; }
+
+                let products = [];
+                try { products = JSON.parse(session.products_visited || '[]'); } catch(e) {}
+
+                let html = `<div style="margin-bottom:8px"><strong>${session.customer_name || 'Anónimo'}</strong> en ${session.store_name || 'N/A'}</div>`;
+                html += `<div style="font-size:0.7rem;color:#888;margin-bottom:8px">${new Date(session.started_at).toLocaleString('es-MX')} · ${session.duration_minutes ? Math.round(session.duration_minutes) + ' min' : 'activa'}</div>`;
+
+                if (products.length > 0) {
+                    html += '<div style="margin-bottom:8px"><strong>Pisos explorados:</strong></div>';
+                    html += products.map((p, i) => `<div style="padding:4px 0;border-bottom:1px solid #f5f5f5">${i+1}. <strong>${p.name}</strong> <span style="color:#888">${p.category || ''}</span></div>`).join('');
+                }
+
+                if (session.recommendation) {
+                    html += `<div style="margin-top:8px;padding:8px;background:#fff8e1;border-radius:6px;font-size:0.75rem"><strong>Recomendación Terra:</strong><br>${session.recommendation}</div>`;
+                }
+
+                html += `<div style="margin-top:8px;font-size:0.7rem;color:#888">WhatsApp: ${session.whatsapp_sent ? '✅ Enviado' : '❌ No enviado'}</div>`;
+                detailEl.innerHTML = html;
+            } catch (e) {
+                detailEl.innerHTML = '<span style="color:#aaa">Error cargando detalle</span>';
             }
         }
 

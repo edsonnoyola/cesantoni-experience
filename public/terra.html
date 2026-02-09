@@ -43,15 +43,24 @@
             border-bottom: 1px solid var(--gray-dark);
         }
         .header-logo { height: 32px; width: auto; }
+        .header-left { display: flex; align-items: center; gap: 12px; }
         .header-label {
             font-size: 0.6rem; letter-spacing: 0.25em; text-transform: uppercase;
             color: var(--gold); border: 1px solid var(--gold); padding: 6px 12px;
         }
-        .header-right { text-align: right; }
+        .header-right { text-align: right; display: flex; align-items: center; gap: 10px; }
         .header-store {
             font-size: 0.55rem; letter-spacing: 0.15em; text-transform: uppercase;
             color: var(--gray-light); margin-top: 2px;
         }
+        /* Auto-listen toggle */
+        .auto-listen-toggle {
+            display: none; font-size: 0.55rem; letter-spacing: 0.1em;
+            color: var(--gray); background: var(--gray-dark); border: 1px solid var(--gray);
+            padding: 4px 8px; border-radius: 10px; cursor: pointer; text-transform: uppercase;
+        }
+        .auto-listen-toggle.active { color: var(--gold); border-color: var(--gold); }
+        .auto-listen-toggle.show { display: inline-block; }
 
         /* Main area */
         .main {
@@ -61,11 +70,38 @@
             overflow-y: auto;
         }
 
+        /* Journey strip (Phase 2a) */
+        .journey-strip {
+            display: none; width: 100%; padding: 8px 16px;
+            overflow-x: auto; white-space: nowrap;
+            border-bottom: 1px solid var(--gray-dark);
+            scrollbar-width: none;
+        }
+        .journey-strip::-webkit-scrollbar { display: none; }
+        .journey-strip.show { display: flex; align-items: center; gap: 8px; }
+        .journey-thumb {
+            width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+            object-fit: cover; border: 2px solid var(--gray-dark);
+            cursor: pointer; transition: all 0.3s;
+        }
+        .journey-thumb.active { border-color: var(--gold); box-shadow: 0 0 8px rgba(201,169,98,0.4); }
+        .journey-count {
+            font-size: 0.6rem; color: var(--gray-light); letter-spacing: 0.1em;
+            white-space: nowrap; flex-shrink: 0; margin-left: 4px;
+        }
+        .journey-add {
+            width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+            background: var(--gray-dark); border: 1px dashed var(--gold);
+            color: var(--gold); font-size: 1.2rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+
         /* Orb */
         .orb-wrapper {
             position: relative; width: 224px; height: 224px;
             margin-bottom: 30px; flex-shrink: 0;
             display: flex; align-items: center; justify-content: center;
+            transition: transform 0.4s ease;
         }
         .orb-container {
             position: relative; width: 180px; height: 180px;
@@ -86,13 +122,28 @@
             border-radius: 50%; border: 1px solid var(--gold); opacity: 0.1;
             transition: all 0.5s ease; pointer-events: none;
         }
-        /* Product image inside orb */
+        /* Product images inside orb (cross-dissolve Phase 5c) */
         .orb-product-img {
             position: absolute; inset: 0; width: 100%; height: 100%;
             border-radius: 50%; object-fit: cover;
             opacity: 0; transition: opacity 0.6s ease; z-index: 1;
         }
         .orb-product-img.show { opacity: 1; }
+        .orb-product-img-prev {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            border-radius: 50%; object-fit: cover;
+            opacity: 0; transition: opacity 0.6s ease; z-index: 0;
+        }
+
+        /* Ambient background (Phase 5b) */
+        @keyframes ambientGlow {
+            0%, 100% { background: radial-gradient(ellipse at 50% 50%, rgba(201,169,98,0.03) 0%, transparent 70%); }
+            50% { background: radial-gradient(ellipse at 50% 50%, rgba(201,169,98,0.07) 0%, transparent 70%); }
+        }
+        .main::before {
+            content: ''; position: absolute; inset: 0; pointer-events: none;
+            animation: ambientGlow 8s ease-in-out infinite;
+        }
 
         /* States */
         .app.listening .orb { opacity: 0.9; animation: orbPulse 1.2s ease infinite; }
@@ -150,10 +201,11 @@
             display: none; width: 100%; max-width: 320px;
             background: var(--charcoal); border: 1px solid var(--gray-dark);
             margin-bottom: 20px; overflow: hidden;
-            cursor: pointer; transition: transform 0.3s;
-            flex-shrink: 0;
+            cursor: pointer; flex-shrink: 0;
+            transition: transform 0.4s ease, opacity 0.4s ease;
+            transform: translateY(20px); opacity: 0;
         }
-        .product-card.show { display: block; }
+        .product-card.show { display: block; transform: translateY(0); opacity: 1; }
         .product-card:hover { transform: translateY(-3px); }
         .product-card-inner { display: flex; align-items: center; gap: 16px; padding: 16px; }
         .product-card-img {
@@ -183,14 +235,14 @@
             width: 28px; height: 28px; border-radius: 50%;
             font-size: 0.7rem; font-weight: 600;
             align-items: center; justify-content: center;
-            cursor: pointer;
+            cursor: pointer; z-index: 5;
         }
         .visited-badge.show { display: flex; }
 
         /* Mic button */
         .mic-area {
-            padding: 20px 0 30px; flex-shrink: 0;
-            display: flex; flex-direction: column; align-items: center; gap: 12px;
+            padding: 16px 0 20px; flex-shrink: 0;
+            display: flex; flex-direction: column; align-items: center; gap: 10px;
         }
         .mic-btn {
             width: 72px; height: 72px; border-radius: 50%;
@@ -215,17 +267,52 @@
         }
         .app.listening .mic-label { color: #E74C3C; }
 
-        /* Scan button */
+        /* Scan button — default position */
         .scan-btn {
             position: absolute; right: 20px; bottom: 100px;
             width: 48px; height: 48px; border-radius: 50%;
             background: var(--gray-dark); border: 1px solid var(--gold);
             color: var(--gold); cursor: pointer;
             display: flex; align-items: center; justify-content: center;
-            transition: all 0.3s; z-index: 10;
+            flex-direction: column; gap: 2px;
+            transition: all 0.4s ease; z-index: 10;
         }
         .scan-btn:hover { background: var(--gold); color: var(--black); }
         .scan-btn svg { width: 22px; height: 22px; }
+        .scan-btn-label { display: none; }
+
+        /* Store mode: prominent center scan button */
+        .app.store-mode .scan-btn {
+            position: relative; right: auto; bottom: auto;
+            width: 64px; height: 64px;
+            border: 2px solid var(--gold);
+            animation: scanPulse 2s ease-in-out infinite;
+            flex-direction: column;
+        }
+        .app.store-mode .scan-btn .scan-btn-label {
+            display: block; font-size: 0.5rem; letter-spacing: 0.1em;
+            text-transform: uppercase; margin-top: 2px;
+        }
+        .app.store-mode .scan-btn svg { width: 26px; height: 26px; }
+        /* After first scan, shrink back */
+        .app.store-mode.has-scanned .scan-btn {
+            position: absolute; right: 20px; bottom: 100px;
+            width: 48px; height: 48px; animation: none;
+        }
+        .app.store-mode.has-scanned .scan-btn .scan-btn-label { display: none; }
+
+        @keyframes scanPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(201,169,98,0.4); }
+            50% { box-shadow: 0 0 0 12px rgba(201,169,98,0); }
+        }
+
+        /* Store mode scan area (between mic and suggestions) */
+        .scan-area {
+            display: none; flex-direction: column; align-items: center;
+            gap: 4px; padding: 4px 0;
+        }
+        .app.store-mode .scan-area { display: flex; }
+        .app.store-mode.has-scanned .scan-area { display: none; }
 
         /* QR Scanner overlay */
         .qr-scanner {
@@ -262,7 +349,7 @@
         /* Suggestions */
         .suggestions {
             display: flex; flex-wrap: wrap; justify-content: center;
-            gap: 8px; padding: 0 20px 20px; max-width: 400px; margin: 0 auto;
+            gap: 8px; padding: 0 20px 16px; max-width: 400px; margin: 0 auto;
         }
         .suggestion-btn {
             background: var(--gray-dark); border: 1px solid var(--gray);
@@ -270,6 +357,25 @@
             cursor: pointer; transition: all 0.2s; font-family: 'Montserrat', sans-serif;
         }
         .suggestion-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+        /* Text input — always visible in store mode (Phase 3b) */
+        .text-input-area {
+            display: none; padding: 0 20px 12px;
+        }
+        .text-input-area.show { display: block; }
+        .text-input-row {
+            display: flex; gap: 8px; max-width: 320px; margin: 0 auto;
+        }
+        .text-input-row input {
+            flex: 1; background: var(--charcoal); border: 1px solid var(--gray-dark);
+            color: var(--white); padding: 10px 14px; font-size: 0.8rem;
+            font-family: 'Montserrat', sans-serif; outline: none; border-radius: 4px;
+        }
+        .text-input-row input:focus { border-color: var(--gold); }
+        .text-input-row button {
+            background: var(--gold); border: none; color: var(--black);
+            padding: 10px 16px; cursor: pointer; font-size: 0.9rem; border-radius: 4px;
+        }
 
         /* Welcome screen */
         .welcome-screen {
@@ -281,25 +387,55 @@
             transition: opacity 0.5s ease;
         }
         .welcome-screen.hide { opacity: 0; pointer-events: none; }
-        .welcome-logo { height: 50px; margin-bottom: 40px; opacity: 0.8; }
+
+        /* Store mode: phased animation (Phase 1b/5a) */
+        .welcome-logo {
+            height: 50px; margin-bottom: 40px;
+            opacity: 0; animation: welcomeFadeUp 1s ease forwards;
+        }
+        .welcome-orb-wrap {
+            position: relative; margin-bottom: 30px;
+        }
         .welcome-orb {
             width: 120px; height: 120px; border-radius: 50%;
             background: radial-gradient(circle at 40% 40%, var(--gold-light), var(--gold-dark));
-            opacity: 0.5; margin-bottom: 30px;
-            animation: orbPulse 2s ease infinite;
+            opacity: 0; animation: welcomeOrbIn 1s ease 1s forwards;
         }
+        /* Gold particles (Phase 5a) */
+        .welcome-orb-wrap::before {
+            content: ''; position: absolute; inset: -20px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(201,169,98,0.2) 0%, transparent 70%);
+            animation: particleGlow 3s ease-in-out infinite;
+            opacity: 0; animation: welcomeOrbIn 1s ease 1.2s forwards, particleGlow 3s ease-in-out 2s infinite;
+        }
+        @keyframes particleGlow {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.15); opacity: 0.6; }
+        }
+        @keyframes welcomeFadeUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 0.9; transform: translateY(0); }
+        }
+        @keyframes welcomeOrbIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 0.5; transform: scale(1); }
+        }
+
         .welcome-title {
             font-family: 'Cormorant Garamond', serif;
             font-size: 2rem; font-weight: 300; color: var(--gold-light);
             margin-bottom: 8px;
+            opacity: 0; animation: welcomeFadeUp 0.8s ease 1.5s forwards;
         }
         .welcome-subtitle {
             font-size: 0.85rem; color: var(--gray-light); margin-bottom: 10px;
             font-weight: 300;
+            opacity: 0; animation: welcomeFadeUp 0.8s ease 1.8s forwards;
         }
         .welcome-store {
             font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase;
             color: var(--gray); margin-bottom: 24px;
+            opacity: 0; animation: welcomeFadeUp 0.8s ease 2s forwards;
         }
         .welcome-features {
             display: flex; flex-direction: column; gap: 12px;
@@ -310,7 +446,13 @@
             display: flex; align-items: center; gap: 14px;
             padding: 10px 0;
             border-bottom: 1px solid var(--gray-dark);
+            opacity: 0;
         }
+        /* Staggered entrance (Phase 5a) */
+        .welcome-feature:nth-child(1) { animation: welcomeFadeUp 0.6s ease 2.5s forwards; }
+        .welcome-feature:nth-child(2) { animation: welcomeFadeUp 0.6s ease 2.7s forwards; }
+        .welcome-feature:nth-child(3) { animation: welcomeFadeUp 0.6s ease 2.9s forwards; }
+
         .welcome-feature-icon {
             width: 36px; height: 36px; flex-shrink: 0;
             display: flex; align-items: center; justify-content: center;
@@ -322,7 +464,10 @@
             font-weight: 300;
         }
         .welcome-feature-text strong { color: var(--white); font-weight: 500; }
-        .welcome-form { width: 100%; max-width: 300px; }
+        .welcome-form {
+            width: 100%; max-width: 300px;
+            opacity: 0; animation: welcomeFadeUp 0.8s ease 3.2s forwards;
+        }
         .welcome-input {
             width: 100%; background: transparent;
             border: none; border-bottom: 2px solid var(--gold);
@@ -340,64 +485,22 @@
             cursor: pointer; transition: all 0.3s;
         }
         .welcome-btn:hover { background: var(--gold-light); }
-
-        /* No speech API fallback */
-        .no-voice {
-            display: none; padding: 20px; text-align: center;
-        }
-        .no-voice.show { display: block; }
-        .text-input-row {
-            display: flex; gap: 8px; max-width: 320px; margin: 10px auto 0;
-        }
-        .text-input-row input {
-            flex: 1; background: var(--charcoal); border: 1px solid var(--gray-dark);
-            color: var(--white); padding: 12px 16px; font-size: 0.85rem;
-            font-family: 'Montserrat', sans-serif; outline: none;
-        }
-        .text-input-row input:focus { border-color: var(--gold); }
-        .text-input-row button {
-            background: var(--gold); border: none; color: var(--black);
-            padding: 12px 18px; cursor: pointer; font-size: 0.9rem;
-        }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body>
     <!-- Welcome Screen -->
     <div class="welcome-screen" id="welcome-screen">
         <img src="/images/logo-cesantoni.png" alt="Cesantoni" class="welcome-logo">
-        <div class="welcome-orb"></div>
+        <div class="welcome-orb-wrap">
+            <div class="welcome-orb"></div>
+        </div>
         <h1 class="welcome-title">Soy Terra</h1>
-        <p class="welcome-subtitle">Tu asistente personal de Cesantoni</p>
+        <p class="welcome-subtitle" id="welcome-subtitle">Tu asistente personal de Cesantoni</p>
         <div class="welcome-store" id="welcome-store"></div>
 
-        <div class="welcome-features">
-            <div class="welcome-feature">
-                <div class="welcome-feature-icon">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                </div>
-                <div class="welcome-feature-text">
-                    <strong>Bienvenido al mundo figital</strong><br>
-                    Donde lo fisico y lo digital se unen para ti
-                </div>
-            </div>
-            <div class="welcome-feature">
-                <div class="welcome-feature-icon">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                </div>
-                <div class="welcome-feature-text">
-                    <strong>Yo te guio por la tienda</strong><br>
-                    Dime que buscas o preguntame sobre cualquier piso
-                </div>
-            </div>
-            <div class="welcome-feature">
-                <div class="welcome-feature-icon">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-                </div>
-                <div class="welcome-feature-text">
-                    <strong>Cada piso cobra vida</strong><br>
-                    Te explico materiales, resistencia, acabados, todo
-                </div>
-            </div>
+        <div class="welcome-features" id="welcome-features">
+            <!-- Features injected by JS based on store/product mode -->
         </div>
 
         <div class="welcome-form">
@@ -411,12 +514,20 @@
     <div class="app" id="app">
         <!-- Header -->
         <div class="header">
-            <img src="/images/logo-cesantoni.png" alt="Cesantoni" class="header-logo">
+            <div class="header-left">
+                <img src="/images/logo-cesantoni.png" alt="Cesantoni" class="header-logo">
+            </div>
             <div class="header-right">
-                <div class="header-label">Terra</div>
-                <div class="header-store" id="header-store"></div>
+                <span class="auto-listen-toggle" id="auto-listen-toggle" onclick="toggleAutoListen()">Auto</span>
+                <div>
+                    <div class="header-label">Terra</div>
+                    <div class="header-store" id="header-store"></div>
+                </div>
             </div>
         </div>
+
+        <!-- Journey strip (Phase 2a) -->
+        <div class="journey-strip" id="journey-strip"></div>
 
         <!-- Main -->
         <div class="main">
@@ -424,11 +535,12 @@
             <div class="visited-badge" id="visited-badge" onclick="sendText('Mandame el resumen por WhatsApp')">0</div>
 
             <!-- Orb with product image -->
-            <div class="orb-wrapper">
+            <div class="orb-wrapper" id="orb-wrapper">
                 <div class="orb-ring-2"></div>
                 <div class="orb-ring"></div>
                 <div class="orb-container">
                     <div class="orb"></div>
+                    <img class="orb-product-img-prev" id="orb-product-img-prev" src="" alt="">
                     <img class="orb-product-img" id="orb-product-img" src="" alt="">
                 </div>
             </div>
@@ -457,13 +569,16 @@
             </div>
         </div>
 
-        <!-- Scan QR button -->
-        <button class="scan-btn" id="scan-btn" onclick="openScanner()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/>
-                <rect x="7" y="7" width="10" height="10" rx="1"/>
-            </svg>
-        </button>
+        <!-- Store mode: scan area between mic and suggestions -->
+        <div class="scan-area" id="scan-area">
+            <button class="scan-btn" id="scan-btn" onclick="openScanner()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/>
+                    <rect x="7" y="7" width="10" height="10" rx="1"/>
+                </svg>
+                <span class="scan-btn-label">Escanear</span>
+            </button>
+        </div>
 
         <!-- NFC active badge -->
         <div class="nfc-badge" id="nfc-badge"><div class="nfc-dot"></div> NFC activo</div>
@@ -479,20 +594,16 @@
             <div class="mic-label" id="mic-label">Toca para hablar</div>
         </div>
 
-        <!-- Suggestions -->
-        <div class="suggestions" id="suggestions">
-            <button class="suggestion-btn" onclick="sendText(this.textContent)">Quiero remodelar mi cocina</button>
-            <button class="suggestion-btn" onclick="sendText(this.textContent)">Tengo ninos y mascotas</button>
-            <button class="suggestion-btn" onclick="sendText(this.textContent)">Busco algo elegante para mi sala</button>
-        </div>
-
-        <!-- Text fallback -->
-        <div class="no-voice" id="no-voice">
+        <!-- Text input (Phase 3b — always visible in store mode) -->
+        <div class="text-input-area" id="text-input-area">
             <div class="text-input-row">
                 <input type="text" id="text-input" placeholder="Escribe tu pregunta..." onkeydown="if(event.key==='Enter')sendText(this.value)">
                 <button onclick="sendText(document.getElementById('text-input').value)">&#10148;</button>
             </div>
         </div>
+
+        <!-- Suggestions -->
+        <div class="suggestions" id="suggestions"></div>
     </div>
 
     <!-- QR Scanner overlay -->
@@ -511,7 +622,9 @@
         const productCard = document.getElementById('product-card');
         const suggestionsEl = document.getElementById('suggestions');
         const orbProductImg = document.getElementById('orb-product-img');
+        const orbProductImgPrev = document.getElementById('orb-product-img-prev');
         const visitedBadge = document.getElementById('visited-badge');
+        const journeyStrip = document.getElementById('journey-strip');
 
         let currentProduct = null;
         let isListening = false;
@@ -521,23 +634,33 @@
         let allProducts = [];
 
         // ===== CONVERSATION HISTORY =====
-        let chatHistory = []; // {user: "msg", terra: "json response"}
+        let chatHistory = [];
 
         // ===== PERSONALIZATION =====
         let customerName = '';
+        let customerGender = 'm';
         let storeName = '';
         let storeSlug = '';
         let storeWhatsapp = '';
+        let storeId = null;
         const terraSessionId = 'terra-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6);
 
-        // ===== SESSION HISTORY (Feature 1) =====
-        let visitedProducts = []; // {id, name, slug, category, image_url}
+        // ===== SESSION HISTORY =====
+        let visitedProducts = []; // {id, name, slug, category, image_url, format, finish, pei, usage}
 
         const urlParams = new URLSearchParams(window.location.search);
         storeSlug = urlParams.get('store') || urlParams.get('tienda') || '';
         const productSlug = urlParams.get('product') || urlParams.get('producto') || '';
 
-        // ===== SOUND EFFECTS (Feature 4) =====
+        // ===== STORE MODE DETECTION (Phase 1a) =====
+        const storeMode = !!(storeSlug && !productSlug);
+
+        // ===== VOICE / AUTO-LISTEN (Phase 3a) =====
+        let autoListenEnabled = storeMode; // ON by default in store mode
+        let lastInteractionTime = Date.now();
+        let idleReminderSent = false;
+
+        // ===== SOUND EFFECTS =====
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
         function playTone(freq, duration, vol) {
@@ -558,20 +681,103 @@
         function soundSpeak() { playTone(660, 0.12, 0.06); setTimeout(() => playTone(880, 0.15, 0.08), 80); }
         function soundProduct() { playTone(523, 0.1, 0.07); setTimeout(() => playTone(659, 0.1, 0.07), 100); setTimeout(() => playTone(784, 0.15, 0.09), 200); }
 
+        // ===== HAPTIC FEEDBACK (Phase 3c) =====
+        function hapticScan() { if (navigator.vibrate) navigator.vibrate(50); }
+        function hapticWhatsApp() { if (navigator.vibrate) navigator.vibrate([20, 30, 20]); }
+
         // ===== WELCOME SCREEN =====
         function initWelcome() {
+            // Set welcome features based on mode
+            const featuresEl = document.getElementById('welcome-features');
+            if (storeMode) {
+                document.getElementById('welcome-subtitle').textContent = 'Tu guia personal en la tienda';
+                featuresEl.innerHTML = `
+                    <div class="welcome-feature">
+                        <div class="welcome-feature-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        </div>
+                        <div class="welcome-feature-text">
+                            <strong>Te guio por toda la tienda</strong><br>
+                            Preguntame lo que quieras sobre pisos
+                        </div>
+                    </div>
+                    <div class="welcome-feature">
+                        <div class="welcome-feature-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>
+                        </div>
+                        <div class="welcome-feature-text">
+                            <strong>Escanea cualquier piso y te lo presento</strong><br>
+                            Apunta al QR y yo te cuento todo
+                        </div>
+                    </div>
+                    <div class="welcome-feature">
+                        <div class="welcome-feature-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                        </div>
+                        <div class="welcome-feature-text">
+                            <strong>Al final te mando tu resumen por WhatsApp</strong><br>
+                            Con tus favoritos y mi recomendacion
+                        </div>
+                    </div>`;
+            } else {
+                featuresEl.innerHTML = `
+                    <div class="welcome-feature">
+                        <div class="welcome-feature-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        </div>
+                        <div class="welcome-feature-text">
+                            <strong>Bienvenido al mundo figital</strong><br>
+                            Donde lo fisico y lo digital se unen para ti
+                        </div>
+                    </div>
+                    <div class="welcome-feature">
+                        <div class="welcome-feature-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        </div>
+                        <div class="welcome-feature-text">
+                            <strong>Yo te guio por la tienda</strong><br>
+                            Dime que buscas o preguntame sobre cualquier piso
+                        </div>
+                    </div>
+                    <div class="welcome-feature">
+                        <div class="welcome-feature-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                        </div>
+                        <div class="welcome-feature-text">
+                            <strong>Cada piso cobra vida</strong><br>
+                            Te explico materiales, resistencia, acabados, todo
+                        </div>
+                    </div>`;
+            }
+
+            // Restore saved name (4-hour expiry)
             const saved = localStorage.getItem('terra_customer');
             let hasSession = false;
 
             if (saved) {
                 try {
                     const data = JSON.parse(saved);
-                    if (data.name && data.timestamp > Date.now() - 86400000) {
+                    if (data.name && data.timestamp > Date.now() - 14400000) { // 4 hours
                         customerName = data.name;
+                        customerGender = data.gender || detectGender(data.name);
                         document.getElementById('welcome-name').value = data.name;
                         hasSession = true;
                     }
                 } catch (e) {}
+            }
+
+            // Restore session from sessionStorage (Phase 1e)
+            if (storeMode) {
+                const savedSession = sessionStorage.getItem('terra_session');
+                if (savedSession) {
+                    try {
+                        const sess = JSON.parse(savedSession);
+                        if (sess.store === storeSlug && sess.visited) {
+                            visitedProducts = sess.visited;
+                            chatHistory = sess.chatHistory || [];
+                        }
+                    } catch (e) {}
+                }
             }
 
             if (storeSlug) {
@@ -580,6 +786,7 @@
                     .then(stores => {
                         if (stores.length > 0) {
                             storeName = stores[0].name;
+                            storeId = stores[0].id;
                             storeWhatsapp = stores[0].whatsapp || stores[0].phone || '';
                             document.getElementById('welcome-store').textContent = storeName;
                             document.getElementById('header-store').textContent = storeName;
@@ -588,15 +795,31 @@
                     .catch(() => {});
             }
 
-            // Auto-skip welcome if returning user scans a product
-            if (hasSession) {
+            // Apply store mode class
+            if (storeMode) {
+                app.classList.add('store-mode');
+                document.getElementById('auto-listen-toggle').classList.add('show');
+                if (autoListenEnabled) document.getElementById('auto-listen-toggle').classList.add('active');
+                document.getElementById('text-input-area').classList.add('show');
+            }
+
+            // Auto-skip welcome if returning user
+            if (hasSession && !storeMode) {
                 document.getElementById('welcome-screen').style.display = 'none';
                 audioCtx.resume().catch(() => {});
                 initTerra();
                 return;
             }
 
-            setTimeout(() => document.getElementById('welcome-name').focus(), 500);
+            // In store mode, auto-skip if name already saved
+            if (hasSession && storeMode) {
+                document.getElementById('welcome-screen').style.display = 'none';
+                audioCtx.resume().catch(() => {});
+                initTerra();
+                return;
+            }
+
+            setTimeout(() => document.getElementById('welcome-name').focus(), 3500);
         }
 
         function startSession() {
@@ -611,9 +834,11 @@
             }
 
             customerName = customerName.charAt(0).toUpperCase() + customerName.slice(1).toLowerCase();
+            customerGender = detectGender(customerName);
 
             localStorage.setItem('terra_customer', JSON.stringify({
                 name: customerName,
+                gender: customerGender,
                 store: storeSlug,
                 timestamp: Date.now()
             }));
@@ -623,17 +848,54 @@
                 document.getElementById('welcome-screen').style.display = 'none';
             }, 500);
 
-            // Resume AudioContext (needs user gesture)
             audioCtx.resume();
-
             initTerra();
         }
 
         // ===== INIT TERRA =====
+        function detectGender(name) {
+            if (!name) return 'm';
+            const n = name.trim().toLowerCase();
+            // Common male names that end in 'a' (exceptions)
+            const maleExceptions = ['josefa','andrea'].indexOf(n) === -1 &&
+                ['garcia','silva','pena','sosa'].indexOf(n) === -1;
+            const maleNames = ['edson','edison','carlos','jorge','pedro','luis','miguel','jose','juan','pablo',
+                'diego','andres','santiago','alejandro','fernando','ricardo','roberto','daniel','david','mario',
+                'oscar','cesar','victor','eduardo','rafael','enrique','francisco','arturo','sergio','raul',
+                'hector','alberto','gustavo','manuel','ramon','adrian','gabriel','ivan','marco','marcos',
+                'emilio','rodrigo','gonzalo','ignacio','felipe','antonio','angel','hugo','leon','mateo','axel',
+                'bruno','nicolas','sebastian','tomas','valentin','enzo','liam','noah','ian','gael','Said'];
+            const femaleNames = ['maria','ana','laura','sofia','andrea','valentina','camila','isabella','lucia',
+                'fernanda','daniela','gabriela','mariana','paula','carolina','monica','patricia','claudia',
+                'veronica','alejandra','regina','renata','ximena','natalia','victoria','elena','carmen','rosa',
+                'teresa','guadalupe','leticia','adriana','silvia','susana','alicia','julia','diana','irene',
+                'lorena','martha','norma','beatriz','cecilia','karla','karina','marisol','rocio','esmeralda'];
+            if (maleNames.indexOf(n) !== -1) return 'm';
+            if (femaleNames.indexOf(n) !== -1) return 'f';
+            // Heuristic: names ending in 'a' or 'i' tend to be feminine in Spanish
+            if (n.endsWith('a') || n.endsWith('i')) return 'f';
+            return 'm';
+        }
+
         async function initTerra() {
             try {
                 const res = await fetch('/api/products');
                 allProducts = await res.json();
+            } catch (e) {}
+
+            // Start server session (Phase 1g)
+            try {
+                fetch('/api/terra/session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'start',
+                        session_id: terraSessionId,
+                        customer_name: customerName,
+                        store_id: storeId,
+                        store_name: storeName
+                    })
+                });
             } catch (e) {}
 
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -658,7 +920,7 @@
 
                 recognition.onerror = (event) => {
                     if (event.error === 'not-allowed') {
-                        document.getElementById('no-voice').classList.add('show');
+                        document.getElementById('text-input-area').classList.add('show');
                         micLabel.textContent = 'Microfono no disponible';
                     }
                     stopListening();
@@ -666,13 +928,19 @@
 
                 recognition.onend = () => { if (isListening) stopListening(); };
             } else {
-                document.getElementById('no-voice').classList.add('show');
+                document.getElementById('text-input-area').classList.add('show');
                 document.getElementById('mic-btn').style.display = 'none';
                 micLabel.textContent = 'Usa el teclado';
             }
 
             loadVoices();
             if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoices;
+
+            // Restore journey strip if returning
+            if (visitedProducts.length > 0) {
+                updateJourneyStrip();
+                app.classList.add('has-scanned');
+            }
 
             // If product came from QR/NFC scan, load it immediately
             if (productSlug) {
@@ -684,10 +952,8 @@
                     showProduct(scannedProduct);
                     addToVisited(scannedProduct);
 
-                    // Ask Terra to introduce this product
-                    const storeGreet = storeName ? ` en ${storeName}` : '';
                     speechText.textContent = 'Analizando este piso...';
-                    app.className = 'app thinking';
+                    app.className = 'app thinking' + (storeMode ? ' store-mode' : '') + (visitedProducts.length > 0 ? ' has-scanned' : '');
 
                     try {
                         const introRes = await fetch('/api/terra', {
@@ -699,6 +965,8 @@
                                 store_name: storeName,
                                 current_product_id: scannedProduct.id,
                                 visited_products: [],
+                                visited_products_detail: [],
+                                store_mode: storeMode,
                                 session_id: terraSessionId
                             })
                         });
@@ -723,22 +991,59 @@
                 }
             }
 
-            // Default greeting when no product scanned
-            const storeGreet = storeName ? ` a ${storeName}` : ' a Cesantoni';
-            const greeting = `Hola ${customerName}, que gusto! Soy Terra, tu amiga experta en pisos aqui${storeGreet}. Yo te voy a ayudar a encontrar el piso perfecto. Cuentame, que tienes en mente? Vas a remodelar algun espacio en especial?`;
+            // Greeting based on mode (Phase 1c)
+            if (storeMode && !productSlug) {
+                const g = detectGender(customerName);
+                const bienv = g === 'f' ? 'bienvenida' : 'bienvenido';
+                const listo = g === 'f' ? 'Lista?' : 'Listo?';
+                const greeting = `Hola ${customerName}, ${bienv} a ${storeName || 'Cesantoni'}! Soy Terra, tu guia personal. Cuando veas un piso que te guste, escanea su QR con el boton de aqui abajo y te cuento todo. ${listo}`;
+                speechText.textContent = greeting;
+                setTimeout(() => speak(greeting), 600);
 
-            speechText.textContent = greeting;
-            setTimeout(() => speak(greeting), 600);
+                updateSuggestions([
+                    'Quiero remodelar mi cocina',
+                    'Busco algo para exterior',
+                    'Que es lo mas vendido?',
+                    'Escanear un piso'
+                ]);
+            } else {
+                const storeGreet = storeName ? ` a ${storeName}` : ' a Cesantoni';
+                const gp = detectGender(customerName);
+                const amiga = gp === 'f' ? 'tu amiga experta' : 'tu experta';
+                const greeting = `Hola ${customerName}, que gusto! Soy Terra, ${amiga} en pisos aqui${storeGreet}. Yo te voy a ayudar a encontrar el piso perfecto. Cuentame, que tienes en mente? Vas a remodelar algun espacio en especial?`;
+                speechText.textContent = greeting;
+                setTimeout(() => speak(greeting), 600);
+
+                updateSuggestions([
+                    'Quiero remodelar mi cocina',
+                    'Tengo ninos y mascotas',
+                    'Busco algo elegante para mi sala'
+                ]);
+            }
+
+            // Start idle timer (Phase 3d)
+            if (storeMode) startIdleTimer();
         }
 
         function loadVoices() {
             const voices = synth.getVoices();
-            spanishVoice = voices.find(v => v.lang === 'es-MX' && v.name.toLowerCase().includes('female')) ||
-                           voices.find(v => v.lang === 'es-MX' && v.name.toLowerCase().includes('paulina')) ||
-                           voices.find(v => v.lang === 'es-MX') ||
-                           voices.find(v => v.lang.startsWith('es') && v.name.toLowerCase().includes('female')) ||
-                           voices.find(v => v.lang.startsWith('es')) ||
-                           null;
+            // Priority: Google premium voices > Paulina (macOS) > any es-MX > any es
+            spanishVoice =
+                voices.find(v => v.lang === 'es-MX' && v.name.includes('Google')) ||
+                voices.find(v => v.lang === 'es-US' && v.name.includes('Google')) ||
+                voices.find(v => v.lang.startsWith('es') && v.name.includes('Google')) ||
+                voices.find(v => v.lang === 'es-MX' && v.name.toLowerCase().includes('paulina')) ||
+                voices.find(v => v.lang === 'es-MX') ||
+                voices.find(v => v.lang.startsWith('es') && !v.name.toLowerCase().includes('juan')) ||
+                voices.find(v => v.lang.startsWith('es')) ||
+                null;
+            if (spanishVoice) console.log('Terra voice:', spanishVoice.name, spanishVoice.lang);
+        }
+
+        // ===== AUTO-LISTEN TOGGLE (Phase 3a) =====
+        function toggleAutoListen() {
+            autoListenEnabled = !autoListenEnabled;
+            document.getElementById('auto-listen-toggle').classList.toggle('active', autoListenEnabled);
         }
 
         // ===== VOICE CONTROL =====
@@ -752,10 +1057,14 @@
             synth.cancel();
             if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
             isListening = true;
-            app.className = 'app listening';
+            const cls = ['app', 'listening'];
+            if (storeMode) cls.push('store-mode');
+            if (visitedProducts.length > 0) cls.push('has-scanned');
+            app.className = cls.join(' ');
             micLabel.textContent = 'Escuchando...';
             transcriptEl.textContent = '';
             soundListen();
+            lastInteractionTime = Date.now();
             try { recognition.start(); } catch (e) {}
         }
 
@@ -763,33 +1072,67 @@
             isListening = false;
             try { recognition.stop(); } catch (e) {}
             if (!app.classList.contains('thinking')) {
-                app.className = 'app';
+                const cls = ['app'];
+                if (storeMode) cls.push('store-mode');
+                if (visitedProducts.length > 0) cls.push('has-scanned');
+                app.className = cls.join(' ');
                 micLabel.textContent = 'Toca para hablar';
             }
         }
 
+        function setAppState(state) {
+            const cls = ['app', state];
+            if (storeMode) cls.push('store-mode');
+            if (visitedProducts.length > 0) cls.push('has-scanned');
+            app.className = cls.join(' ');
+        }
+
+        function resetAppState() {
+            const cls = ['app'];
+            if (storeMode) cls.push('store-mode');
+            if (visitedProducts.length > 0) cls.push('has-scanned');
+            app.className = cls.join(' ');
+        }
+
         // ===== SPEAK (Gemini TTS + fallback) =====
         let ttsAudio = null;
-        let useGoogleTTS = true;
-        let ttsRequestId = 0; // To cancel stale requests
+        let useGoogleTTS = true; // Gemini TTS (Kore) with browser TTS as instant start
+        let ttsRequestId = 0;
 
         function speak(text) {
-            // Stop any current audio
             synth.cancel();
             if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
 
-            // Show text IMMEDIATELY - no waiting
-            app.className = 'app speaking';
+            setAppState('speaking');
             speechText.className = 'speech-text';
             speechText.textContent = text;
             soundSpeak();
 
-            // Fire TTS in background (non-blocking)
+            // Only Gemini TTS (Kore voice)
             if (useGoogleTTS) {
                 loadAndPlayTTS(text);
             } else {
-                speakFallback(text);
+                speakBrowserTTS(text);
             }
+        }
+
+        // Browser TTS — starts instantly, can be interrupted
+        function speakBrowserTTS(text) {
+            synth.cancel();
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.lang = 'es-MX';
+            utter.rate = 1.35;
+            utter.pitch = 1.05;
+            utter.volume = 1.0;
+            if (spanishVoice) utter.voice = spanishVoice;
+            utter.onend = () => {
+                // Only fire onSpeechEnd if Gemini TTS didn't take over
+                if (!ttsAudio) onSpeechEnd();
+            };
+            utter.onerror = () => {
+                if (!ttsAudio) resetAppState();
+            };
+            synth.speak(utter);
         }
 
         async function loadAndPlayTTS(text) {
@@ -803,38 +1146,54 @@
                 });
                 const data = await res.json();
 
-                // If user already moved on, don't play stale audio
                 if (requestId !== ttsRequestId) return;
 
                 if (data.audioContent) {
-                    playPCMAudio(data.audioContent);
+                    synth.cancel();
+                    if (data.format === 'mp3') {
+                        playMP3Audio(data.audioContent);
+                    } else {
+                        playPCMAudio(data.audioContent);
+                    }
                     return;
                 }
 
-                if (data.fallback) {
-                    useGoogleTTS = false;
-                    speakFallback(text);
-                }
+                // Gemini failed — fall back to browser TTS
+                speakBrowserTTS(speechText.textContent);
             } catch (e) {
                 if (requestId !== ttsRequestId) return;
-                useGoogleTTS = false;
-                speakFallback(text);
+                speakBrowserTTS(speechText.textContent);
+            }
+        }
+
+        function onSpeechEnd() {
+            resetAppState();
+            micLabel.textContent = 'Toca para hablar';
+
+            // Phase 3a: auto-listen after Terra speaks
+            if (autoListenEnabled && !document.hidden && storeMode) {
+                // Only if customer interacted recently (within 30s)
+                if (Date.now() - lastInteractionTime < 30000) {
+                    setTimeout(() => {
+                        if (!app.classList.contains('speaking') && !app.classList.contains('thinking') && !isListening) {
+                            startListening();
+                        }
+                    }, 1500);
+                }
             }
         }
 
         function playPCMAudio(base64Data) {
-            // Gemini TTS returns PCM 24kHz 16-bit LE mono
             const raw = atob(base64Data);
             const pcm = new Uint8Array(raw.length);
             for (let i = 0; i < raw.length; i++) pcm[i] = raw.charCodeAt(i);
 
-            // WAV header
             const wavHeader = new ArrayBuffer(44);
             const v = new DataView(wavHeader);
-            v.setUint32(0, 0x52494646, false); // RIFF
+            v.setUint32(0, 0x52494646, false);
             v.setUint32(4, 36 + pcm.length, true);
-            v.setUint32(8, 0x57415645, false); // WAVE
-            v.setUint32(12, 0x666d7420, false); // fmt
+            v.setUint32(8, 0x57415645, false);
+            v.setUint32(12, 0x666d7420, false);
             v.setUint32(16, 16, true);
             v.setUint16(20, 1, true);
             v.setUint16(22, 1, true);
@@ -842,28 +1201,44 @@
             v.setUint32(28, 48000, true);
             v.setUint16(32, 2, true);
             v.setUint16(34, 16, true);
-            v.setUint32(36, 0x64617461, false); // data
+            v.setUint32(36, 0x64617461, false);
             v.setUint32(40, pcm.length, true);
 
             const wav = new Blob([wavHeader, pcm], { type: 'audio/wav' });
             const url = URL.createObjectURL(wav);
             ttsAudio = new Audio(url);
+            ttsAudio.playbackRate = 1.0;
             ttsAudio.onended = () => {
-                app.className = 'app';
-                micLabel.textContent = 'Toca para hablar';
                 URL.revokeObjectURL(url);
                 ttsAudio = null;
+                onSpeechEnd();
             };
             ttsAudio.onerror = () => { URL.revokeObjectURL(url); };
             ttsAudio.play();
         }
 
-        // Direct audio playback - no extra API call needed
+        function playMP3Audio(base64Data) {
+            const binary = atob(base64Data);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: 'audio/mpeg' });
+            const url = URL.createObjectURL(blob);
+            ttsAudio = new Audio(url);
+            ttsAudio.playbackRate = 1.0;
+            ttsAudio.onended = () => {
+                URL.revokeObjectURL(url);
+                ttsAudio = null;
+                onSpeechEnd();
+            };
+            ttsAudio.onerror = () => { URL.revokeObjectURL(url); onSpeechEnd(); };
+            ttsAudio.play();
+        }
+
         function speakWithAudio(text, base64Audio) {
             synth.cancel();
             if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
 
-            app.className = 'app speaking';
+            setAppState('speaking');
             speechText.className = 'speech-text';
             speechText.textContent = text;
             soundSpeak();
@@ -871,22 +1246,15 @@
             try {
                 playPCMAudio(base64Audio);
             } catch (e) {
-                speakFallback(text);
+                speakBrowserTTS(text);
             }
         }
 
         function speakFallback(text) {
-            const utter = new SpeechSynthesisUtterance(text);
-            utter.lang = 'es-MX';
-            utter.rate = 0.95;
-            utter.pitch = 1.1;
-            if (spanishVoice) utter.voice = spanishVoice;
+            speakBrowserTTS(text);
 
-            utter.onend = () => {
-                app.className = 'app';
-                micLabel.textContent = 'Toca para hablar';
-            };
-            utter.onerror = () => { app.className = 'app'; };
+            utter.onend = () => onSpeechEnd();
+            utter.onerror = () => resetAppState();
 
             synth.speak(utter);
         }
@@ -898,19 +1266,29 @@
             const textInput = document.getElementById('text-input');
             if (textInput) textInput.value = '';
             transcriptEl.textContent = `"${msg}"`;
+            lastInteractionTime = Date.now();
+            idleReminderSent = false;
+
+            // Handle "Escanear un piso" suggestion
+            if (msg.toLowerCase().includes('escanear')) {
+                openScanner();
+                return;
+            }
+
             processMessage(msg);
         }
 
         // ===== PROCESS =====
         async function processMessage(message) {
-            app.className = 'app thinking';
+            setAppState('thinking');
             micLabel.textContent = 'Pensando...';
             suggestionsEl.style.display = 'none';
             soundThink();
+            lastInteractionTime = Date.now();
 
-            // Feature 2: Check for WhatsApp summary request
+            // Check for WhatsApp summary request
             const lowerMsg = message.toLowerCase();
-            if (lowerMsg.includes('whatsapp') && lowerMsg.includes('resumen') || lowerMsg.includes('mandame') && lowerMsg.includes('resumen')) {
+            if ((lowerMsg.includes('whatsapp') && lowerMsg.includes('resumen')) || (lowerMsg.includes('mandame') && lowerMsg.includes('resumen')) || (lowerMsg.includes('manda') && lowerMsg.includes('whatsapp'))) {
                 sendWhatsAppSummary();
                 return;
             }
@@ -922,51 +1300,74 @@
                     body: JSON.stringify({
                         message,
                         customer_name: customerName,
+                        customer_gender: customerGender,
                         store_name: storeName,
                         current_product_id: currentProduct?.id || null,
                         visited_products: visitedProducts.map(p => p.name),
+                        visited_products_detail: visitedProducts.map(p => ({
+                            name: p.name, category: p.category, format: p.format,
+                            finish: p.finish, pei: p.pei, usage: p.usage
+                        })),
                         history: chatHistory.slice(-6),
-                        session_id: terraSessionId
+                        session_id: terraSessionId,
+                        store_mode: storeMode
                     })
                 });
 
                 const data = await res.json();
 
-                // Save to history for context
                 chatHistory.push({ user: message, terra: data.speech });
 
-                // Show product in orb + card
                 if (data.product) {
                     showProduct(data.product);
                     currentProduct = data.product;
                     addToVisited(data.product);
                 }
 
-                // Context-aware suggestions
                 if (data.product) {
                     updateSuggestions(getProductSuggestions(data.product));
                 }
 
-                // Show text immediately, load voice in background
                 speak(data.speech || `Disculpa ${customerName}, no entendi. Podrias repetirlo?`);
+
+                // Save session to sessionStorage
+                saveSessionState();
 
             } catch (err) {
                 speak(`Disculpa ${customerName}, hubo un problema. Intenta de nuevo.`);
-                app.className = 'app';
+                resetAppState();
             }
         }
 
-        // ===== PRODUCT CARD (Feature 3: orb shows product) =====
+        // ===== PRODUCT DISPLAY (Phase 2b: enhanced transitions) =====
         function showProduct(p) {
             soundProduct();
+            hapticScan();
 
-            // Show image in orb
-            if (p.image_url) {
-                orbProductImg.src = p.image_url;
-                orbProductImg.classList.add('show');
+            // Cross-dissolve: move current to prev, load new (Phase 5c)
+            if (orbProductImg.classList.contains('show') && orbProductImg.src) {
+                orbProductImgPrev.src = orbProductImg.src;
+                orbProductImgPrev.style.opacity = '1';
+                orbProductImg.classList.remove('show');
+
+                setTimeout(() => {
+                    orbProductImgPrev.style.opacity = '0';
+                }, 50);
             }
 
-            // Show card
+            // Orb bounce animation (Phase 2b)
+            const orbWrapper = document.getElementById('orb-wrapper');
+            orbWrapper.style.transform = 'scale(0.85)';
+            setTimeout(() => { orbWrapper.style.transform = 'scale(1)'; }, 300);
+
+            if (p.image_url) {
+                setTimeout(() => {
+                    orbProductImg.src = p.image_url;
+                    orbProductImg.classList.add('show');
+                }, 150);
+            }
+
+            // Product card slide-up
             document.getElementById('pc-img').src = p.image_url || '';
             document.getElementById('pc-name').textContent = p.name;
             document.getElementById('pc-cat').textContent = p.category || 'Premium';
@@ -977,7 +1378,7 @@
             };
         }
 
-        // ===== SESSION HISTORY (Feature 1) =====
+        // ===== SESSION HISTORY =====
         function addToVisited(p) {
             if (visitedProducts.find(v => v.id === p.id)) return;
             visitedProducts.push({
@@ -985,41 +1386,140 @@
                 name: p.name,
                 slug: p.slug || p.sku,
                 category: p.category,
-                image_url: p.image_url
+                image_url: p.image_url,
+                format: p.format,
+                finish: p.finish,
+                pei: p.pei,
+                usage: p.usage
             });
-            // Update badge
+
             visitedBadge.textContent = visitedProducts.length;
             visitedBadge.classList.add('show');
+
+            if (storeMode) app.classList.add('has-scanned');
+            updateJourneyStrip();
+            saveSessionState();
+
+            // Server-side tracking (Phase 2e)
+            try {
+                fetch('/api/terra/session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'scan_product',
+                        session_id: terraSessionId,
+                        product: { id: p.id, name: p.name, category: p.category }
+                    })
+                });
+            } catch (e) {}
         }
 
-        // ===== WHATSAPP SUMMARY (Feature 2) =====
-        function sendWhatsAppSummary() {
+        // ===== JOURNEY STRIP (Phase 2a) =====
+        function updateJourneyStrip() {
             if (visitedProducts.length === 0) {
-                speak(`${customerName}, todavia no hemos visto ningun producto. Dime que te interesa y empezamos.`);
-                app.className = 'app';
+                journeyStrip.classList.remove('show');
                 return;
             }
 
-            const baseUrl = window.location.origin;
-            let msg = `Hola! Soy ${customerName}, vi estos pisos en ${storeName || 'Cesantoni'} con Terra:\n\n`;
+            journeyStrip.classList.add('show');
+            journeyStrip.innerHTML = visitedProducts.map((p, i) =>
+                `<img class="journey-thumb${currentProduct && currentProduct.id === p.id ? ' active' : ''}"
+                      src="${p.image_url || ''}" alt="${p.name}"
+                      onclick="focusOnProduct(${p.id})"
+                      title="${p.name}">`
+            ).join('') +
+            `<button class="journey-add" onclick="openScanner()" title="Escanear otro">+</button>` +
+            `<span class="journey-count">${visitedProducts.length} piso${visitedProducts.length > 1 ? 's' : ''}</span>`;
 
-            visitedProducts.forEach((p, i) => {
-                msg += `${i + 1}. *${p.name}* (${p.category || 'Premium'})\n`;
-                msg += `   ${baseUrl}/p/${p.slug || p.id}\n\n`;
-            });
+            // Scroll to end
+            journeyStrip.scrollLeft = journeyStrip.scrollWidth;
+        }
 
-            msg += `Me gustaria mas informacion. Gracias!`;
+        function focusOnProduct(productId) {
+            const p = visitedProducts.find(v => v.id === productId);
+            if (!p) return;
+            const fullProduct = allProducts.find(ap => ap.id === productId) || p;
+            currentProduct = fullProduct;
+            showProduct(fullProduct);
+            updateJourneyStrip();
+            processMessage(`Cuentame mas sobre el piso ${p.name}`);
+        }
 
-            const waNumber = storeWhatsapp ? storeWhatsapp.replace(/\D/g, '') : '';
-            const waUrl = waNumber
-                ? `https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`
-                : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+        // ===== SESSION PERSISTENCE (Phase 1e) =====
+        function saveSessionState() {
+            if (storeMode) {
+                sessionStorage.setItem('terra_session', JSON.stringify({
+                    store: storeSlug,
+                    visited: visitedProducts,
+                    chatHistory: chatHistory.slice(-10),
+                    sessionId: terraSessionId
+                }));
+            }
+        }
 
-            speak(`Perfecto ${customerName}, te abro WhatsApp con el resumen de los ${visitedProducts.length} productos que vimos hoy. Fue un placer ayudarte.`);
+        // ===== WHATSAPP SUMMARY (Phase 4) =====
+        async function sendWhatsAppSummary() {
+            if (visitedProducts.length === 0) {
+                speak(`${customerName}, todavia no hemos visto ningun producto. Dime que te interesa y empezamos.`);
+                resetAppState();
+                return;
+            }
 
-            setTimeout(() => {
-                window.open(waUrl, '_blank');
-            }, 2000);
+            hapticWhatsApp();
+
+            // Goodbye speech (Phase 4c)
+            speak(`Fue un placer, ${customerName}! Te mando el resumen por WhatsApp con mi recomendacion.`);
+
+            try {
+                // Get AI recommendation (Phase 4a)
+                const summaryRes = await fetch('/api/terra/whatsapp-summary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        customer_name: customerName,
+                        store_name: storeName,
+                        visited_products: visitedProducts,
+                        conversation_highlights: chatHistory.slice(-4).map(h => h.user).join('. '),
+                        session_id: terraSessionId
+                    })
+                });
+                const summaryData = await summaryRes.json();
+
+                const waNumber = storeWhatsapp ? storeWhatsapp.replace(/\D/g, '') : '';
+                const waUrl = waNumber
+                    ? `https://wa.me/${waNumber}?text=${encodeURIComponent(summaryData.message)}`
+                    : `https://wa.me/?text=${encodeURIComponent(summaryData.message)}`;
+
+                // End session
+                try {
+                    fetch('/api/terra/session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'end', session_id: terraSessionId })
+                    });
+                } catch (e) {}
+
+                setTimeout(() => {
+                    window.open(waUrl, '_blank');
+                }, 2500);
+
+            } catch (e) {
+                // Fallback to basic message
+                const baseUrl = window.location.origin;
+                let msg = `Hola! Soy ${customerName}, vi estos pisos en ${storeName || 'Cesantoni'} con Terra:\n\n`;
+                visitedProducts.forEach((p, i) => {
+                    msg += `${i + 1}. *${p.name}* (${p.category || 'Premium'})\n`;
+                    msg += `   ${baseUrl}/p/${p.slug || p.id}\n\n`;
+                });
+                msg += `Me gustaria mas informacion. Gracias!`;
+
+                const waNumber = storeWhatsapp ? storeWhatsapp.replace(/\D/g, '') : '';
+                const waUrl = waNumber
+                    ? `https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`
+                    : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+
+                setTimeout(() => { window.open(waUrl, '_blank'); }, 2500);
+            }
         }
 
         function getProductSuggestions(product) {
@@ -1027,7 +1527,6 @@
             const cat = (product.category || '').toLowerCase();
             const finish = (product.finish || '').toLowerCase();
 
-            // Conversational suggestions based on product
             if (cat.includes('mader') || cat.includes('wood')) {
                 suggestions.push('Es mejor que poner madera real?');
             } else if (cat.includes('marmol') || cat.includes('marble') || cat.includes('piedra')) {
@@ -1050,8 +1549,12 @@
 
             suggestions.push('Lo puedo poner en mi bano?');
 
-            if (visitedProducts.length >= 3) {
+            if (visitedProducts.length >= 2) {
                 suggestions.push('Mandame el resumen por WhatsApp');
+            }
+
+            if (storeMode && visitedProducts.length < 5) {
+                suggestions.push('Escanear otro piso');
             }
 
             return suggestions.slice(0, 4);
@@ -1064,7 +1567,19 @@
             suggestionsEl.style.display = 'flex';
         }
 
-        // ===== QR SCANNER (in-app, no external libs) =====
+        // ===== IDLE REMINDER (Phase 3d) =====
+        function startIdleTimer() {
+            setInterval(() => {
+                if (Date.now() - lastInteractionTime > 300000 && !idleReminderSent) { // 5 min
+                    idleReminderSent = true;
+                    if (!app.classList.contains('speaking') && !app.classList.contains('thinking') && !isListening) {
+                        speak(`${customerName}, sigo aqui! Escanea otro piso o preguntame algo.`);
+                    }
+                }
+            }, 30000);
+        }
+
+        // ===== QR SCANNER =====
         let scannerStream = null;
         let scannerInterval = null;
 
@@ -1073,25 +1588,39 @@
             const video = document.getElementById('qr-video');
             scanner.classList.add('show');
 
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+                })
                 .then(stream => {
                     scannerStream = stream;
                     video.srcObject = stream;
+                    video.setAttribute('playsinline', true);
+                    video.play();
 
-                    // Use BarcodeDetector if available (Chrome/Android)
-                    if ('BarcodeDetector' in window) {
-                        const detector = new BarcodeDetector({ formats: ['qr_code'] });
-                        scannerInterval = setInterval(async () => {
-                            try {
-                                const barcodes = await detector.detect(video);
-                                if (barcodes.length > 0) {
-                                    handleScannedURL(barcodes[0].rawValue);
-                                }
-                            } catch (e) {}
-                        }, 500);
-                    }
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                    const label = document.querySelector('.qr-scanner-label');
+
+                    scannerInterval = setInterval(() => {
+                        if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                        // jsQR with both inversion modes for better detection
+                        if (typeof jsQR !== 'undefined') {
+                            const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
+                            if (code && code.data) {
+                                label.textContent = 'QR detectado!';
+                                handleScannedURL(code.data);
+                                return;
+                            }
+                        }
+                    }, 200);
                 })
                 .catch(err => {
+                    console.error('Camera error:', err);
                     closeScanner();
                     speak('No pude abrir la camara. Intenta escanear el QR con tu camara normal.');
                 });
@@ -1104,22 +1633,47 @@
             if (scannerStream) { scannerStream.getTracks().forEach(t => t.stop()); scannerStream = null; }
         }
 
-        function handleScannedURL(url) {
+        function handleScannedURL(rawData) {
             closeScanner();
+            hapticScan();
+            console.log('QR scanned:', rawData);
             try {
-                const parsed = new URL(url);
-                const scannedSlug = parsed.searchParams.get('product') || parsed.searchParams.get('producto');
-                if (scannedSlug) {
-                    loadProductBySlug(scannedSlug);
+                const parsed = new URL(rawData);
+
+                // /landing/{slug}
+                const landingMatch = parsed.pathname.match(/\/landing\/(.+)/);
+                if (landingMatch) {
+                    loadProductBySlug(decodeURIComponent(landingMatch[1]));
                     return;
                 }
-                // Maybe it's a landing URL like /p/slug
-                const pathMatch = parsed.pathname.match(/\/p\/(.+)/);
-                if (pathMatch) {
-                    loadProductBySlug(pathMatch[1]);
+
+                // /p/{sku}
+                const pMatch = parsed.pathname.match(/\/p\/(.+)/);
+                if (pMatch) {
+                    loadProductBySlug(decodeURIComponent(pMatch[1]));
                     return;
                 }
-            } catch (e) {}
+
+                // ?product={slug}
+                const productParam = parsed.searchParams.get('product') || parsed.searchParams.get('producto');
+                if (productParam) {
+                    loadProductBySlug(productParam);
+                    return;
+                }
+
+                // Last resort: try last path segment as slug
+                const segments = parsed.pathname.split('/').filter(Boolean);
+                if (segments.length > 0) {
+                    loadProductBySlug(decodeURIComponent(segments[segments.length - 1]));
+                    return;
+                }
+            } catch (e) {
+                // Not a URL — try as plain slug
+                if (rawData && rawData.length > 1 && rawData.length < 100) {
+                    loadProductBySlug(rawData.trim());
+                    return;
+                }
+            }
             speak('No reconoci ese QR. Intenta con otro.');
         }
 
@@ -1128,7 +1682,9 @@
                 try { const r = await fetch('/api/products'); allProducts = await r.json(); } catch(e) {}
             }
             const product = allProducts.find(p =>
-                p.slug === slug || p.sku === slug || String(p.id) === slug
+                p.slug === slug || p.sku === slug || String(p.id) === slug ||
+                (p.sku && p.sku.toLowerCase() === slug.toLowerCase()) ||
+                (p.slug && p.slug.toLowerCase() === slug.toLowerCase())
             );
             if (product) {
                 currentProduct = product;
@@ -1136,14 +1692,13 @@
                 addToVisited(product);
                 soundProduct();
 
-                // Ask Terra to introduce it
                 processMessage(`Acabo de escanear el piso ${product.name}. Presentalo brevemente.`);
             } else {
                 speak(`No encontre ese producto. Preguntame por nombre y te ayudo.`);
             }
         }
 
-        // ===== NFC LISTENER (Android Chrome - runs in background) =====
+        // ===== NFC LISTENER =====
         function initNFC() {
             if ('NDEFReader' in window) {
                 const reader = new NDEFReader();
@@ -1167,9 +1722,7 @@
                             }
                         }
                     };
-                }).catch(err => {
-                    // NFC not available or permission denied - silently ignore
-                });
+                }).catch(err => {});
             }
         }
 

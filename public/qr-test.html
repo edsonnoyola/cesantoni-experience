@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>QR Landings — Cesantoni Galerias</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', sans-serif; background: #fff; color: #1a1a1a; }
+        .page { page-break-after: always; padding: 20px 25px; max-width: 800px; margin: 0 auto; }
+        .page:last-child { page-break-after: auto; }
+        .grid-header {
+            text-align: center; padding: 12px 0;
+            border-bottom: 2px solid #c9a962; margin-bottom: 12px;
+        }
+        .grid-header h2 { font-size: 1.1rem; }
+        .grid-header p { font-size: 0.7rem; color: #888; margin-top: 4px; }
+        .qr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .qr-card {
+            text-align: center; padding: 8px;
+            border: 1px solid #ddd; border-radius: 6px;
+        }
+        .qr-card .name { font-size: 0.75rem; font-weight: 700; margin-bottom: 1px; }
+        .qr-card .cat { font-size: 0.55rem; color: #999; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+        .qr-card img { width: 150px; height: 150px; display: block; margin: 0 auto; }
+        .qr-card .slug { font-size: 0.45rem; color: #bbb; margin-top: 2px; word-break: break-all; }
+        .print-btn {
+            position: fixed; top: 15px; right: 15px; z-index: 100;
+            padding: 12px 24px; background: #c9a962; border: none;
+            color: #fff; font-family: 'Montserrat', sans-serif;
+            font-weight: 600; font-size: 0.9rem; cursor: pointer; border-radius: 6px;
+        }
+        .loading { text-align: center; padding: 60px; font-size: 1rem; color: #999; }
+        @media print {
+            .no-print { display: none; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn no-print" onclick="window.print()">Imprimir / PDF</button>
+    <div id="pages"><div class="loading">Cargando productos...</div></div>
+
+    <script>
+        const BASE = 'https://192.168.100.5:3443';
+
+        fetch('/api/products')
+            .then(r => r.json())
+            .then(products => {
+                const withVideo = products.filter(p => p.video_url && p.slug && p.slug !== 'None' && p.slug !== null);
+                const container = document.getElementById('pages');
+                container.innerHTML = '';
+
+                const perPage = 9;
+                for (let i = 0; i < withVideo.length; i += perPage) {
+                    const chunk = withVideo.slice(i, i + perPage);
+                    const pageNum = Math.floor(i / perPage) + 1;
+                    const totalPages = Math.ceil(withVideo.length / perPage);
+
+                    let html = `<div class="page">
+                        <div class="grid-header">
+                            <h2>Landing Pages — Cesantoni Galerias</h2>
+                            <p>Pagina ${pageNum} de ${totalPages} · ${withVideo.length} productos con video</p>
+                        </div>
+                        <div class="qr-grid">`;
+
+                    chunk.forEach(p => {
+                        const landingUrl = `${BASE}/landing/${p.slug}`;
+                        const qrSrc = `/api/qr/img?url=${encodeURIComponent(landingUrl)}`;
+                        html += `
+                            <div class="qr-card">
+                                <div class="name">${p.name}</div>
+                                <div class="cat">${p.category || ''}</div>
+                                <img src="${qrSrc}" alt="QR ${p.name}">
+                                <div class="slug">${p.slug}</div>
+                            </div>`;
+                    });
+
+                    html += `</div></div>`;
+                    container.innerHTML += html;
+                }
+            });
+    </script>
+</body>
+</html>
