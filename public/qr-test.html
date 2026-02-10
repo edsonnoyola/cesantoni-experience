@@ -47,7 +47,7 @@
         fetch('/api/products')
             .then(r => r.json())
             .then(products => {
-                const withVideo = products.filter(p => p.video_url && p.slug && p.slug !== 'None' && p.slug !== null);
+                const withVideo = products.filter(p => p.slug && p.slug !== 'None' && p.slug !== null);
                 const container = document.getElementById('pages');
                 container.innerHTML = '';
 
@@ -60,7 +60,7 @@
                     let html = `<div class="page">
                         <div class="grid-header">
                             <h2>Landing Pages — Cesantoni Galerias</h2>
-                            <p>Pagina ${pageNum} de ${totalPages} · ${withVideo.length} productos con video</p>
+                            <p>Pagina ${pageNum} de ${totalPages} · ${withVideo.length} productos</p>
                         </div>
                         <div class="qr-grid">`;
 
