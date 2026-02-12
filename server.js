@@ -844,7 +844,7 @@ app.post('/api/video/generate', async (req, res) => {
     }
   }
   const videoId = Date.now();
-  const slug = (product_name || 'video').toLowerCase().replace(/\s+/g, '_');
+  const slug = (dbProduct?.slug || product_name || 'video').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
   console.log('🎬 Generando video para:', product_name);
   res.json({ success: true, videoId, slug, message: 'Generando video...' });
