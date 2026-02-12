@@ -1904,6 +1904,226 @@ app.post('/api/tts', async (req, res) => {
 });
 
 // =====================================================
+// WHATSAPP BOT - Meta Cloud API + Gemini
+// =====================================================
+
+const WA_TOKEN = process.env.WHATSAPP_TOKEN;
+const WA_PHONE_ID = process.env.WHATSAPP_PHONE_ID || '663552990169738';
+const WA_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'cesantoni2026';
+
+// Send WhatsApp text message
+async function sendWhatsApp(to, text) {
+  if (!WA_TOKEN) { console.log('⚠️ WA_TOKEN not set'); return null; }
+  try {
+    const res = await fetch(`https://graph.facebook.com/v21.0/${WA_PHONE_ID}/messages`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: text } })
+    });
+    const data = await res.json();
+    if (data.error) console.error('WA send error:', data.error);
+    return data;
+  } catch (err) {
+    console.error('WA send error:', err.message);
+    return null;
+  }
+}
+
+// Send WhatsApp image message
+async function sendWhatsAppImage(to, imageUrl, caption) {
+  if (!WA_TOKEN) return null;
+  try {
+    const res = await fetch(`https://graph.facebook.com/v21.0/${WA_PHONE_ID}/messages`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'image', image: { link: imageUrl, caption } })
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('WA image error:', err.message);
+    return null;
+  }
+}
+
+// Mark message as read
+async function markAsRead(messageId) {
+  if (!WA_TOKEN) return;
+  try {
+    await fetch(`https://graph.facebook.com/v21.0/${WA_PHONE_ID}/messages`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messaging_product: 'whatsapp', status: 'read', message_id: messageId })
+    });
+  } catch (e) {}
+}
+
+// WhatsApp bot - process incoming message with Gemini
+async function processWhatsAppMessage(from, text, customerName) {
+  // Get conversation history
+  const history = query(
+    'SELECT role, message FROM wa_conversations WHERE phone = ? ORDER BY created_at DESC LIMIT 10',
+    [from]
+  ).reverse();
+
+  // Save incoming message
+  run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
+
+  // Get product catalog (compact)
+  const products = query('SELECT id, name, slug, category, format, finish, pei, usage FROM products WHERE active = 1 ORDER BY name');
+  const catalogText = products.map(p =>
+    `${p.name}|${p.category||'PREMIUM'}|${p.format||''}|PEI:${p.pei||''}|${p.finish||''}|${p.usage||''}`
+  ).join('\n');
+
+  const systemPrompt = `Eres Terra, la asesora de pisos de Cesantoni por WhatsApp. Eres amable, experta y directa.
+
+REGLAS:
+- Responde en español mexicano, cálido y profesional
+- Máximo 3-4 oraciones por mensaje (es WhatsApp, no un email)
+- Si preguntan por un producto específico, menciona características clave: formato, acabado, PEI, uso
+- Si no saben qué quieren, pregunta: para qué espacio, qué estilo, si tienen mascotas/niños
+- Puedes recomendar productos del catálogo por nombre
+- Si preguntan precio, di que varía por tienda y sugiere visitar la más cercana o pedir cotización
+- Si preguntan ubicación de tiendas, di que tienen 407 tiendas en todo México y que pueden buscar la más cercana
+- Si piden cotización, pide: producto, metros cuadrados aproximados, y ciudad
+- NUNCA inventes productos que no están en el catálogo
+- Si mencionan un producto, al final agrega el link: cesantoni-experience-za74.onrender.com/landing/{slug}
+
+CESANTONI: Empresa mexicana premium de porcelanato. 123 productos. 407 tiendas en México. Tecnología HD, gran formato, garantía.
+TÉCNICO SIMPLE: PEI 3=toda la casa, PEI 4=comercios. Mate=no resbala. Porcelánico=el más resistente. <0.5% absorción=exterior/baño.
+
+Cliente: ${customerName || from}
+${history.length > 0 ? 'HISTORIAL:\n' + history.map(h => `${h.role === 'user' ? 'Cliente' : 'Terra'}: ${h.message}`).join('\n') : ''}
+
+CATÁLOGO (${products.length} productos):
+${catalogText}
+
+Responde SOLO el texto del mensaje, nada más. No uses JSON ni markdown.`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            { role: 'user', parts: [{ text: systemPrompt }] },
+            { role: 'model', parts: [{ text: 'Entendido, soy Terra por WhatsApp.' }] },
+            { role: 'user', parts: [{ text }] }
+          ],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 300 }
+        })
+      }
+    );
+
+    const data = await response.json();
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Disculpa, tuve un problema. ¿Puedes repetir tu mensaje?';
+
+    // Save bot reply
+    run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'assistant', reply]);
+
+    return reply;
+  } catch (err) {
+    console.error('WA Gemini error:', err.message);
+    return 'Disculpa, tuve un problema técnico. Intenta de nuevo en un momento. 🙏';
+  }
+}
+
+// Webhook verification (Meta sends GET to verify)
+app.get('/webhook', (req, res) => {
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+
+  if (mode === 'subscribe' && token === WA_VERIFY_TOKEN) {
+    console.log('✅ Webhook verified');
+    return res.status(200).send(challenge);
+  }
+  console.log('❌ Webhook verification failed');
+  res.sendStatus(403);
+});
+
+// Incoming messages from WhatsApp
+app.post('/webhook', async (req, res) => {
+  // Always respond 200 immediately (Meta requires fast response)
+  res.sendStatus(200);
+
+  try {
+    const entry = req.body?.entry?.[0];
+    const changes = entry?.changes?.[0];
+    const value = changes?.value;
+
+    // Skip status updates (delivered, read, etc.)
+    if (!value?.messages) return;
+
+    const message = value.messages[0];
+    const from = message.from; // phone number
+    const contactName = value.contacts?.[0]?.profile?.name || '';
+
+    console.log(`📱 WA from ${contactName} (${from}): ${message.type}`);
+
+    // Mark as read
+    markAsRead(message.id);
+
+    // Handle text messages
+    if (message.type === 'text') {
+      const text = message.text.body;
+      console.log(`   💬 "${text}"`);
+
+      const reply = await processWhatsAppMessage(from, text, contactName);
+      await sendWhatsApp(from, reply);
+
+      // If reply mentions a product slug, also send the product image
+      const slugMatch = reply.match(/\/landing\/([a-z0-9_-]+)/i);
+      if (slugMatch) {
+        const product = queryOne('SELECT name, image_url, slug FROM products WHERE slug = ?', [slugMatch[1]]);
+        if (product?.image_url) {
+          await sendWhatsAppImage(from, product.image_url, `${product.name} - Cesantoni`);
+        }
+      }
+    } else if (message.type === 'image' || message.type === 'document') {
+      await sendWhatsApp(from, 'Gracias por la imagen. Soy Terra, tu asesora de pisos Cesantoni. ¿En qué te puedo ayudar? 😊');
+    } else {
+      await sendWhatsApp(from, '¡Hola! Soy Terra, tu asesora de pisos Cesantoni. Escríbeme lo que buscas y te ayudo. 😊');
+    }
+  } catch (err) {
+    console.error('Webhook error:', err);
+  }
+});
+
+// WhatsApp conversations API (for CRM dashboard)
+app.get('/api/wa/conversations', (req, res) => {
+  try {
+    const conversations = query(`
+      SELECT phone,
+             MAX(CASE WHEN role='user' THEN message END) as last_message,
+             COUNT(*) as total_messages,
+             MIN(created_at) as first_contact,
+             MAX(created_at) as last_contact
+      FROM wa_conversations
+      GROUP BY phone
+      ORDER BY MAX(created_at) DESC
+      LIMIT 50
+    `);
+    res.json(conversations);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/wa/conversation/:phone', (req, res) => {
+  try {
+    const messages = query(
+      'SELECT role, message, created_at FROM wa_conversations WHERE phone = ? ORDER BY created_at ASC',
+      [req.params.phone]
+    );
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =====================================================
 // AI CHAT - Asistente Cesantoni
 // =====================================================
 
