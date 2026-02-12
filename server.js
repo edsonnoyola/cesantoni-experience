@@ -853,7 +853,9 @@ app.post('/api/video/generate', async (req, res) => {
     // Buscar imagen RENDER del cuarto (con el piso instalado) - NO la C1
     // Prioridad: Render_ de galería que coincida con producto > image_url principal
     let renderImageUrl = image_url;
-    if (dbProduct && dbProduct.gallery) {
+    if (image_url) {
+      console.log('🎯 Usando imagen explícita del request:', image_url);
+    } else if (dbProduct && dbProduct.gallery) {
       try {
         const gallery = JSON.parse(dbProduct.gallery || '[]');
         const productNameClean = (product_name || '').toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '');
