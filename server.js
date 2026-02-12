@@ -1479,6 +1479,15 @@ app.post('/api/terra/session', (req, res) => {
   }
 });
 
+app.delete('/api/terra/sessions', (req, res) => {
+  try {
+    run('DELETE FROM terra_sessions');
+    res.json({ success: true, message: 'All sessions deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/terra/sessions', (req, res) => {
   try {
     const { store, days, limit: lim } = req.query;
