@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>QR + NFC — Cesantoni Galerias Zacatecas</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', sans-serif; background: #fff; color: #1a1a1a; }
+
+        /* Controls bar */
+        .controls {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            background: #1a1a1a; padding: 12px 20px;
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        }
+        .controls select, .controls button {
+            font-family: 'Montserrat', sans-serif; font-size: 0.85rem;
+            padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer;
+        }
+        .controls select { background: #333; color: #fff; }
+        .controls .btn-print { background: #c9a962; color: #fff; font-weight: 600; }
+        .controls .btn-nfc { background: #2d7d46; color: #fff; font-weight: 600; }
+        .controls .count { color: #888; font-size: 0.75rem; margin-left: auto; }
+
+        /* Individual sticker - designed to be cut */
+        .sticker {
+            page-break-inside: avoid;
+            border: 1px dashed #ccc;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            width: 280px;
+            text-align: center;
+            position: relative;
+        }
+        .sticker .cut-line {
+            position: absolute; top: -5px; right: -5px;
+            font-size: 0.5rem; color: #ccc;
+        }
+        .sticker .logo {
+            height: 20px; margin-bottom: 6px; opacity: 0.5;
+        }
+        .sticker .product-name {
+            font-size: 1rem; font-weight: 800; letter-spacing: 0.05em;
+            margin-bottom: 2px; color: #1a1a1a;
+        }
+        .sticker .product-cat {
+            font-size: 0.6rem; color: #999; text-transform: uppercase;
+            letter-spacing: 0.15em; margin-bottom: 8px;
+        }
+        .sticker .qr-img {
+            width: 200px; height: 200px; display: block;
+        }
+        .sticker .scan-text {
+            margin-top: 8px; font-size: 0.65rem; color: #c9a962; font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+        .sticker .nfc-badge {
+            margin-top: 4px; font-size: 0.5rem; color: #2d7d46;
+            font-weight: 600; letter-spacing: 0.1em;
+        }
+        .sticker .url-tiny {
+            margin-top: 4px; font-size: 0.4rem; color: #ccc;
+            word-break: break-all;
+        }
+
+        /* Grid view */
+        .grid-view {
+            padding: 70px 10px 20px;
+            display: flex; flex-wrap: wrap; justify-content: center;
+        }
+
+        /* List view - one per row, bigger */
+        .list-view .sticker {
+            width: 320px; margin: 15px auto; display: flex;
+        }
+        .list-view .sticker .qr-img { width: 250px; height: 250px; }
+        .list-view .sticker .product-name { font-size: 1.3rem; }
+
+        /* NFC instructions page */
+        .nfc-page {
+            max-width: 700px; margin: 0 auto; padding: 80px 30px 40px;
+            line-height: 1.7;
+        }
+        .nfc-page h1 { font-size: 1.5rem; margin-bottom: 20px; color: #1a1a1a; }
+        .nfc-page h2 { font-size: 1.1rem; margin: 25px 0 10px; color: #c9a962; }
+        .nfc-page p { font-size: 0.9rem; color: #444; margin-bottom: 10px; }
+        .nfc-page .step {
+            background: #f9f7f2; border-left: 3px solid #c9a962;
+            padding: 12px 16px; margin: 10px 0; border-radius: 0 6px 6px 0;
+        }
+        .nfc-page .step strong { color: #1a1a1a; }
+        .nfc-page code {
+            background: #eee; padding: 2px 6px; border-radius: 3px;
+            font-size: 0.8rem; word-break: break-all;
+        }
+        .nfc-page table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.85rem; }
+        .nfc-page th { background: #1a1a1a; color: #c9a962; padding: 8px 12px; text-align: left; }
+        .nfc-page td { padding: 8px 12px; border-bottom: 1px solid #eee; }
+        .nfc-page .buy-link { color: #2d7d46; font-weight: 600; text-decoration: none; }
+
+        /* Print */
+        @media print {
+            .controls, .nfc-page { display: none !important; }
+            body { background: #fff; }
+            .sticker { border: 1px dashed #999; margin: 8px; }
+            .grid-view { padding: 10px; }
+        }
+
+        .loading { text-align: center; padding: 80px 20px; font-size: 1rem; color: #999; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="controls no-print">
+        <select id="view-mode">
+            <option value="grid">Vista Grid (9 por pagina)</option>
+            <option value="list">Vista Grande (1 por pagina)</option>
+        </select>
+        <button class="btn-print" onclick="window.print()">Imprimir / PDF</button>
+        <button class="btn-nfc" onclick="toggleNFC()">Instrucciones NFC</button>
+        <span class="count" id="count"></span>
+    </div>
+
+    <div id="stickers" class="grid-view">
+        <div class="loading">Cargando 123 productos...</div>
+    </div>
+
+    <div id="nfc-instructions" class="nfc-page hidden">
+        <h1>NFC Tags para Cesantoni Galerias Zacatecas</h1>
+
+        <p>Los NFC tags se pegan junto a cada piso en la tienda. Cuando el cliente acerca su celular, se abre la landing page automaticamente (sin necesidad de camara).</p>
+
+        <h2>1. Comprar NFC Tags</h2>
+        <table>
+            <tr><th>Tipo</th><th>Capacidad</th><th>Uso</th><th>Precio aprox.</th></tr>
+            <tr><td>NTAG215</td><td>504 bytes</td><td>URLs cortas, ideal</td><td>$8-12 MXN c/u</td></tr>
+            <tr><td>NTAG216</td><td>888 bytes</td><td>URLs largas</td><td>$12-18 MXN c/u</td></tr>
+        </table>
+        <p>Necesitas <strong>123 tags</strong> (uno por producto). Recomiendo NTAG215 adhesivos transparentes o blancos.</p>
+        <p>Comprar en: Amazon MX, Mercado Libre, o AliExpress (buscar "NTAG215 sticker NFC").</p>
+
+        <h2>2. Programar cada NFC Tag</h2>
+        <p>Usa la app gratuita <strong>NFC Tools</strong> (iOS y Android):</p>
+        <div class="step"><strong>Paso 1:</strong> Abre NFC Tools → pestaña "Escribir"</div>
+        <div class="step"><strong>Paso 2:</strong> Toca "Agregar registro" → "URL"</div>
+        <div class="step"><strong>Paso 3:</strong> Pega la URL del producto (ver tabla abajo)</div>
+        <div class="step"><strong>Paso 4:</strong> Toca "Escribir" → Acerca el NFC tag al celular</div>
+        <div class="step"><strong>Paso 5:</strong> Listo! Pega el tag junto al piso en la tienda</div>
+
+        <h2>3. URLs para programar cada NFC Tag</h2>
+        <p>Cada tag debe apuntar a la landing page del producto:</p>
+        <table>
+            <tr><th>#</th><th>Producto</th><th>URL para NFC</th></tr>
+        </table>
+        <div id="nfc-table"></div>
+
+        <h2>4. Donde pegar los tags</h2>
+        <p>Pegar el NFC tag + QR sticker impreso juntos:</p>
+        <div class="step"><strong>Opcion A:</strong> En la tarjeta de precio del piso (junto al nombre)</div>
+        <div class="step"><strong>Opcion B:</strong> En un stand/acrilico al lado de la muestra</div>
+        <div class="step"><strong>Opcion C:</strong> En la pared/mueble detras del piso exhibido</div>
+        <p>El QR es el respaldo visual — el cliente puede escanear con camara si no tiene NFC.</p>
+
+        <h2>5. Tips</h2>
+        <div class="step"><strong>Prueba cada tag</strong> despues de programarlo — acerca tu celular y verifica que abra la landing correcta.</div>
+        <div class="step"><strong>No cubras el tag</strong> con metal — el NFC no funciona a traves de metal.</div>
+        <div class="step"><strong>Distancia:</strong> El celular debe estar a 1-3 cm del tag para leerlo.</div>
+    </div>
+
+    <script>
+        const BASE = 'https://cesantoni-experience-za74.onrender.com';
+        let allProducts = [];
+
+        fetch('/api/products')
+            .then(r => r.json())
+            .then(products => {
+                allProducts = products
+                    .filter(p => p.slug && p.slug !== 'None' && p.slug !== null)
+                    .sort((a, b) => a.name.localeCompare(b.name));
+
+                document.getElementById('count').textContent = allProducts.length + ' productos';
+                renderStickers();
+                renderNFCTable();
+            });
+
+        function renderStickers() {
+            const container = document.getElementById('stickers');
+            let html = '';
+
+            allProducts.forEach((p, i) => {
+                const landingUrl = `${BASE}/landing/${p.slug}`;
+                const qrSrc = `/api/qr/img?url=${encodeURIComponent(landingUrl)}`;
+                html += `
+                    <div class="sticker">
+                        <div class="cut-line">&#9986;</div>
+                        <div class="product-name">${p.name}</div>
+                        <div class="product-cat">${p.category || 'PISO'}</div>
+                        <img class="qr-img" src="${qrSrc}" alt="QR ${p.name}" loading="lazy">
+                        <div class="scan-text">ESCANEA Y CONOCE ESTE PISO</div>
+                        <div class="nfc-badge">NFC + QR</div>
+                        <div class="url-tiny">${p.slug}</div>
+                    </div>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function renderNFCTable() {
+            const container = document.getElementById('nfc-table');
+            let html = '<table><tr><th>#</th><th>Producto</th><th>URL para NFC</th></tr>';
+            allProducts.forEach((p, i) => {
+                const url = `${BASE}/landing/${p.slug}`;
+                html += `<tr><td>${i + 1}</td><td>${p.name}</td><td><code>${url}</code></td></tr>`;
+            });
+            html += '</table>';
+            container.innerHTML = html;
+        }
+
+        document.getElementById('view-mode').addEventListener('change', function() {
+            const container = document.getElementById('stickers');
+            container.className = this.value === 'list' ? 'list-view' : 'grid-view';
+        });
+
+        function toggleNFC() {
+            const nfc = document.getElementById('nfc-instructions');
+            const stickers = document.getElementById('stickers');
+            if (nfc.classList.contains('hidden')) {
+                nfc.classList.remove('hidden');
+                stickers.classList.add('hidden');
+            } else {
+                nfc.classList.add('hidden');
+                stickers.classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
