@@ -2079,6 +2079,63 @@ app.post('/webhook', async (req, res) => {
       const text = message.text.body;
       console.log(`   💬 "${text}"`);
 
+      // Detect Terra in-store referral: "Hola Terra! Soy X desde Y. Me gustaron: A, B, C. Mandame mi resumen!"
+      const terraMatch = text.match(/Hola Terra.*Soy\s+(.+?)\s+desde\s+(.+?)\.\s*Me gustaron:\s*(.+?)\.\s*Mandame/i);
+      if (terraMatch) {
+        const tName = terraMatch[1].trim();
+        const tStore = terraMatch[2].trim();
+        const tProducts = terraMatch[3].split(',').map(s => s.trim()).filter(Boolean);
+
+        console.log(`🏪 Terra lead: ${tName} from ${tStore}, products: ${tProducts.join(', ')}`);
+
+        // Save as lead conversation
+        run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
+
+        // Look up products from DB
+        const allProds = query('SELECT id, name, slug, category, format, finish, pei, usage, image_url FROM products WHERE active = 1');
+        const matchedProducts = tProducts.map(pName => {
+          return allProds.find(p => p.name.toLowerCase() === pName.toLowerCase()) ||
+                 allProds.find(p => p.name.toLowerCase().includes(pName.toLowerCase())) ||
+                 null;
+        }).filter(Boolean);
+
+        // Send greeting
+        const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
+        let greeting = `Hola ${tName}! 👋 Soy Terra de Cesantoni. Vi que te gustaron ${matchedProducts.length} piso${matchedProducts.length > 1 ? 's' : ''} en *${tStore}*. Aqui va tu resumen:\n`;
+        await sendWhatsApp(from, greeting);
+
+        // Send each product as image + details
+        for (const p of matchedProducts) {
+          const details = `*${p.name}*\n` +
+            `📐 ${p.format || 'Gran formato'}\n` +
+            `✨ ${p.finish || 'Premium'}\n` +
+            (p.pei ? `💪 PEI ${p.pei} — ${p.pei >= 4 ? 'Alto trafico' : p.pei >= 3 ? 'Toda la casa' : 'Trafico ligero'}\n` : '') +
+            (p.usage ? `🏠 ${p.usage}\n` : '') +
+            `\n🔗 ${baseUrl}/landing/${p.slug || p.id}`;
+
+          if (p.image_url) {
+            await sendWhatsAppImage(from, p.image_url, details);
+          } else {
+            await sendWhatsApp(from, details);
+          }
+
+          // Small delay between messages
+          await new Promise(r => setTimeout(r, 800));
+        }
+
+        // Send closing message
+        const closing = matchedProducts.length >= 2
+          ? `Esos son tus ${matchedProducts.length} pisos, ${tName}! Si necesitas cotizacion, ayuda para elegir, o quieres ver mas opciones, escribeme aqui. Estoy para ti! 😊`
+          : `Ese es tu piso, ${tName}! Si necesitas cotizacion o quieres ver mas opciones, escribeme aqui. Estoy para ti! 😊`;
+        await sendWhatsApp(from, closing);
+
+        // Save bot reply
+        run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
+          [from, 'assistant', `Resumen enviado: ${matchedProducts.map(p => p.name).join(', ')}`]);
+
+        return; // Don't process as normal message
+      }
+
       const reply = await processWhatsAppMessage(from, text, contactName);
       await sendWhatsApp(from, reply);
 

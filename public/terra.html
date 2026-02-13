@@ -1405,6 +1405,8 @@
         }
 
         // ===== WHATSAPP SUMMARY (Phase 4) =====
+        const WA_BOT_NUMBER = '5215651747912'; // WhatsApp Business API number
+
         async function sendWhatsAppSummary() {
             if (visitedProducts.length === 0) {
                 speak(`${customerName}, todavia no hemos visto ningun producto. Dime que te interesa y empezamos.`);
@@ -1413,60 +1415,26 @@
             }
 
             hapticWhatsApp();
+            speak(`Listo ${customerName}! Te abro WhatsApp para mandarte tu resumen.`);
 
-            // Goodbye speech (Phase 4c)
-            speak(`Fue un placer, ${customerName}! Te mando el resumen por WhatsApp con mi recomendacion.`);
+            // Build pre-filled message with Terra marker for webhook detection
+            const productList = visitedProducts.map(p => p.name).join(', ');
+            const msg = `Hola Terra! Soy ${customerName} desde ${storeName || 'Cesantoni'}. Me gustaron: ${productList}. Mandame mi resumen!`;
 
+            const waUrl = `https://wa.me/${WA_BOT_NUMBER}?text=${encodeURIComponent(msg)}`;
+
+            // End session
             try {
-                // Get AI recommendation (Phase 4a)
-                const summaryRes = await fetch('/api/terra/whatsapp-summary', {
+                fetch('/api/terra/session', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        customer_name: customerName,
-                        store_name: storeName,
-                        visited_products: visitedProducts,
-                        conversation_highlights: chatHistory.slice(-4).map(h => h.user).join('. '),
-                        session_id: terraSessionId
-                    })
+                    body: JSON.stringify({ action: 'end', session_id: terraSessionId })
                 });
-                const summaryData = await summaryRes.json();
+            } catch (e) {}
 
-                const waNumber = storeWhatsapp ? storeWhatsapp.replace(/\D/g, '') : '';
-                const waUrl = waNumber
-                    ? `https://wa.me/${waNumber}?text=${encodeURIComponent(summaryData.message)}`
-                    : `https://wa.me/?text=${encodeURIComponent(summaryData.message)}`;
-
-                // End session
-                try {
-                    fetch('/api/terra/session', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'end', session_id: terraSessionId })
-                    });
-                } catch (e) {}
-
-                setTimeout(() => {
-                    window.open(waUrl, '_blank');
-                }, 2500);
-
-            } catch (e) {
-                // Fallback to basic message
-                const baseUrl = window.location.origin;
-                let msg = `Hola! Soy ${customerName}, vi estos pisos en ${storeName || 'Cesantoni'} con Terra:\n\n`;
-                visitedProducts.forEach((p, i) => {
-                    msg += `${i + 1}. *${p.name}* (${p.category || 'Premium'})\n`;
-                    msg += `   ${baseUrl}/p/${p.slug || p.id}\n\n`;
-                });
-                msg += `Me gustaria mas informacion. Gracias!`;
-
-                const waNumber = storeWhatsapp ? storeWhatsapp.replace(/\D/g, '') : '';
-                const waUrl = waNumber
-                    ? `https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`
-                    : `https://wa.me/?text=${encodeURIComponent(msg)}`;
-
-                setTimeout(() => { window.open(waUrl, '_blank'); }, 2500);
-            }
+            setTimeout(() => {
+                window.location.href = waUrl;
+            }, 1500);
         }
 
         function getProductSuggestions(product) {
