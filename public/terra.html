@@ -294,12 +294,12 @@
             text-transform: uppercase; margin-top: 2px;
         }
         .app.store-mode .scan-btn svg { width: 26px; height: 26px; }
-        /* After first scan, shrink back */
+        /* After first scan, keep visible but adjust position */
         .app.store-mode.has-scanned .scan-btn {
-            position: absolute; right: 20px; bottom: 100px;
-            width: 48px; height: 48px; animation: none;
+            position: relative; right: auto; bottom: auto;
+            width: 56px; height: 56px; animation: scanPulse 3s ease-in-out infinite;
         }
-        .app.store-mode.has-scanned .scan-btn .scan-btn-label { display: none; }
+        .app.store-mode.has-scanned .scan-btn .scan-btn-label { display: block; font-size: 0.45rem; }
 
         @keyframes scanPulse {
             0%, 100% { box-shadow: 0 0 0 0 rgba(201,169,98,0.4); }
@@ -312,7 +312,7 @@
             gap: 4px; padding: 4px 0;
         }
         .app.store-mode .scan-area { display: flex; }
-        .app.store-mode.has-scanned .scan-area { display: none; }
+        .app.store-mode.has-scanned .scan-area { display: flex; }
 
         /* QR Scanner overlay */
         .qr-scanner {
@@ -940,6 +940,7 @@
             if (visitedProducts.length > 0) {
                 updateJourneyStrip();
                 app.classList.add('has-scanned');
+                document.querySelector('.scan-btn-label').textContent = 'Escanear otro';
             }
 
             // If product came from QR/NFC scan, load it immediately
@@ -1396,7 +1397,10 @@
             visitedBadge.textContent = visitedProducts.length;
             visitedBadge.classList.add('show');
 
-            if (storeMode) app.classList.add('has-scanned');
+            if (storeMode) {
+                app.classList.add('has-scanned');
+                document.querySelector('.scan-btn-label').textContent = 'Escanear otro';
+            }
             updateJourneyStrip();
             saveSessionState();
 
