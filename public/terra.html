@@ -935,10 +935,10 @@
             const speechNameEl = document.getElementById('speech-name');
 
             if (storeMode && !productSlug) {
-                const storeGreeting = `Hola ${customerName}! Bienvenid${customerGender === 'f' ? 'a' : 'o'} a ${storeName || 'Cesantoni'}. Soy Terra, tu asistente de pisos. Ve a cualquier piso que te llame la atencion, escanea su codigo QR y te cuento todo: de que esta hecho, para que espacios va, como se cuida. Preguntame lo que necesites!`;
+                const storeGreeting = `Hola ${customerName}! Soy Terra. Escanea el QR de cualquier piso que te guste y te cuento todo sobre el.`;
                 speechText.textContent = storeGreeting;
                 speechNameEl.textContent = '';
-                setTimeout(() => speak(storeGreeting), 400);
+                setTimeout(() => speak(storeGreeting), 300);
 
                 updateSuggestions([
                     'Que tipo de pisos hay?',
@@ -946,10 +946,10 @@
                     'Escanear un piso'
                 ]);
             } else {
-                const defaultGreeting = `Hola ${customerName}! Soy Terra, tu asistente de pisos Cesantoni. Escanea el QR de cualquier piso que te guste y te cuento todo sobre el. Tambien puedes preguntarme lo que quieras!`;
+                const defaultGreeting = `Hola ${customerName}! Soy Terra. Escanea el QR de cualquier piso y te cuento todo sobre el.`;
                 speechText.textContent = defaultGreeting;
                 speechNameEl.textContent = '';
-                setTimeout(() => speak(defaultGreeting), 400);
+                setTimeout(() => speak(defaultGreeting), 300);
 
                 updateSuggestions([
                     'Que es porcelanato?',
@@ -1051,11 +1051,12 @@
             speechText.textContent = text;
             soundSpeak();
 
-            // Only Gemini TTS (Kore voice)
+            // Start browser TTS immediately so user hears something right away
+            speakBrowserTTS(text);
+
+            // Also request Gemini TTS — if it loads, it will interrupt browser TTS
             if (useGoogleTTS) {
                 loadAndPlayTTS(text);
-            } else {
-                speakBrowserTTS(text);
             }
         }
 
