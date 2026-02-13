@@ -547,10 +547,10 @@
 
             <!-- Speech -->
             <div class="speech">
-                <div id="speech-name" style="font-size:0.9rem;color:var(--gold);letter-spacing:0.05em;margin-bottom:6px;opacity:0;transition:opacity 0.5s"></div>
                 <div class="speech-text greeting" id="speech-text">
-                    Bienvenido a Cesantoni! Soy Terra. Recorre la tienda y escanea el QR de cualquier piso que te llame la atencion. Te cuento todo sobre el!
+                    Soy Terra, tu guia de pisos Cesantoni. Escanea el QR de cualquier piso y te cuento todo sobre el!
                 </div>
+                <div id="speech-name" style="font-size:0.85rem;color:var(--gold);text-align:center;margin-top:8px;opacity:0;transition:opacity 0.5s"></div>
             </div>
 
             <!-- User transcript -->
@@ -994,24 +994,23 @@
             }
 
             // Greeting — fixed message (instant, no AI wait), name shown separately
-            const fixedGreeting = 'Bienvenido a Cesantoni! Soy Terra. Recorre la tienda y escanea el QR de cualquier piso que te llame la atencion. Te cuento todo sobre el!';
+            const fixedGreeting = 'Soy Terra, tu guia de pisos Cesantoni. Escanea el QR de cualquier piso y te cuento todo sobre el!';
             const speechNameEl = document.getElementById('speech-name');
 
             if (storeMode && !productSlug) {
                 speechText.textContent = fixedGreeting;
-                speechNameEl.textContent = `Hola ${customerName}, escanea el que te guste`;
+                speechNameEl.textContent = `Hola ${customerName}`;
                 speechNameEl.style.opacity = '1';
                 setTimeout(() => speak(fixedGreeting), 300);
 
                 updateSuggestions([
-                    'Como escaneo un QR?',
                     'Que es porcelanato?',
-                    'Que es lo mas vendido?',
+                    'Cual es el mas resistente?',
                     'Escanear un piso'
                 ]);
             } else {
                 speechText.textContent = fixedGreeting;
-                speechNameEl.textContent = `Hola ${customerName}, preguntame lo que quieras`;
+                speechNameEl.textContent = `Hola ${customerName}`;
                 speechNameEl.style.opacity = '1';
                 setTimeout(() => speak(fixedGreeting), 300);
 
