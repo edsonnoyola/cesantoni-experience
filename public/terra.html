@@ -1048,7 +1048,13 @@
 
         // ===== VOICE CONTROL =====
         function toggleListening() {
-            if (app.classList.contains('thinking') || app.classList.contains('speaking')) return;
+            // If speaking, stop speech and allow mic
+            if (app.classList.contains('speaking')) {
+                synth.cancel();
+                if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
+                app.classList.remove('speaking');
+            }
+            if (app.classList.contains('thinking')) return;
             isListening ? stopListening() : startListening();
         }
 
