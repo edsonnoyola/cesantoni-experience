@@ -192,6 +192,7 @@
         <div class="nav-item" onclick="showPage('tiendas')">🏪 <span>Tiendas</span></div>
         <a href="/qr-tiendas.html" class="nav-item" style="text-decoration:none;">📱 <span>Generar QRs</span></a>
         <a href="/nfc.html" class="nav-item" style="text-decoration:none;">📲 <span>NFC Tags</span></a>
+        <div class="nav-item" onclick="showPage('whatsapp')">💬 <span>WhatsApp Bot</span></div>
         <div class="nav-item" onclick="showPage('promociones')">💰 <span>Promociones</span></div>
         <a href="/landings.html" class="nav-item" style="text-decoration:none;">📄 <span>Landings</span></a>
     </nav>
@@ -329,6 +330,32 @@
                     </div>
                     <div id="terra-sessions-detail" style="max-height:280px;overflow-y:auto;font-size:0.8rem">
                         <span style="color:#aaa">Selecciona una visita para ver detalle</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WhatsApp Bot Leads -->
+            <div class="grid-2" style="margin-bottom:20px">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">💬 WhatsApp Bot - Leads</span>
+                        <span class="card-action" onclick="loadWALeads()">Actualizar →</span>
+                    </div>
+                    <div id="wa-stats" style="display:flex;justify-content:space-around;text-align:center;padding:12px 0;border-bottom:1px solid #f0f0f0;margin-bottom:8px">
+                        <div><div style="font-size:1.4rem;font-weight:700" id="wa-total">-</div><div style="font-size:0.65rem;color:#888">Conversaciones</div></div>
+                        <div><div style="font-size:1.4rem;font-weight:700" id="wa-today">-</div><div style="font-size:0.65rem;color:#888">Hoy</div></div>
+                        <div><div style="font-size:1.4rem;font-weight:700" id="wa-msgs">-</div><div style="font-size:0.65rem;color:#888">Mensajes total</div></div>
+                    </div>
+                    <div id="wa-leads-list" style="max-height:250px;overflow-y:auto;font-size:0.8rem">
+                        <span style="color:#aaa">Cargando leads WhatsApp...</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">💬 Conversación</span>
+                    </div>
+                    <div id="wa-conversation-detail" style="max-height:300px;overflow-y:auto;font-size:0.8rem">
+                        <span style="color:#aaa">Selecciona un lead para ver la conversación</span>
                     </div>
                 </div>
             </div>
@@ -573,6 +600,35 @@
                 </div>
             </div>
         </div>
+        <!-- ==================== WHATSAPP BOT ==================== -->
+        <div id="page-whatsapp" class="page">
+            <div class="page-header"><h1>WhatsApp Bot - Leads</h1></div>
+            <div class="stats-row" style="grid-template-columns: repeat(3, 1fr);">
+                <div class="stat-card"><div class="label">Conversaciones</div><div class="value" id="wa-page-total">-</div></div>
+                <div class="stat-card"><div class="label">Hoy</div><div class="value" id="wa-page-today">-</div></div>
+                <div class="stat-card"><div class="label">Mensajes total</div><div class="value" id="wa-page-msgs">-</div></div>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">📱 Leads WhatsApp</span>
+                        <span class="card-action" onclick="loadWAPage()">Actualizar →</span>
+                    </div>
+                    <div id="wa-page-list" style="max-height:500px;overflow-y:auto;font-size:0.85rem">
+                        <span style="color:#aaa">Cargando...</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">💬 Conversación completa</span>
+                        <span id="wa-page-phone" style="font-size:0.7rem;color:#888"></span>
+                    </div>
+                    <div id="wa-page-chat" style="max-height:500px;overflow-y:auto;font-size:0.85rem">
+                        <span style="color:#aaa">Selecciona un lead para ver mensajes</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <script>
@@ -606,6 +662,7 @@
             event.currentTarget.classList.add('active');
             
             if (page === 'dashboard') loadDashboard();
+            if (page === 'whatsapp') loadWAPage();
             if (page === 'productos') loadProducts();
             if (page === 'tiendas') loadStores();
             if (page === 'qr') loadQRSelects();
@@ -1752,8 +1809,111 @@
             alert('Función de PDF en desarrollo. Por ahora usa "Copiar URLs" y genera los QRs con un generador externo como qr-code-generator.com');
         }
         
+        // ==================== WHATSAPP BOT ====================
+        async function loadWALeads() {
+            try {
+                const res = await fetch('/api/wa/conversations');
+                const convos = await res.json();
+                const today = new Date().toISOString().split('T')[0];
+                const todayCount = convos.filter(c => c.last_contact && c.last_contact.startsWith(today)).length;
+                const totalMsgs = convos.reduce((sum, c) => sum + (c.total_messages || 0), 0);
+
+                document.getElementById('wa-total').textContent = convos.length;
+                document.getElementById('wa-today').textContent = todayCount;
+                document.getElementById('wa-msgs').textContent = totalMsgs;
+
+                const listEl = document.getElementById('wa-leads-list');
+                if (convos.length === 0) {
+                    listEl.innerHTML = '<span style="color:#aaa">Sin conversaciones de WhatsApp Bot aún.</span>';
+                    return;
+                }
+                listEl.innerHTML = convos.map(c => {
+                    const date = c.last_contact ? new Date(c.last_contact).toLocaleDateString('es-MX', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+                    const phone = c.phone || '';
+                    const displayPhone = phone.length > 10 ? phone.slice(0,2) + ' ' + phone.slice(2,5) + ' ' + phone.slice(5,8) + ' ' + phone.slice(8) : phone;
+                    return `<div style="padding:8px 0;border-bottom:1px solid #f0f0f0;cursor:pointer" onclick="showWAConversation('${phone}')">
+                        <strong style="color:#25D366">📱 ${displayPhone}</strong>
+                        <div style="font-size:0.75rem;color:#555;margin-top:2px">${c.last_message || ''}</div>
+                        <div style="font-size:0.65rem;color:#aaa">${c.total_messages} msgs · ${date}</div>
+                    </div>`;
+                }).join('');
+            } catch (e) { console.error('WA leads error:', e); }
+        }
+
+        async function showWAConversation(phone) {
+            const detailEl = document.getElementById('wa-conversation-detail');
+            try {
+                const res = await fetch(`/api/wa/conversation/${phone}`);
+                const msgs = await res.json();
+                if (msgs.length === 0) { detailEl.innerHTML = '<span style="color:#aaa">Sin mensajes</span>'; return; }
+                detailEl.innerHTML = msgs.map(m => {
+                    const isUser = m.role === 'user';
+                    const time = m.created_at ? new Date(m.created_at).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '';
+                    return `<div style="padding:6px 10px;margin:4px 0;border-radius:8px;max-width:85%;${isUser ? 'background:#dcf8c6;margin-left:auto;text-align:right' : 'background:#f0f0f0'}">
+                        <div style="font-size:0.8rem">${m.message}</div>
+                        <div style="font-size:0.6rem;color:#888;margin-top:2px">${isUser ? '👤 Cliente' : '🤖 Terra'} · ${time}</div>
+                    </div>`;
+                }).join('');
+                detailEl.scrollTop = detailEl.scrollHeight;
+            } catch (e) { detailEl.innerHTML = '<span style="color:#aaa">Error cargando</span>'; }
+        }
+
+        async function loadWAPage() {
+            try {
+                const res = await fetch('/api/wa/conversations');
+                const convos = await res.json();
+                const today = new Date().toISOString().split('T')[0];
+                const todayCount = convos.filter(c => c.last_contact && c.last_contact.startsWith(today)).length;
+                const totalMsgs = convos.reduce((sum, c) => sum + (c.total_messages || 0), 0);
+
+                document.getElementById('wa-page-total').textContent = convos.length;
+                document.getElementById('wa-page-today').textContent = todayCount;
+                document.getElementById('wa-page-msgs').textContent = totalMsgs;
+
+                const listEl = document.getElementById('wa-page-list');
+                if (convos.length === 0) {
+                    listEl.innerHTML = '<span style="color:#aaa">Sin conversaciones aún. El bot responde automáticamente por WhatsApp.</span>';
+                    return;
+                }
+                listEl.innerHTML = convos.map(c => {
+                    const date = c.last_contact ? new Date(c.last_contact).toLocaleDateString('es-MX', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+                    const phone = c.phone || '';
+                    const displayPhone = phone.length > 10 ? phone.slice(0,2) + ' ' + phone.slice(2,5) + ' ' + phone.slice(5,8) + ' ' + phone.slice(8) : phone;
+                    return `<div style="padding:10px 0;border-bottom:1px solid #f0f0f0;cursor:pointer" onclick="showWAPageChat('${phone}')">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <strong style="color:#25D366">📱 ${displayPhone}</strong>
+                            <span style="font-size:0.65rem;color:#aaa">${date}</span>
+                        </div>
+                        <div style="font-size:0.8rem;color:#555;margin-top:4px">${c.last_message || ''}</div>
+                        <span class="terra-stat">${c.total_messages} mensajes</span>
+                        <span class="terra-stat" style="background:#dcf8c6">💬 Bot</span>
+                    </div>`;
+                }).join('');
+            } catch (e) { console.error('WA page error:', e); }
+        }
+
+        async function showWAPageChat(phone) {
+            document.getElementById('wa-page-phone').textContent = phone;
+            const chatEl = document.getElementById('wa-page-chat');
+            try {
+                const res = await fetch(`/api/wa/conversation/${phone}`);
+                const msgs = await res.json();
+                if (msgs.length === 0) { chatEl.innerHTML = '<span style="color:#aaa">Sin mensajes</span>'; return; }
+                chatEl.innerHTML = msgs.map(m => {
+                    const isUser = m.role === 'user';
+                    const time = m.created_at ? new Date(m.created_at).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '';
+                    const date = m.created_at ? new Date(m.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'short'}) : '';
+                    return `<div style="padding:8px 12px;margin:4px 0;border-radius:10px;max-width:80%;${isUser ? 'background:#dcf8c6;margin-left:auto;text-align:right' : 'background:#f0f0f0'}">
+                        <div style="font-size:0.85rem">${m.message}</div>
+                        <div style="font-size:0.6rem;color:#888;margin-top:3px">${isUser ? '👤 Cliente' : '🤖 Terra'} · ${date} ${time}</div>
+                    </div>`;
+                }).join('');
+                chatEl.scrollTop = chatEl.scrollHeight;
+            } catch (e) { chatEl.innerHTML = '<span style="color:#aaa">Error cargando</span>'; }
+        }
+
         // ==================== INIT ====================
-        loadAllData().then(() => loadDashboard());
+        loadAllData().then(() => { loadDashboard(); loadWALeads(); });
     </script>
 </body>
 </html>
