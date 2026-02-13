@@ -1910,6 +1910,7 @@ app.post('/api/tts', async (req, res) => {
 const WA_TOKEN = process.env.WHATSAPP_TOKEN;
 const WA_PHONE_ID = process.env.WHATSAPP_PHONE_ID || '663552990169738';
 const WA_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'cesantoni2026';
+const WA_FORWARD_URL = process.env.WA_FORWARD_URL || 'https://hook.us2.make.com/7d9vfnhjb2jf7y4ylhkbwfjw8wbte2wu';
 
 // Send WhatsApp text message
 async function sendWhatsApp(to, text) {
@@ -2047,6 +2048,15 @@ app.get('/webhook', (req, res) => {
 app.post('/webhook', async (req, res) => {
   // Always respond 200 immediately (Meta requires fast response)
   res.sendStatus(200);
+
+  // Forward to Make.com (existing CRM) in background
+  if (WA_FORWARD_URL) {
+    fetch(WA_FORWARD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body)
+    }).catch(e => console.log('Forward to Make.com error:', e.message));
+  }
 
   try {
     const entry = req.body?.entry?.[0];
