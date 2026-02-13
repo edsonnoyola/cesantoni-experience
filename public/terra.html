@@ -384,105 +384,102 @@
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
             padding: 40px 30px; text-align: center;
-            transition: opacity 0.5s ease;
+            transition: opacity 0.6s ease;
         }
         .welcome-screen.hide { opacity: 0; pointer-events: none; }
 
-        /* Welcome animations - fast */
+        /* Welcome animations */
         @keyframes wFade {
-            from { opacity: 0; transform: translateY(12px); }
+            from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
         @keyframes wOrbIn {
-            from { opacity: 0; transform: scale(0.7); }
+            from { opacity: 0; transform: scale(0.6); }
             to { opacity: 1; transform: scale(1); }
         }
         @keyframes wPulse {
             0%, 100% { box-shadow: 0 0 0 0 rgba(201,169,98,0.3); }
-            50% { box-shadow: 0 0 30px 10px rgba(201,169,98,0.15); }
+            50% { box-shadow: 0 0 40px 15px rgba(201,169,98,0.1); }
+        }
+        @keyframes wFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
         }
 
         .welcome-logo {
-            height: 40px; margin-bottom: 30px;
-            opacity: 0; animation: wFade 0.5s ease 0.2s forwards;
+            height: 28px; margin-bottom: 40px;
+            opacity: 0; animation: wFade 0.5s ease 0.1s forwards;
         }
         .welcome-orb-wrap {
-            position: relative; margin-bottom: 24px;
+            position: relative; margin-bottom: 28px;
+            animation: wFloat 4s ease-in-out 1.5s infinite;
         }
         .welcome-orb {
-            width: 100px; height: 100px; border-radius: 50%;
-            background: radial-gradient(circle at 40% 40%, var(--gold-light), var(--gold-dark));
-            opacity: 0; animation: wOrbIn 0.6s ease 0.4s forwards;
+            width: 90px; height: 90px; border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, var(--gold-light), var(--gold-dark));
+            opacity: 0; animation: wOrbIn 0.6s ease 0.3s forwards;
+        }
+        .welcome-orb-ring {
+            position: absolute; inset: -12px; border-radius: 50%;
+            border: 1px solid rgba(201,169,98,0.25);
+            opacity: 0; animation: wOrbIn 0.5s ease 0.5s forwards;
         }
         .welcome-orb-wrap::before {
-            content: ''; position: absolute; inset: -15px; border-radius: 50%;
-            background: radial-gradient(circle, rgba(201,169,98,0.15) 0%, transparent 70%);
-            animation: wPulse 2.5s ease-in-out 1s infinite;
+            content: ''; position: absolute; inset: -20px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(201,169,98,0.12) 0%, transparent 70%);
+            animation: wPulse 3s ease-in-out 1s infinite;
         }
 
         .welcome-title {
             font-family: 'Cormorant Garamond', serif;
-            font-size: 2.2rem; font-weight: 300; color: var(--gold-light);
-            margin-bottom: 6px;
-            opacity: 0; animation: wFade 0.5s ease 0.6s forwards;
+            font-size: 2.6rem; font-weight: 300; color: var(--gold-light);
+            margin-bottom: 4px; letter-spacing: 0.02em;
+            opacity: 0; animation: wFade 0.5s ease 0.5s forwards;
         }
         .welcome-subtitle {
-            font-size: 0.85rem; color: var(--gray-light); margin-bottom: 6px;
-            font-weight: 300;
-            opacity: 0; animation: wFade 0.5s ease 0.7s forwards;
+            font-size: 0.8rem; color: var(--gray-light); margin-bottom: 4px;
+            font-weight: 300; letter-spacing: 0.05em;
+            opacity: 0; animation: wFade 0.5s ease 0.6s forwards;
         }
         .welcome-store {
-            font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase;
-            color: var(--gray); margin-bottom: 20px;
+            font-size: 0.6rem; letter-spacing: 0.25em; text-transform: uppercase;
+            color: var(--gray); margin-bottom: 32px;
+            opacity: 0; animation: wFade 0.4s ease 0.7s forwards;
+        }
+        .welcome-tagline {
+            font-size: 0.82rem; color: var(--gray-light); line-height: 1.6;
+            font-weight: 300; max-width: 260px; margin-bottom: 32px;
             opacity: 0; animation: wFade 0.5s ease 0.8s forwards;
         }
-        .welcome-features {
-            display: flex; flex-direction: column; gap: 8px;
-            width: 100%; max-width: 280px; margin-bottom: 24px;
-            text-align: left;
-        }
-        .welcome-feature {
-            display: flex; align-items: center; gap: 12px;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-            opacity: 0;
-        }
-        .welcome-feature:nth-child(1) { animation: wFade 0.4s ease 0.9s forwards; }
-        .welcome-feature:nth-child(2) { animation: wFade 0.4s ease 1.0s forwards; }
-        .welcome-feature:nth-child(3) { animation: wFade 0.4s ease 1.1s forwards; }
+        .welcome-tagline strong { color: var(--white); font-weight: 400; }
 
-        .welcome-feature-icon {
-            width: 32px; height: 32px; flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center;
-            border: 1px solid var(--gold); border-radius: 50%;
-            color: var(--gold); font-size: 0.8rem;
-        }
-        .welcome-feature-text {
-            font-size: 0.75rem; color: var(--gray-light); line-height: 1.4;
-            font-weight: 300;
-        }
-        .welcome-feature-text strong { color: var(--white); font-weight: 500; }
+        .welcome-features { display: none; }
         .welcome-form {
             width: 100%; max-width: 280px;
-            opacity: 0; animation: wFade 0.5s ease 1.2s forwards;
+            opacity: 0; animation: wFade 0.5s ease 0.9s forwards;
         }
         .welcome-input {
             width: 100%; background: transparent;
-            border: none; border-bottom: 2px solid var(--gold);
+            border: none; border-bottom: 1.5px solid var(--gold);
             color: var(--white); padding: 14px 4px;
             font-size: 1.1rem; font-family: 'Montserrat', sans-serif;
             text-align: center; outline: none;
             letter-spacing: 0.03em;
         }
-        .welcome-input::placeholder { color: var(--gray); font-weight: 300; }
+        .welcome-input::placeholder { color: var(--gray); font-weight: 300; font-size: 0.95rem; }
         .welcome-btn {
-            width: 100%; margin-top: 20px; padding: 14px;
+            width: 100%; margin-top: 20px; padding: 15px;
             background: var(--gold); border: none; color: var(--black);
-            font-family: 'Montserrat', sans-serif; font-size: 0.85rem;
-            font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
-            cursor: pointer; transition: all 0.3s; border-radius: 4px;
+            font-family: 'Montserrat', sans-serif; font-size: 0.8rem;
+            font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase;
+            cursor: pointer; transition: all 0.3s; border-radius: 2px;
         }
         .welcome-btn:hover { background: var(--gold-light); }
+        .welcome-powered {
+            position: absolute; bottom: 24px;
+            font-size: 0.55rem; color: var(--gray); letter-spacing: 0.1em;
+            opacity: 0; animation: wFade 0.4s ease 1.2s forwards;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
@@ -491,22 +488,25 @@
     <div class="welcome-screen" id="welcome-screen">
         <img src="/images/logo-cesantoni.png" alt="Cesantoni" class="welcome-logo">
         <div class="welcome-orb-wrap">
+            <div class="welcome-orb-ring"></div>
             <div class="welcome-orb"></div>
         </div>
-        <h1 class="welcome-title">Soy Terra</h1>
-        <p class="welcome-subtitle" id="welcome-subtitle">Tu asistente personal de Cesantoni</p>
+        <h1 class="welcome-title">Terra</h1>
+        <p class="welcome-subtitle" id="welcome-subtitle">Tu asistente inteligente de pisos</p>
         <div class="welcome-store" id="welcome-store"></div>
 
-        <div class="welcome-features" id="welcome-features">
-            <!-- Features injected by JS based on store/product mode -->
-        </div>
+        <p class="welcome-tagline" id="welcome-tagline">
+            Escanea el QR de cualquier piso, <strong>preguntame lo que quieras</strong> y te ayudo a elegir el indicado para ti.
+        </p>
 
         <div class="welcome-form">
             <input type="text" class="welcome-input" id="welcome-name"
-                   placeholder="Tu nombre para comenzar" autocomplete="given-name"
+                   placeholder="Como te llamas?" autocomplete="given-name"
                    onkeydown="if(event.key==='Enter')startSession()">
-            <button class="welcome-btn" id="welcome-btn" onclick="startSession()">Iniciar experiencia</button>
+            <button class="welcome-btn" id="welcome-btn" onclick="startSession()">Comenzar</button>
         </div>
+
+        <div class="welcome-powered">Experiencia Cesantoni</div>
     </div>
 
     <div class="app" id="app">
@@ -545,9 +545,7 @@
 
             <!-- Speech -->
             <div class="speech">
-                <div class="speech-text greeting" id="speech-text">
-                    Soy Terra, tu guia de pisos Cesantoni. Escanea el QR de cualquier piso y te cuento todo sobre el!
-                </div>
+                <div class="speech-text greeting" id="speech-text"></div>
                 <div id="speech-name" style="font-size:0.85rem;color:var(--gold);text-align:center;margin-top:8px;opacity:0;transition:opacity 0.5s"></div>
             </div>
 
@@ -686,61 +684,9 @@
 
         // ===== WELCOME SCREEN =====
         function initWelcome() {
-            // Set welcome features based on mode
-            const featuresEl = document.getElementById('welcome-features');
             if (storeMode) {
-                document.getElementById('welcome-subtitle').textContent = 'Tu guia de pisos en la tienda';
-                featuresEl.innerHTML = `
-                    <div class="welcome-feature">
-                        <div class="welcome-feature-icon">📷</div>
-                        <div class="welcome-feature-text">
-                            <strong>Escanea el QR de cualquier piso</strong><br>
-                            Te digo todo: material, resistencia, para que espacio va
-                        </div>
-                    </div>
-                    <div class="welcome-feature">
-                        <div class="welcome-feature-icon">🎤</div>
-                        <div class="welcome-feature-text">
-                            <strong>Preguntame lo que quieras</strong><br>
-                            Por voz o texto — si aguanta mascotas, como se limpia, etc.
-                        </div>
-                    </div>
-                    <div class="welcome-feature">
-                        <div class="welcome-feature-icon">📱</div>
-                        <div class="welcome-feature-text">
-                            <strong>Te mando tu resumen por WhatsApp</strong><br>
-                            Con tus favoritos y mi recomendacion
-                        </div>
-                    </div>`;
-            } else {
-                featuresEl.innerHTML = `
-                    <div class="welcome-feature">
-                        <div class="welcome-feature-icon">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                        </div>
-                        <div class="welcome-feature-text">
-                            <strong>Bienvenido al mundo figital</strong><br>
-                            Donde lo fisico y lo digital se unen para ti
-                        </div>
-                    </div>
-                    <div class="welcome-feature">
-                        <div class="welcome-feature-icon">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                        </div>
-                        <div class="welcome-feature-text">
-                            <strong>Yo te guio por la tienda</strong><br>
-                            Dime que buscas o preguntame sobre cualquier piso
-                        </div>
-                    </div>
-                    <div class="welcome-feature">
-                        <div class="welcome-feature-icon">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-                        </div>
-                        <div class="welcome-feature-text">
-                            <strong>Cada piso cobra vida</strong><br>
-                            Te explico materiales, resistencia, acabados, todo
-                        </div>
-                    </div>`;
+                document.getElementById('welcome-subtitle').textContent = 'Tu asistente inteligente de pisos';
+                document.getElementById('welcome-tagline').innerHTML = 'Recorre la tienda, <strong>escanea el QR</strong> de cualquier piso que te guste y preguntame lo que necesites saber.';
             }
 
             // Restore saved name (4-hour expiry)
@@ -985,26 +931,25 @@
                 }
             }
 
-            // Greeting — fixed message (instant, no AI wait), name shown separately
-            const fixedGreeting = 'Soy Terra, tu guia de pisos Cesantoni. Escanea el QR de cualquier piso y te cuento todo sobre el!';
+            // Greeting — warm introduction, name shown separately
             const speechNameEl = document.getElementById('speech-name');
 
             if (storeMode && !productSlug) {
-                speechText.textContent = fixedGreeting;
-                speechNameEl.textContent = `Hola ${customerName}`;
-                speechNameEl.style.opacity = '1';
-                setTimeout(() => speak(fixedGreeting), 300);
+                const storeGreeting = `Hola ${customerName}! Bienvenid${customerGender === 'f' ? 'a' : 'o'} a ${storeName || 'Cesantoni'}. Soy Terra, tu asistente de pisos. Ve a cualquier piso que te llame la atencion, escanea su codigo QR y te cuento todo: de que esta hecho, para que espacios va, como se cuida. Preguntame lo que necesites!`;
+                speechText.textContent = storeGreeting;
+                speechNameEl.textContent = '';
+                setTimeout(() => speak(storeGreeting), 400);
 
                 updateSuggestions([
-                    'Que es porcelanato?',
-                    'Cual es el mas resistente?',
+                    'Que tipo de pisos hay?',
+                    'Cual me recomiendas para cocina?',
                     'Escanear un piso'
                 ]);
             } else {
-                speechText.textContent = fixedGreeting;
-                speechNameEl.textContent = `Hola ${customerName}`;
-                speechNameEl.style.opacity = '1';
-                setTimeout(() => speak(fixedGreeting), 300);
+                const defaultGreeting = `Hola ${customerName}! Soy Terra, tu asistente de pisos Cesantoni. Escanea el QR de cualquier piso que te guste y te cuento todo sobre el. Tambien puedes preguntarme lo que quieras!`;
+                speechText.textContent = defaultGreeting;
+                speechNameEl.textContent = '';
+                setTimeout(() => speak(defaultGreeting), 400);
 
                 updateSuggestions([
                     'Que es porcelanato?',
