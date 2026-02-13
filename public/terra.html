@@ -547,8 +547,9 @@
 
             <!-- Speech -->
             <div class="speech">
+                <div id="speech-name" style="font-size:0.9rem;color:var(--gold);letter-spacing:0.05em;margin-bottom:6px;opacity:0;transition:opacity 0.5s"></div>
                 <div class="speech-text greeting" id="speech-text">
-                    Te doy la bienvenida a Cesantoni. Soy Terra.
+                    Bienvenido a Cesantoni! Soy Terra. Recorre la tienda y escanea el QR de cualquier piso que te llame la atencion. Te cuento todo sobre el!
                 </div>
             </div>
 
@@ -992,14 +993,15 @@
                 }
             }
 
-            // Greeting based on mode (Phase 1c)
+            // Greeting — fixed message (instant, no AI wait), name shown separately
+            const fixedGreeting = 'Bienvenido a Cesantoni! Soy Terra. Recorre la tienda y escanea el QR de cualquier piso que te llame la atencion. Te cuento todo sobre el!';
+            const speechNameEl = document.getElementById('speech-name');
+
             if (storeMode && !productSlug) {
-                const g = detectGender(customerName);
-                const bienv = g === 'f' ? 'bienvenida' : 'bienvenido';
-                const listo = g === 'f' ? 'Lista?' : 'Listo?';
-                const greeting = `Hola ${customerName}, ${bienv} a ${storeName || 'Cesantoni'}! Soy Terra. Recorre la tienda y escanea el QR de cualquier piso que te llame la atencion. Te voy a decir todo sobre el: si es porcelanato, si aguanta mascotas, para que espacios va, como se limpia... lo que necesites saber!`;
-                speechText.textContent = greeting;
-                setTimeout(() => speak(greeting), 600);
+                speechText.textContent = fixedGreeting;
+                speechNameEl.textContent = `Hola ${customerName}, escanea el que te guste`;
+                speechNameEl.style.opacity = '1';
+                setTimeout(() => speak(fixedGreeting), 300);
 
                 updateSuggestions([
                     'Como escaneo un QR?',
@@ -1008,12 +1010,10 @@
                     'Escanear un piso'
                 ]);
             } else {
-                const storeGreet = storeName ? ` a ${storeName}` : ' a Cesantoni';
-                const gp = detectGender(customerName);
-                const amiga = gp === 'f' ? 'tu amiga experta' : 'tu experta';
-                const greeting = `Hola ${customerName}! Soy Terra, tu guia de pisos aqui${storeGreet}. Escanea el QR de cualquier piso que te guste y te cuento todo: si es porcelanato, si va para tu espacio, si aguanta trafico, mascotas... preguntame lo que quieras!`;
-                speechText.textContent = greeting;
-                setTimeout(() => speak(greeting), 600);
+                speechText.textContent = fixedGreeting;
+                speechNameEl.textContent = `Hola ${customerName}, preguntame lo que quieras`;
+                speechNameEl.style.opacity = '1';
+                setTimeout(() => speak(fixedGreeting), 300);
 
                 updateSuggestions([
                     'Que es porcelanato?',
