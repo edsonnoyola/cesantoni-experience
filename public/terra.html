@@ -996,13 +996,13 @@
                 const g = detectGender(customerName);
                 const bienv = g === 'f' ? 'bienvenida' : 'bienvenido';
                 const listo = g === 'f' ? 'Lista?' : 'Listo?';
-                const greeting = `Hola ${customerName}, ${bienv} a ${storeName || 'Cesantoni'}! Soy Terra, tu guia personal. Cuando veas un piso que te guste, escanea su QR con el boton de aqui abajo y te cuento todo. ${listo}`;
+                const greeting = `Hola ${customerName}, ${bienv} a ${storeName || 'Cesantoni'}! Soy Terra. Recorre la tienda y escanea el QR de cualquier piso que te llame la atencion. Te voy a decir todo sobre el: si es porcelanato, si aguanta mascotas, para que espacios va, como se limpia... lo que necesites saber!`;
                 speechText.textContent = greeting;
                 setTimeout(() => speak(greeting), 600);
 
                 updateSuggestions([
-                    'Quiero remodelar mi cocina',
-                    'Busco algo para exterior',
+                    'Como escaneo un QR?',
+                    'Que es porcelanato?',
                     'Que es lo mas vendido?',
                     'Escanear un piso'
                 ]);
@@ -1010,7 +1010,7 @@
                 const storeGreet = storeName ? ` a ${storeName}` : ' a Cesantoni';
                 const gp = detectGender(customerName);
                 const amiga = gp === 'f' ? 'tu amiga experta' : 'tu experta';
-                const greeting = `Hola ${customerName}, que gusto! Soy Terra, ${amiga} en pisos aqui${storeGreet}. Yo te voy a ayudar a encontrar el piso perfecto. Cuentame, que tienes en mente? Vas a remodelar algun espacio en especial?`;
+                const greeting = `Hola ${customerName}! Soy Terra, tu guia de pisos aqui${storeGreet}. Escanea el QR de cualquier piso que te guste y te cuento todo: si es porcelanato, si va para tu espacio, si aguanta trafico, mascotas... preguntame lo que quieras!`;
                 speechText.textContent = greeting;
                 setTimeout(() => speak(greeting), 600);
 
