@@ -388,85 +388,83 @@
         }
         .welcome-screen.hide { opacity: 0; pointer-events: none; }
 
-        /* Store mode: phased animation (Phase 1b/5a) */
+        /* Welcome animations - fast */
+        @keyframes wFade {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes wOrbIn {
+            from { opacity: 0; transform: scale(0.7); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes wPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(201,169,98,0.3); }
+            50% { box-shadow: 0 0 30px 10px rgba(201,169,98,0.15); }
+        }
+
         .welcome-logo {
-            height: 50px; margin-bottom: 40px;
-            opacity: 0; animation: welcomeFadeUp 1s ease forwards;
+            height: 40px; margin-bottom: 30px;
+            opacity: 0; animation: wFade 0.5s ease 0.2s forwards;
         }
         .welcome-orb-wrap {
-            position: relative; margin-bottom: 30px;
+            position: relative; margin-bottom: 24px;
         }
         .welcome-orb {
-            width: 120px; height: 120px; border-radius: 50%;
+            width: 100px; height: 100px; border-radius: 50%;
             background: radial-gradient(circle at 40% 40%, var(--gold-light), var(--gold-dark));
-            opacity: 0; animation: welcomeOrbIn 1s ease 1s forwards;
+            opacity: 0; animation: wOrbIn 0.6s ease 0.4s forwards;
         }
-        /* Gold particles (Phase 5a) */
         .welcome-orb-wrap::before {
-            content: ''; position: absolute; inset: -20px; border-radius: 50%;
-            background: radial-gradient(circle, rgba(201,169,98,0.2) 0%, transparent 70%);
-            animation: particleGlow 3s ease-in-out infinite;
-            opacity: 0; animation: welcomeOrbIn 1s ease 1.2s forwards, particleGlow 3s ease-in-out 2s infinite;
-        }
-        @keyframes particleGlow {
-            0%, 100% { transform: scale(1); opacity: 0.3; }
-            50% { transform: scale(1.15); opacity: 0.6; }
-        }
-        @keyframes welcomeFadeUp {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 0.9; transform: translateY(0); }
-        }
-        @keyframes welcomeOrbIn {
-            from { opacity: 0; transform: scale(0.8); }
-            to { opacity: 0.5; transform: scale(1); }
+            content: ''; position: absolute; inset: -15px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(201,169,98,0.15) 0%, transparent 70%);
+            animation: wPulse 2.5s ease-in-out 1s infinite;
         }
 
         .welcome-title {
             font-family: 'Cormorant Garamond', serif;
-            font-size: 2rem; font-weight: 300; color: var(--gold-light);
-            margin-bottom: 8px;
-            opacity: 0; animation: welcomeFadeUp 0.8s ease 1.5s forwards;
+            font-size: 2.2rem; font-weight: 300; color: var(--gold-light);
+            margin-bottom: 6px;
+            opacity: 0; animation: wFade 0.5s ease 0.6s forwards;
         }
         .welcome-subtitle {
-            font-size: 0.85rem; color: var(--gray-light); margin-bottom: 10px;
+            font-size: 0.85rem; color: var(--gray-light); margin-bottom: 6px;
             font-weight: 300;
-            opacity: 0; animation: welcomeFadeUp 0.8s ease 1.8s forwards;
+            opacity: 0; animation: wFade 0.5s ease 0.7s forwards;
         }
         .welcome-store {
             font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase;
-            color: var(--gray); margin-bottom: 24px;
-            opacity: 0; animation: welcomeFadeUp 0.8s ease 2s forwards;
+            color: var(--gray); margin-bottom: 20px;
+            opacity: 0; animation: wFade 0.5s ease 0.8s forwards;
         }
         .welcome-features {
-            display: flex; flex-direction: column; gap: 12px;
-            width: 100%; max-width: 300px; margin-bottom: 30px;
+            display: flex; flex-direction: column; gap: 8px;
+            width: 100%; max-width: 280px; margin-bottom: 24px;
             text-align: left;
         }
         .welcome-feature {
-            display: flex; align-items: center; gap: 14px;
-            padding: 10px 0;
-            border-bottom: 1px solid var(--gray-dark);
+            display: flex; align-items: center; gap: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
             opacity: 0;
         }
-        /* Staggered entrance (Phase 5a) */
-        .welcome-feature:nth-child(1) { animation: welcomeFadeUp 0.6s ease 2.5s forwards; }
-        .welcome-feature:nth-child(2) { animation: welcomeFadeUp 0.6s ease 2.7s forwards; }
-        .welcome-feature:nth-child(3) { animation: welcomeFadeUp 0.6s ease 2.9s forwards; }
+        .welcome-feature:nth-child(1) { animation: wFade 0.4s ease 0.9s forwards; }
+        .welcome-feature:nth-child(2) { animation: wFade 0.4s ease 1.0s forwards; }
+        .welcome-feature:nth-child(3) { animation: wFade 0.4s ease 1.1s forwards; }
 
         .welcome-feature-icon {
-            width: 36px; height: 36px; flex-shrink: 0;
+            width: 32px; height: 32px; flex-shrink: 0;
             display: flex; align-items: center; justify-content: center;
             border: 1px solid var(--gold); border-radius: 50%;
-            color: var(--gold); font-size: 0.85rem;
+            color: var(--gold); font-size: 0.8rem;
         }
         .welcome-feature-text {
-            font-size: 0.78rem; color: var(--gray-light); line-height: 1.5;
+            font-size: 0.75rem; color: var(--gray-light); line-height: 1.4;
             font-weight: 300;
         }
         .welcome-feature-text strong { color: var(--white); font-weight: 500; }
         .welcome-form {
-            width: 100%; max-width: 300px;
-            opacity: 0; animation: welcomeFadeUp 0.8s ease 3.2s forwards;
+            width: 100%; max-width: 280px;
+            opacity: 0; animation: wFade 0.5s ease 1.2s forwards;
         }
         .welcome-input {
             width: 100%; background: transparent;
@@ -478,11 +476,11 @@
         }
         .welcome-input::placeholder { color: var(--gray); font-weight: 300; }
         .welcome-btn {
-            width: 100%; margin-top: 24px; padding: 16px;
+            width: 100%; margin-top: 20px; padding: 14px;
             background: var(--gold); border: none; color: var(--black);
             font-family: 'Montserrat', sans-serif; font-size: 0.85rem;
             font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
-            cursor: pointer; transition: all 0.3s;
+            cursor: pointer; transition: all 0.3s; border-radius: 4px;
         }
         .welcome-btn:hover { background: var(--gold-light); }
     </style>
@@ -691,32 +689,26 @@
             // Set welcome features based on mode
             const featuresEl = document.getElementById('welcome-features');
             if (storeMode) {
-                document.getElementById('welcome-subtitle').textContent = 'Tu guia personal en la tienda';
+                document.getElementById('welcome-subtitle').textContent = 'Tu guia de pisos en la tienda';
                 featuresEl.innerHTML = `
                     <div class="welcome-feature">
-                        <div class="welcome-feature-icon">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                        </div>
+                        <div class="welcome-feature-icon">📷</div>
                         <div class="welcome-feature-text">
-                            <strong>Te guio por toda la tienda</strong><br>
-                            Preguntame lo que quieras sobre pisos
+                            <strong>Escanea el QR de cualquier piso</strong><br>
+                            Te digo todo: material, resistencia, para que espacio va
                         </div>
                     </div>
                     <div class="welcome-feature">
-                        <div class="welcome-feature-icon">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>
-                        </div>
+                        <div class="welcome-feature-icon">🎤</div>
                         <div class="welcome-feature-text">
-                            <strong>Escanea cualquier piso y te lo presento</strong><br>
-                            Apunta al QR y yo te cuento todo
+                            <strong>Preguntame lo que quieras</strong><br>
+                            Por voz o texto — si aguanta mascotas, como se limpia, etc.
                         </div>
                     </div>
                     <div class="welcome-feature">
-                        <div class="welcome-feature-icon">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
-                        </div>
+                        <div class="welcome-feature-icon">📱</div>
                         <div class="welcome-feature-text">
-                            <strong>Al final te mando tu resumen por WhatsApp</strong><br>
+                            <strong>Te mando tu resumen por WhatsApp</strong><br>
                             Con tus favoritos y mi recomendacion
                         </div>
                     </div>`;
@@ -820,7 +812,7 @@
                 return;
             }
 
-            setTimeout(() => document.getElementById('welcome-name').focus(), 3500);
+            setTimeout(() => document.getElementById('welcome-name').focus(), 1500);
         }
 
         function startSession() {
