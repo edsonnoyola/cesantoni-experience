@@ -1121,13 +1121,8 @@
             speechText.textContent = text;
             soundSpeak();
 
-            // Start browser TTS immediately so user hears something right away
+            // Browser TTS only — fastest, no server dependency
             speakBrowserTTS(text);
-
-            // Also request Gemini TTS — if it loads, it will interrupt browser TTS
-            if (useGoogleTTS) {
-                loadAndPlayTTS(text);
-            }
         }
 
         // Browser TTS — starts instantly, can be interrupted
@@ -1135,7 +1130,7 @@
             synth.cancel();
             const utter = new SpeechSynthesisUtterance(text);
             utter.lang = 'es-MX';
-            utter.rate = 1.35;
+            utter.rate = 1.0;
             utter.pitch = 1.05;
             utter.volume = 1.0;
             if (spanishVoice) utter.voice = spanishVoice;
