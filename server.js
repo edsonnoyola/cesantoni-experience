@@ -1922,6 +1922,7 @@ async function sendWhatsApp(to, text) {
     });
     const data = await res.json();
     if (data.error) console.error('WA send error:', data.error);
+    else try { run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [to, 'assistant', text]); } catch(e) {}
     return data;
   } catch (err) {
     console.error('WA send error:', err.message);
@@ -1938,7 +1939,9 @@ async function sendWhatsAppImage(to, imageUrl, caption) {
       headers: { 'Authorization': `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'image', image: { link: imageUrl, caption } })
     });
-    return await res.json();
+    const data = await res.json();
+    if (!data.error) try { run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [to, 'assistant', `[Imagen] ${caption || ''}`]); } catch(e) {}
+    return data;
   } catch (err) {
     console.error('WA image error:', err.message);
     return null;
@@ -1949,6 +1952,7 @@ async function sendWhatsAppImage(to, imageUrl, caption) {
 async function sendWhatsAppButtons(to, body, buttons) {
   if (!WA_TOKEN) return null;
   try {
+    const btnLabels = buttons.map(b => b.title).join(' | ');
     const res = await fetch(`https://graph.facebook.com/v21.0/${WA_PHONE_ID}/messages`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
@@ -1968,6 +1972,7 @@ async function sendWhatsAppButtons(to, body, buttons) {
     });
     const data = await res.json();
     if (data.error) console.error('WA buttons error:', data.error);
+    else try { run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [to, 'assistant', `${body}\n[Botones: ${btnLabels}]`]); } catch(e) {}
     return data;
   } catch (err) {
     console.error('WA buttons error:', err.message);
@@ -2103,9 +2108,6 @@ Responde SOLO el texto del mensaje, nada más. No uses JSON ni markdown.`;
 
     const data = await response.json();
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Disculpa, tuve un problema. ¿Puedes repetir tu mensaje?';
-
-    // Save bot reply
-    run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'assistant', reply]);
 
     // Auto-update lead status based on conversation progress
     if (lead && lead.status === 'new') {
@@ -2390,7 +2392,6 @@ app.post('/webhook', async (req, res) => {
         await sendWhatsApp(from, reply);
       }
 
-      run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'assistant', `[Respuesta botón ${btnId}]`]);
     } else if (message.type === 'image' || message.type === 'document') {
       await sendWhatsApp(from, 'Gracias por la imagen. Soy Terra, tu asesora de pisos Cesantoni. ¿En qué te puedo ayudar? 😊');
     } else {
