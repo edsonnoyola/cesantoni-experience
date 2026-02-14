@@ -945,7 +945,7 @@
                         <img id="product-main-image" src="" alt="">
                     </div>
                     <div class="product-details">
-                        <span class="section-label" id="product-type">Porcelanico Premium</span>
+                        <span class="section-label" id="product-type">Porcelánico Premium</span>
                         <h2 id="product-name">Producto</h2>
                         <div class="product-format" id="product-format">Formato</div>
                         <p class="product-description" id="product-description">Descripción</p>
@@ -968,13 +968,13 @@
                     </div>
                     <div class="benefit-card">
                         <div class="benefit-icon">&#10023;</div>
-                        <h3 class="benefit-title">Diseno Unico</h3>
-                        <p class="benefit-text">Multiples caras unicas crean pisos con variacion natural que evitan patrones repetitivos.</p>
+                        <h3 class="benefit-title">Diseño Único</h3>
+                        <p class="benefit-text">Múltiples caras únicas crean pisos con variación natural que evitan patrones repetitivos.</p>
                     </div>
                     <div class="benefit-card">
                         <div class="benefit-icon">&#9671;</div>
-                        <h3 class="benefit-title">Garantia Premium</h3>
-                        <p class="benefit-text">Respaldado por mas de 25 anos de experiencia Cesantoni con certificaciones internacionales.</p>
+                        <h3 class="benefit-title">Garantía Premium</h3>
+                        <p class="benefit-text">Respaldado por más de 25 años de experiencia Cesantoni con certificaciones internacionales.</p>
                     </div>
                 </div>
             </div>
@@ -983,8 +983,8 @@
         <!-- Specs -->
         <section class="specs" id="specs-section">
             <div class="section-container">
-                <span class="section-label">Especificaciones Tecnicas</span>
-                <h2 class="section-title">La ciencia detras de la belleza</h2>
+                <span class="section-label">Especificaciones Técnicas</span>
+                <h2 class="section-title">La ciencia detrás de la belleza</h2>
                 <div class="specs-grid" id="specs-grid"></div>
             </div>
         </section>
@@ -1017,7 +1017,7 @@
                                 </div>
                             </div>
                             <div class="wa-mock-body">
-                                <div class="wa-mock-msg bot">Hola! Aqui tienes la info del piso que viste 👇</div>
+                                <div class="wa-mock-msg bot">¡Hola! Aquí tienes la info del piso que viste 👇</div>
                                 <div class="wa-mock-img" id="wa-mock-img"></div>
                                 <div class="wa-mock-msg bot"><strong id="wa-mock-name">Producto</strong><br>📐 <span id="wa-mock-format">Formato</span><br>✨ <span id="wa-mock-finish">Acabado</span></div>
                                 <div class="wa-mock-msg user">Cuanto cuesta?</div>
@@ -1067,7 +1067,7 @@
                         <div class="promo-banner" id="promo-banner" style="display: none;">
                             <span class="promo-banner-icon">🏷️</span>
                             <div class="promo-banner-text">
-                                <strong id="promo-text">Promocion</strong>
+                                <strong id="promo-text">Promoción</strong>
                                 <span id="promo-detail">Detalles</span>
                             </div>
                         </div>
@@ -1346,7 +1346,7 @@
             // Product info
             document.getElementById('product-main-image').src = product.image_url;
             document.getElementById('product-main-image').alt = product.name;
-            document.getElementById('product-type').textContent = product.category || 'Porcelanico Premium';
+            document.getElementById('product-type').textContent = product.category || 'Porcelánico Premium';
             document.getElementById('product-name').textContent = product.name;
             document.getElementById('product-format').textContent = product.format ? `${product.format} | ${product.finish || 'Acabado Premium'}` : 'Formato Premium';
             document.getElementById('product-description').textContent = product.tech_description || generateTechnicalDescription(product);
@@ -1355,10 +1355,10 @@
             const miniSpecs = [];
             if (product.pei) miniSpecs.push({ value: `PEI ${product.pei}`, label: 'Resistencia' });
             if (product.mohs) miniSpecs.push({ value: `${product.mohs}`, label: 'Dureza Mohs' });
-            if (product.water_absorption) miniSpecs.push({ value: product.water_absorption, label: 'Absorcion' });
+            if (product.water_absorption) miniSpecs.push({ value: product.water_absorption, label: 'Absorción' });
             if (product.usage) miniSpecs.push({ value: product.usage, label: 'Uso' });
             if (miniSpecs.length < 4 && product.type) miniSpecs.push({ value: product.type, label: 'Tipo' });
-            if (miniSpecs.length < 4) miniSpecs.push({ value: 'Int/Ext', label: 'Versatil' });
+            if (miniSpecs.length < 4) miniSpecs.push({ value: 'Int/Ext', label: 'Versátil' });
 
             document.getElementById('product-specs-mini').innerHTML = miniSpecs.slice(0, 4).map(s => `
                 <div class="spec-mini">
@@ -1371,9 +1371,9 @@
             const specs = [
                 { value: product.format || '60 x 60 cm', label: 'Formato' },
                 { value: product.pei ? `PEI ${product.pei}` : 'PEI 4', label: 'Resistencia' },
-                { value: product.water_absorption || '< 0.5%', label: 'Absorcion' },
+                { value: product.water_absorption || '< 0.5%', label: 'Absorción' },
                 { value: product.finish || 'MATE', label: 'Acabado' },
-                { value: product.type || 'PORCELANICO', label: 'Tipo' },
+                { value: product.type || 'PORCELÁNICO', label: 'Tipo' },
                 { value: product.usage || 'INT / EXT', label: 'Uso' },
                 { value: product.mohs || '6-7', label: 'Dureza Mohs' },
                 { value: 'Pasta Blanca', label: 'Calidad de Exportación' }
@@ -1440,13 +1440,13 @@
             if (params.promo) {
                 document.getElementById('promo-banner').style.display = 'flex';
                 document.getElementById('promo-text').textContent = decodeURIComponent(params.promo);
-                document.getElementById('promo-detail').textContent = params.precio ? `Precio especial: $${params.precio}` : 'Promocion por tiempo limitado';
+                document.getElementById('promo-detail').textContent = params.precio ? `Precio especial: $${params.precio}` : 'Promoción por tiempo limitado';
             }
 
             // WhatsApp Lead Capture - goes to bot number
             const WA_BOT = '5215651747912';
             const storeName = store ? store.name : (params.tienda ? decodeURIComponent(params.tienda).replace(/-/g, ' ') : 'Cesantoni');
-            const waMsg = encodeURIComponent(`Hola! Vi el piso ${product.name} en ${storeName} y quiero mas info. REF:${product.sku || sku}`);
+            const waMsg = encodeURIComponent(`Hola! Vi el piso ${product.name} en ${storeName} y quiero más info. REF:${product.sku || sku}`);
             document.getElementById('whatsapp-cta').href = `https://wa.me/${WA_BOT}?text=${waMsg}`;
             waCaptureBtn.href = `https://wa.me/${WA_BOT}?text=${waMsg}`;
 
