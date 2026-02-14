@@ -179,14 +179,14 @@
         .period-pill:hover { color: var(--gold-dark); }
         .period-pill.active { background: var(--gold); color: white; box-shadow: 0 2px 8px rgba(201,169,98,0.3); }
 
-        /* Funnel redesign */
+        /* Funnel redesign — embudo shape */
         .funnel-layout { display: grid; grid-template-columns: 5fr 3fr; gap: 32px; }
         .funnel-steps { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 8px 0; }
-        .funnel-step { position: relative; text-align: center; padding: 6px 0; width: 100%; }
-        .funnel-step-bar { margin: 0 auto; height: 48px; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 10px; transition: width 0.6s cubic-bezier(0.25,0.8,0.25,1); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .funnel-step-bar .step-value { font-size: 1.05rem; font-weight: 700; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.15); }
-        .funnel-step-bar .step-label { font-size: 0.7rem; color: rgba(255,255,255,0.9); font-weight: 500; }
-        .funnel-dropoff { font-size: 0.62rem; color: #ccc; padding: 1px 0; display: flex; align-items: center; justify-content: center; gap: 4px; }
+        .funnel-step { position: relative; text-align: center; width: 100%; }
+        .funnel-step-bar { margin: 0 auto; height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.6s cubic-bezier(0.25,0.8,0.25,1); }
+        .funnel-step-bar .step-value { font-size: 1.1rem; font-weight: 700; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+        .funnel-step-bar .step-label { font-size: 0.72rem; color: rgba(255,255,255,0.9); font-weight: 500; }
+        .funnel-dropoff { font-size: 0.62rem; color: #ccc; padding: 0; height: 20px; display: flex; align-items: center; justify-content: center; gap: 4px; }
         .funnel-dropoff span { color: #e07070; font-weight: 700; }
         .funnel-sidebar { display: flex; flex-direction: column; gap: 12px; }
         .rate-card { background: white; border: 1px solid #f0efe8; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; transition: all 0.2s; }
@@ -1968,11 +1968,18 @@
                     if (i > 0) s.width = maxVal > 0 ? Math.max((s.value / maxVal) * 100, 18) : 18;
                 });
 
+                // Build embudo (true funnel shape with trapezoids)
                 let stepsHtml = '';
                 for (let i = 0; i < steps.length; i++) {
                     const s = steps[i];
+                    const topW = s.width;
+                    const botW = (i < steps.length - 1) ? steps[i+1].width : Math.max(s.width * 0.7, 12);
+                    // Trapezoid: top-left, top-right, bottom-right(narrower), bottom-left(narrower)
+                    const topInset = ((100 - topW) / 2);
+                    const botInset = ((100 - botW) / 2);
+                    const clip = `polygon(${topInset}% 0%, ${100 - topInset}% 0%, ${100 - botInset}% 100%, ${botInset}% 100%)`;
                     stepsHtml += `<div class="funnel-step">
-                        <div class="funnel-step-bar" style="width:${s.width}%;background:${s.color}">
+                        <div class="funnel-step-bar" style="width:100%;background:${s.color};clip-path:${clip}">
                             <span class="step-value">${s.value.toLocaleString()}</span>
                             <span class="step-label">${s.label}</span>
                         </div>
