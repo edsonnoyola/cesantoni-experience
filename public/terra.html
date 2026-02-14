@@ -986,11 +986,7 @@
                         });
                         const introData = await introRes.json();
                         const introSpeech = introData.speech || `${customerName}, este es ${scannedProduct.name}. Preguntame lo que quieras.`;
-                        if (introData.audio) {
-                            speakWithAudio(introSpeech, introData.audio);
-                        } else {
-                            speak(introSpeech);
-                        }
+                        speak(introSpeech);
 
                         updateSuggestions([
                             'Me gusta! Cuentame mas',
@@ -1055,10 +1051,8 @@
 
         // ===== VOICE CONTROL =====
         function toggleListening() {
-            // If speaking, stop speech and allow mic
             if (app.classList.contains('speaking')) {
                 synth.cancel();
-                if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
                 app.classList.remove('speaking');
             }
             if (app.classList.contains('thinking')) return;
@@ -1068,7 +1062,6 @@
         function startListening() {
             if (!recognition) return;
             synth.cancel();
-            if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
             isListening = true;
             const cls = ['app', 'listening'];
             if (storeMode) cls.push('store-mode');
@@ -1107,81 +1100,31 @@
             app.className = cls.join(' ');
         }
 
-        // ===== SPEAK (Gemini TTS + fallback) =====
-        let ttsAudio = null;
-        let useGoogleTTS = true; // Gemini TTS (Kore) with browser TTS as instant start
-        let ttsRequestId = 0;
-
+        // ===== SPEAK (Browser TTS only) =====
         function speak(text) {
             synth.cancel();
-            if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
 
             setAppState('speaking');
             speechText.className = 'speech-text';
             speechText.textContent = text;
             soundSpeak();
 
-            // Browser TTS only — fastest, no server dependency
-            speakBrowserTTS(text);
-        }
-
-        // Browser TTS — starts instantly, can be interrupted
-        function speakBrowserTTS(text) {
-            synth.cancel();
             const utter = new SpeechSynthesisUtterance(text);
             utter.lang = 'es-MX';
             utter.rate = 1.0;
             utter.pitch = 1.05;
             utter.volume = 1.0;
             if (spanishVoice) utter.voice = spanishVoice;
-            utter.onend = () => {
-                // Only fire onSpeechEnd if Gemini TTS didn't take over
-                if (!ttsAudio) onSpeechEnd();
-            };
-            utter.onerror = () => {
-                if (!ttsAudio) resetAppState();
-            };
+            utter.onend = () => onSpeechEnd();
+            utter.onerror = () => resetAppState();
             synth.speak(utter);
-        }
-
-        async function loadAndPlayTTS(text) {
-            const requestId = ++ttsRequestId;
-
-            try {
-                const res = await fetch('/api/tts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text })
-                });
-                const data = await res.json();
-
-                if (requestId !== ttsRequestId) return;
-
-                if (data.audioContent) {
-                    synth.cancel();
-                    if (data.format === 'mp3') {
-                        playMP3Audio(data.audioContent);
-                    } else {
-                        playPCMAudio(data.audioContent);
-                    }
-                    return;
-                }
-
-                // Gemini failed — fall back to browser TTS
-                speakBrowserTTS(speechText.textContent);
-            } catch (e) {
-                if (requestId !== ttsRequestId) return;
-                speakBrowserTTS(speechText.textContent);
-            }
         }
 
         function onSpeechEnd() {
             resetAppState();
             micLabel.textContent = 'Toca para hablar';
 
-            // Phase 3a: auto-listen after Terra speaks
             if (autoListenEnabled && !document.hidden && storeMode) {
-                // Only if customer interacted recently (within 30s)
                 if (Date.now() - lastInteractionTime < 30000) {
                     setTimeout(() => {
                         if (!app.classList.contains('speaking') && !app.classList.contains('thinking') && !isListening) {
@@ -1190,82 +1133,6 @@
                     }, 1500);
                 }
             }
-        }
-
-        function playPCMAudio(base64Data) {
-            const raw = atob(base64Data);
-            const pcm = new Uint8Array(raw.length);
-            for (let i = 0; i < raw.length; i++) pcm[i] = raw.charCodeAt(i);
-
-            const wavHeader = new ArrayBuffer(44);
-            const v = new DataView(wavHeader);
-            v.setUint32(0, 0x52494646, false);
-            v.setUint32(4, 36 + pcm.length, true);
-            v.setUint32(8, 0x57415645, false);
-            v.setUint32(12, 0x666d7420, false);
-            v.setUint32(16, 16, true);
-            v.setUint16(20, 1, true);
-            v.setUint16(22, 1, true);
-            v.setUint32(24, 24000, true);
-            v.setUint32(28, 48000, true);
-            v.setUint16(32, 2, true);
-            v.setUint16(34, 16, true);
-            v.setUint32(36, 0x64617461, false);
-            v.setUint32(40, pcm.length, true);
-
-            const wav = new Blob([wavHeader, pcm], { type: 'audio/wav' });
-            const url = URL.createObjectURL(wav);
-            ttsAudio = new Audio(url);
-            ttsAudio.playbackRate = 1.0;
-            ttsAudio.onended = () => {
-                URL.revokeObjectURL(url);
-                ttsAudio = null;
-                onSpeechEnd();
-            };
-            ttsAudio.onerror = () => { URL.revokeObjectURL(url); };
-            ttsAudio.play();
-        }
-
-        function playMP3Audio(base64Data) {
-            const binary = atob(base64Data);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-            const blob = new Blob([bytes], { type: 'audio/mpeg' });
-            const url = URL.createObjectURL(blob);
-            ttsAudio = new Audio(url);
-            ttsAudio.playbackRate = 1.0;
-            ttsAudio.onended = () => {
-                URL.revokeObjectURL(url);
-                ttsAudio = null;
-                onSpeechEnd();
-            };
-            ttsAudio.onerror = () => { URL.revokeObjectURL(url); onSpeechEnd(); };
-            ttsAudio.play();
-        }
-
-        function speakWithAudio(text, base64Audio) {
-            synth.cancel();
-            if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
-
-            setAppState('speaking');
-            speechText.className = 'speech-text';
-            speechText.textContent = text;
-            soundSpeak();
-
-            try {
-                playPCMAudio(base64Audio);
-            } catch (e) {
-                speakBrowserTTS(text);
-            }
-        }
-
-        function speakFallback(text) {
-            speakBrowserTTS(text);
-
-            utter.onend = () => onSpeechEnd();
-            utter.onerror = () => resetAppState();
-
-            synth.speak(utter);
         }
 
         // ===== SEND TEXT =====
