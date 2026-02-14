@@ -179,15 +179,16 @@
         .period-pill:hover { color: var(--gold-dark); }
         .period-pill.active { background: var(--gold); color: white; box-shadow: 0 2px 8px rgba(201,169,98,0.3); }
 
-        /* Funnel redesign — embudo shape */
+        /* Funnel redesign — embudo SVG */
         .funnel-layout { display: grid; grid-template-columns: 5fr 3fr; gap: 32px; }
-        .funnel-steps { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 8px 0; }
-        .funnel-step { position: relative; text-align: center; width: 100%; }
-        .funnel-step-bar { margin: 0 auto; height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.6s cubic-bezier(0.25,0.8,0.25,1); }
-        .funnel-step-bar .step-value { font-size: 1.1rem; font-weight: 700; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.15); }
-        .funnel-step-bar .step-label { font-size: 0.72rem; color: rgba(255,255,255,0.9); font-weight: 500; }
-        .funnel-dropoff { font-size: 0.62rem; color: #ccc; padding: 0; height: 20px; display: flex; align-items: center; justify-content: center; gap: 4px; }
-        .funnel-dropoff span { color: #e07070; font-weight: 700; }
+        .funnel-container { position: relative; width: 100%; max-width: 500px; margin: 0 auto; }
+        .funnel-svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.08)); }
+        .funnel-labels { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; pointer-events: none; }
+        .funnel-label-row { flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .funnel-label-row .step-value { font-size: 1.2rem; font-weight: 700; color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.25); font-family: 'Playfair Display', serif; }
+        .funnel-label-row .step-label { font-size: 0.74rem; color: rgba(255,255,255,0.92); font-weight: 500; text-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+        .funnel-dropoffs { position: absolute; top: 0; right: -65px; bottom: 0; display: flex; flex-direction: column; justify-content: space-around; padding: 6% 0; }
+        .funnel-dropoff-item { font-size: 0.62rem; color: #e07070; font-weight: 700; white-space: nowrap; }
         .funnel-sidebar { display: flex; flex-direction: column; gap: 12px; }
         .rate-card { background: white; border: 1px solid #f0efe8; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; transition: all 0.2s; }
         .rate-card:hover { border-color: var(--gold-light); transform: translateX(2px); }
@@ -425,13 +426,11 @@
                     </div>
                     <div id="funnel-viz">
                         <div class="funnel-layout">
-                            <div class="funnel-steps" id="funnel-steps">
-                                <!-- Skeleton loading -->
-                                <div class="funnel-step"><div class="skeleton" style="width:100%;height:44px;margin:0 auto"></div></div>
-                                <div class="funnel-step"><div class="skeleton" style="width:85%;height:44px;margin:0 auto"></div></div>
-                                <div class="funnel-step"><div class="skeleton" style="width:65%;height:44px;margin:0 auto"></div></div>
-                                <div class="funnel-step"><div class="skeleton" style="width:45%;height:44px;margin:0 auto"></div></div>
-                                <div class="funnel-step"><div class="skeleton" style="width:30%;height:44px;margin:0 auto"></div></div>
+                            <div id="funnel-steps">
+                                <!-- Skeleton -->
+                                <div style="max-width:500px;margin:0 auto">
+                                    <div class="skeleton" style="width:100%;height:300px;border-radius:12px"></div>
+                                </div>
                             </div>
                             <div class="funnel-sidebar">
                                 <div id="funnel-rates"></div>
@@ -1957,39 +1956,56 @@
                 const maxVal = Math.max(f.scans, 1);
 
                 const steps = [
-                    { label: 'QR Scans', value: f.scans, color: 'linear-gradient(90deg, #3498db, #5dade2)', width: 100 },
-                    { label: 'WhatsApp Clicks', value: f.wa_clicks, color: 'linear-gradient(90deg, #25D366, #4ae080)', width: 0 },
-                    { label: 'Leads', value: f.leads, color: 'linear-gradient(90deg, #C9A962, #d4b96e)', width: 0 },
-                    { label: 'Contactados', value: f.contacted, color: 'linear-gradient(90deg, #e67e22, #f0a050)', width: 0 },
-                    { label: 'Convertidos', value: f.converted, color: 'linear-gradient(90deg, #27ae60, #4cd68a)', width: 0 }
+                    { label: 'QR Scans', value: f.scans, color1: '#3498db', color2: '#5dade2' },
+                    { label: 'WhatsApp Clicks', value: f.wa_clicks, color1: '#25D366', color2: '#4ae080' },
+                    { label: 'Leads', value: f.leads, color1: '#C9A962', color2: '#d4b96e' },
+                    { label: 'Contactados', value: f.contacted, color1: '#e67e22', color2: '#f0a050' },
+                    { label: 'Convertidos', value: f.converted, color1: '#27ae60', color2: '#4cd68a' }
                 ];
-                // Calculate widths as percentage of max (trapezoid effect)
+
+                // Build SVG embudo
+                const W = 400, H = 320;
+                const topW = W * 0.95;     // top of funnel width
+                const botW = W * 0.22;     // bottom of funnel width
+                const stepH = H / steps.length;
+                const cx = W / 2;
+
+                // Calculate left/right edges at each level boundary
+                const edges = [];
+                for (let i = 0; i <= steps.length; i++) {
+                    const t = i / steps.length;
+                    const w = topW + (botW - topW) * t;
+                    edges.push({ l: cx - w/2, r: cx + w/2 });
+                }
+
+                // Build SVG defs (gradients) and trapezoid paths
+                let defs = '';
+                let paths = '';
                 steps.forEach((s, i) => {
-                    if (i > 0) s.width = maxVal > 0 ? Math.max((s.value / maxVal) * 100, 18) : 18;
+                    defs += `<linearGradient id="fg${i}" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="${s.color1}"/><stop offset="100%" stop-color="${s.color2}"/></linearGradient>`;
+                    const y1 = i * stepH, y2 = (i+1) * stepH;
+                    const tl = edges[i].l, tr = edges[i].r, bl = edges[i+1].l, br = edges[i+1].r;
+                    paths += `<path d="M${tl},${y1} L${tr},${y1} L${br},${y2} L${bl},${y2} Z" fill="url(#fg${i})" opacity="0.92"/>`;
+                    // Thin separator line
+                    if (i < steps.length - 1) paths += `<line x1="${bl}" y1="${y2}" x2="${br}" y2="${y2}" stroke="white" stroke-width="1.5" opacity="0.5"/>`;
                 });
 
-                // Build embudo (true funnel shape with trapezoids)
-                let stepsHtml = '';
-                for (let i = 0; i < steps.length; i++) {
-                    const s = steps[i];
-                    const topW = s.width;
-                    const botW = (i < steps.length - 1) ? steps[i+1].width : Math.max(s.width * 0.7, 12);
-                    // Trapezoid: top-left, top-right, bottom-right(narrower), bottom-left(narrower)
-                    const topInset = ((100 - topW) / 2);
-                    const botInset = ((100 - botW) / 2);
-                    const clip = `polygon(${topInset}% 0%, ${100 - topInset}% 0%, ${100 - botInset}% 100%, ${botInset}% 100%)`;
-                    stepsHtml += `<div class="funnel-step">
-                        <div class="funnel-step-bar" style="width:100%;background:${s.color};clip-path:${clip}">
-                            <span class="step-value">${s.value.toLocaleString()}</span>
-                            <span class="step-label">${s.label}</span>
-                        </div>
-                    </div>`;
-                    if (i < steps.length - 1) {
-                        const dropoff = steps[i].value > 0 ? ((1 - steps[i+1].value / steps[i].value) * 100).toFixed(0) : 0;
-                        stepsHtml += `<div class="funnel-dropoff">↓ <span>-${dropoff}%</span></div>`;
-                    }
+                // Dropoff percentages
+                let dropoffs = '';
+                for (let i = 0; i < steps.length - 1; i++) {
+                    const dropoff = steps[i].value > 0 ? ((1 - steps[i+1].value / steps[i].value) * 100).toFixed(0) : 0;
+                    dropoffs += `<div class="funnel-dropoff-item">↓ -${dropoff}%</div>`;
                 }
-                document.getElementById('funnel-steps').innerHTML = stepsHtml;
+
+                const svg = `<svg class="funnel-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><defs>${defs}</defs>${paths}</svg>`;
+                const labels = steps.map(s => `<div class="funnel-label-row"><span class="step-value">${s.value.toLocaleString()}</span><span class="step-label">${s.label}</span></div>`).join('');
+
+                document.getElementById('funnel-steps').innerHTML = `
+                    <div class="funnel-container">
+                        ${svg}
+                        <div class="funnel-labels">${labels}</div>
+                        <div class="funnel-dropoffs">${dropoffs}</div>
+                    </div>`;
 
                 // Conversion rates sidebar
                 const r = data.conversion_rates;
