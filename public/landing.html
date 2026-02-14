@@ -851,6 +851,52 @@
             .chat-fab { width: 48px; height: 48px; }
         }
 
+        /* Sticky bottom bar — mobile */
+        .sticky-bar {
+            display: none; position: fixed; bottom: 0; left: 0; right: 0;
+            z-index: 100; padding: 10px 16px;
+            background: rgba(10,10,10,0.95); backdrop-filter: blur(12px);
+            border-top: 1px solid var(--gray-dark);
+            align-items: center; gap: 12px;
+            animation: slideUpBar 0.4s ease;
+        }
+        .sticky-bar.show { display: flex; }
+        @keyframes slideUpBar {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .sticky-bar-info { flex: 1; min-width: 0; }
+        .sticky-bar-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1rem; color: var(--white); font-weight: 400;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .sticky-bar-meta {
+            font-size: 0.6rem; color: var(--gold); letter-spacing: 0.1em;
+            text-transform: uppercase; margin-top: 1px;
+        }
+        .sticky-bar-btn {
+            display: flex; align-items: center; gap: 8px;
+            background: #25D366; color: white; border: none;
+            padding: 12px 20px; border-radius: 50px; cursor: pointer;
+            font-family: 'Montserrat', sans-serif; font-weight: 600;
+            font-size: 0.78rem; white-space: nowrap; flex-shrink: 0;
+            box-shadow: 0 4px 15px rgba(37,211,102,0.35);
+            transition: all 0.2s;
+        }
+        .sticky-bar-btn:active { transform: scale(0.96); }
+        .sticky-bar-btn svg { width: 18px; height: 18px; }
+
+        @media (max-width: 768px) {
+            .sticky-bar.show { display: flex; }
+            .whatsapp-cta { display: none !important; }
+            .terra-cta { bottom: 75px !important; }
+            main { padding-bottom: 70px; }
+        }
+        @media (min-width: 769px) {
+            .sticky-bar { display: none !important; }
+        }
+
         /* Hide sections without data */
         .hidden { display: none !important; }
     </style>
@@ -1088,6 +1134,18 @@
         </svg>
         Recibe info por WhatsApp
     </a>
+
+    <!-- Sticky bottom bar (mobile) -->
+    <div class="sticky-bar" id="sticky-bar">
+        <div class="sticky-bar-info">
+            <div class="sticky-bar-name" id="sticky-bar-name"></div>
+            <div class="sticky-bar-meta" id="sticky-bar-meta"></div>
+        </div>
+        <button class="sticky-bar-btn" id="sticky-bar-btn" onclick="window.open(document.getElementById('whatsapp-cta').href, '_blank')">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492l4.625-1.468A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75c-2.24 0-4.31-.733-5.988-1.97l-.43-.32-2.746.872.871-2.685-.35-.453A9.7 9.7 0 012.25 12c0-5.385 4.365-9.75 9.75-9.75S21.75 6.615 21.75 12s-4.365 9.75-9.75 9.75z"/></svg>
+            Cotizar
+        </button>
+    </div>
 
     <!-- Lightbox -->
     <div class="lightbox" id="lightbox">
@@ -1391,6 +1449,10 @@
             const waMsg = encodeURIComponent(`Hola! Vi el piso ${product.name} en ${storeName} y quiero mas info. REF:${product.sku || sku}`);
             document.getElementById('whatsapp-cta').href = `https://wa.me/${WA_BOT}?text=${waMsg}`;
 
+            // Sticky bar data
+            document.getElementById('sticky-bar-name').textContent = product.name;
+            document.getElementById('sticky-bar-meta').textContent = product.category || product.format || 'Piso Premium';
+
             // Track WhatsApp click
             document.getElementById('whatsapp-cta').addEventListener('click', () => {
                 fetch(`${API}/track/whatsapp`, {
@@ -1486,9 +1548,16 @@
             if (e.key === 'ArrowLeft') prevImage();
         });
 
-        // Header scroll
+        // Header scroll + sticky bar
         window.addEventListener('scroll', () => {
             document.getElementById('header').classList.toggle('scrolled', window.scrollY > 100);
+            // Show sticky bar after scrolling past hero (50% of viewport)
+            const stickyBar = document.getElementById('sticky-bar');
+            if (product && window.scrollY > window.innerHeight * 0.5) {
+                stickyBar.classList.add('show');
+            } else {
+                stickyBar.classList.remove('show');
+            }
         });
 
         // Chat IA
