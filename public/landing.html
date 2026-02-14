@@ -1283,13 +1283,13 @@
                     });
                 } catch (e) { gallery = []; }
 
-                // Find store
+                // Find store (fuzzy match: slug, name, or keywords from tienda param)
                 if (params.tienda) {
                     const stores = await fetch(`${API}/stores`).then(r => r.json());
-                    store = stores.find(s =>
-                        s.slug === params.tienda ||
-                        s.name.toLowerCase().includes(params.tienda.toLowerCase())
-                    );
+                    const t = params.tienda.toLowerCase().replace(/-/g, ' ');
+                    store = stores.find(s => s.slug === params.tienda) ||
+                            stores.find(s => s.name.toLowerCase().includes(t)) ||
+                            stores.find(s => t.split(' ').every(w => s.name.toLowerCase().includes(w) || (s.address || '').toLowerCase().includes(w)));
                 }
 
                 // Render page
@@ -1418,13 +1418,16 @@
             if (store) {
                 document.getElementById('store-name').textContent = store.name;
                 document.getElementById('store-address').textContent = store.address || params.dir || '-';
-                document.getElementById('store-phone').textContent = store.phone || params.wa || '-';
+                const phoneDisplay = store.phone || store.whatsapp || params.wa || '-';
+                document.getElementById('store-phone').textContent = phoneDisplay !== '-' ? phoneDisplay.replace(/^52/, '+52 ') : '-';
 
-                if (store.lat && store.lng) {
-                    document.getElementById('store-map').innerHTML = `
-                        <iframe src="https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${store.lat},${store.lng}&zoom=15" allowfullscreen></iframe>
-                    `;
-                }
+                // Map: use lat/lng if available, otherwise use address as query
+                const mapQuery = (store.lat && store.lng)
+                    ? `${store.lat},${store.lng}`
+                    : encodeURIComponent(store.address || store.name);
+                document.getElementById('store-map').innerHTML = `
+                    <iframe src="https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${mapQuery}&zoom=15" allowfullscreen></iframe>
+                `;
             } else if (params.tienda) {
                 document.getElementById('store-name').textContent = decodeURIComponent(params.tienda).replace(/-/g, ' ');
                 document.getElementById('store-address').textContent = params.dir ? decodeURIComponent(params.dir) : '-';
