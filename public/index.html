@@ -814,7 +814,7 @@
                     <div class="terra-msg">
                         <div class="terra-q">${c.customer_name || 'Anónimo'}: "${c.question}"</div>
                         <div class="terra-a">Terra: ${(c.answer || '').substring(0, 100)}${c.answer && c.answer.length > 100 ? '...' : ''}</div>
-                        <div class="terra-meta">${c.product_name ? '📦 ' + c.product_name : ''} ${c.store_name ? '🏪 ' + c.store_name : ''} · ${new Date(c.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+                        <div class="terra-meta">${c.product_name ? '📦 ' + c.product_name : ''} ${c.store_name ? '🏪 ' + c.store_name : ''} · ${mxDate(c.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
                     </div>
                 `).join('');
 
@@ -1470,7 +1470,7 @@
                                     ${l.promo_text ? `<span class="badge" style="background:#fff3cd;color:#856404">${l.promo_text}</span>` : '-'}
                                 </td>
                                 <td style="padding:12px 8px;font-size:0.85rem;color:#666">
-                                    ${new Date(l.created_at).toLocaleDateString('es-MX')}
+                                    ${mxDate(l.created_at).toLocaleDateString('es-MX')}
                                 </td>
                                 <td style="padding:12px 8px">
                                     <div style="display:flex;gap:6px">
@@ -1925,7 +1925,7 @@
                     return;
                 }
                 listEl.innerHTML = leads.map(l => {
-                    const date = l.created_at ? new Date(l.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+                    const date = l.created_at ? mxDate(l.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
                     const sourceIcon = l.source === 'landing' ? '🌐' : l.source === 'terra_qr' ? '🏪' : '💬';
                     const sourceLabel = l.source === 'landing' ? 'Landing' : l.source === 'terra_qr' ? 'Terra QR' : 'WhatsApp';
                     const statusColor = l.status === 'new' ? '#27ae60' : l.status === 'contacted' ? '#f39c12' : l.status === 'converted' ? '#3498db' : '#888';
@@ -1985,7 +1985,7 @@
                     html += `<div style="padding:8px 0"><div style="font-size:0.7rem;color:#888;margin-bottom:6px">Conversacion WhatsApp (${lead.conversation.length} msgs)</div>`;
                     html += lead.conversation.slice(-10).map(m => {
                         const isUser = m.role === 'user';
-                        const time = m.created_at ? new Date(m.created_at).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '';
+                        const time = m.created_at ? mxDate(m.created_at).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '';
                         return `<div style="padding:5px 8px;margin:3px 0;border-radius:8px;max-width:90%;font-size:0.75rem;${isUser ? 'background:#dcf8c6;margin-left:auto;text-align:right' : 'background:#f0f0f0'}">
                             ${m.message}
                             <div style="font-size:0.55rem;color:#888;margin-top:1px">${isUser ? '👤' : '🤖'} ${time}</div>
@@ -2009,6 +2009,14 @@
             } catch (e) { console.error('Update lead error:', e); }
         }
 
+        // UTC date from SQLite → local Mexico time
+        function mxDate(utcStr) {
+            if (!utcStr) return null;
+            // Append Z so JS knows it's UTC
+            const d = new Date(utcStr.endsWith('Z') ? utcStr : utcStr + 'Z');
+            return isNaN(d) ? null : d;
+        }
+
         // ==================== WHATSAPP BOT ====================
         async function loadWALeads() {
             try {
@@ -2028,7 +2036,7 @@
                     return;
                 }
                 listEl.innerHTML = convos.map(c => {
-                    const date = c.last_contact ? new Date(c.last_contact).toLocaleDateString('es-MX', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+                    const date = c.last_contact ? mxDate(c.last_contact).toLocaleDateString('es-MX', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
                     const phone = c.phone || '';
                     const displayPhone = phone.length > 10 ? phone.slice(0,2) + ' ' + phone.slice(2,5) + ' ' + phone.slice(5,8) + ' ' + phone.slice(8) : phone;
                     return `<div style="padding:8px 0;border-bottom:1px solid #f0f0f0;cursor:pointer" onclick="showWAConversation('${phone}')">
@@ -2048,7 +2056,7 @@
                 if (msgs.length === 0) { detailEl.innerHTML = '<span style="color:#aaa">Sin mensajes</span>'; return; }
                 detailEl.innerHTML = msgs.map(m => {
                     const isUser = m.role === 'user';
-                    const time = m.created_at ? new Date(m.created_at).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '';
+                    const time = m.created_at ? mxDate(m.created_at).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '';
                     return `<div style="padding:6px 10px;margin:4px 0;border-radius:8px;max-width:85%;${isUser ? 'background:#dcf8c6;margin-left:auto;text-align:right' : 'background:#f0f0f0'}">
                         <div style="font-size:0.8rem">${m.message}</div>
                         <div style="font-size:0.6rem;color:#888;margin-top:2px">${isUser ? '👤 Cliente' : '🤖 Terra'} · ${time}</div>
@@ -2076,7 +2084,7 @@
                     return;
                 }
                 listEl.innerHTML = convos.map(c => {
-                    const date = c.last_contact ? new Date(c.last_contact).toLocaleDateString('es-MX', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+                    const date = c.last_contact ? mxDate(c.last_contact).toLocaleDateString('es-MX', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
                     const phone = c.phone || '';
                     const displayPhone = phone.length > 10 ? phone.slice(0,2) + ' ' + phone.slice(2,5) + ' ' + phone.slice(5,8) + ' ' + phone.slice(8) : phone;
                     return `<div style="padding:10px 0;border-bottom:1px solid #f0f0f0;cursor:pointer" onclick="showWAPageChat('${phone}')">
@@ -2101,8 +2109,8 @@
                 if (msgs.length === 0) { chatEl.innerHTML = '<span style="color:#aaa">Sin mensajes</span>'; return; }
                 chatEl.innerHTML = msgs.map(m => {
                     const isUser = m.role === 'user';
-                    const time = m.created_at ? new Date(m.created_at).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '';
-                    const date = m.created_at ? new Date(m.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'short'}) : '';
+                    const time = m.created_at ? mxDate(m.created_at).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '';
+                    const date = m.created_at ? mxDate(m.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'short'}) : '';
                     return `<div style="padding:8px 12px;margin:4px 0;border-radius:10px;max-width:80%;${isUser ? 'background:#dcf8c6;margin-left:auto;text-align:right' : 'background:#f0f0f0'}">
                         <div style="font-size:0.85rem">${m.message}</div>
                         <div style="font-size:0.6rem;color:#888;margin-top:3px">${isUser ? '👤 Cliente' : '🤖 Terra'} · ${date} ${time}</div>

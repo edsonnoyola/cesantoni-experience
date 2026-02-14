@@ -2320,9 +2320,6 @@ app.post('/webhook', async (req, res) => {
           await sendWhatsApp(from, `Hola! 👋 Soy Terra de Cesantoni. Vi que te interesa el piso *${lProductName}*.\n\nDejame buscarte la info y te la mando. ¿En qué más te puedo ayudar? 😊`);
         }
 
-        run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
-          [from, 'assistant', `Landing lead: ${lProductName} (${lSku}) desde ${lStore}`]);
-
         return;
       }
 
