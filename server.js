@@ -2148,22 +2148,25 @@ app.post('/webhook', async (req, res) => {
         let greeting = `Hola ${tName}! 👋 Soy Terra de Cesantoni. Vi que te gustaron ${matchedProducts.length} piso${matchedProducts.length > 1 ? 's' : ''} en *${tStore}*. Aqui va tu resumen:\n`;
         await sendWhatsApp(from, greeting);
 
-        // Send each product as image + details
+        // Send each product as image + full details
         for (const p of matchedProducts) {
-          const details = `*${p.name}*\n` +
-            `📐 ${p.format || 'Gran formato'}\n` +
-            `✨ ${p.finish || 'Premium'}\n` +
-            (p.pei ? `💪 PEI ${p.pei} — ${p.pei >= 4 ? 'Alto trafico' : p.pei >= 3 ? 'Toda la casa' : 'Trafico ligero'}\n` : '') +
-            (p.usage ? `🏠 ${p.usage}\n` : '') +
-            `\n🔗 ${baseUrl}/landing/${p.slug || p.id}`;
-
+          // Image first
           if (p.image_url) {
-            await sendWhatsAppImage(from, p.image_url, details);
-          } else {
-            await sendWhatsApp(from, details);
+            await sendWhatsAppImage(from, p.image_url, `*${p.name}*\n${p.category || 'Piso Premium'} · Cesantoni`);
+            await new Promise(r => setTimeout(r, 800));
           }
 
-          // Small delay between messages
+          // Technical sheet
+          const pei = parseInt(p.pei) || 0;
+          const peiTip = pei >= 4 ? 'Alto tráfico' : pei >= 3 ? 'Toda la casa' : pei >= 2 ? 'Tráfico ligero' : '';
+          let sheet = `📋 *${p.name} — Ficha Técnica*\n\n`;
+          sheet += `📐 *Formato:* ${p.format || 'Consultar'}\n`;
+          sheet += `✨ *Acabado:* ${p.finish || 'Premium'}\n`;
+          if (p.pei) sheet += `💪 *PEI:* ${p.pei} — ${peiTip}\n`;
+          if (p.usage) sheet += `🏠 *Uso:* ${p.usage}\n`;
+          sheet += `\n🔗 ${baseUrl}/p/${p.slug || p.id}`;
+
+          await sendWhatsApp(from, sheet);
           await new Promise(r => setTimeout(r, 800));
         }
 
@@ -2215,23 +2218,57 @@ app.post('/webhook', async (req, res) => {
         const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
 
         if (lProduct) {
-          // Send product image + details
-          const details = `*${lProduct.name}*\n` +
-            `📐 Formato: ${lProduct.format || 'Gran formato'}\n` +
-            `✨ Acabado: ${lProduct.finish || 'Premium'}\n` +
-            (lProduct.pei ? `💪 PEI ${lProduct.pei} — ${parseInt(lProduct.pei) >= 4 ? 'Alto tráfico' : parseInt(lProduct.pei) >= 3 ? 'Toda la casa' : 'Tráfico ligero'}\n` : '') +
-            (lProduct.usage ? `🏠 Uso: ${lProduct.usage}\n` : '') +
-            (lProduct.water_absorption ? `💧 Absorción: ${lProduct.water_absorption}%\n` : '') +
-            `\n🔗 Ver más: ${baseUrl}/p/${lProduct.sku || lProduct.slug || lProduct.id}`;
-
+          // Send product image with name
+          const imageCaption = `*${lProduct.name}*\n${lProduct.category || 'Piso Premium'} · Cesantoni`;
           if (lProduct.image_url) {
-            await sendWhatsAppImage(from, lProduct.image_url, details);
-          } else {
-            await sendWhatsApp(from, details);
+            await sendWhatsAppImage(from, lProduct.image_url, imageCaption);
           }
 
           await new Promise(r => setTimeout(r, 800));
-          await sendWhatsApp(from, `Hola! 👋 Soy Terra de Cesantoni. Te mando la info del piso *${lProduct.name}* que viste.\n\n¿Quieres que te cotice? ¿O te ayudo a elegir otro piso? Escribeme lo que necesites 😊`);
+
+          // Send full technical sheet
+          const pei = parseInt(lProduct.pei) || 0;
+          const peiDesc = pei >= 5 ? 'Industrial — soporta el tráfico más intenso' :
+                          pei >= 4 ? 'Alto tráfico — cocinas, pasillos, comercios' :
+                          pei >= 3 ? 'Toda la casa — salas, recámaras, comedores' :
+                          pei >= 2 ? 'Tráfico ligero — baños, vestidores' : '';
+          const abs = parseFloat(lProduct.water_absorption) || 0;
+          const absDesc = abs <= 0.1 ? 'Prácticamente impermeable — albercas, regaderas' :
+                          abs <= 0.5 ? 'Muy baja — ideal para baños, cocinas, exteriores' :
+                          abs <= 3 ? 'Baja — resistente a salpicaduras' : '';
+          const finishDesc = (lProduct.finish || '').toUpperCase();
+          const finishTip = finishDesc.includes('MATE') ? 'No resbala, disimula huellas' :
+                            finishDesc.includes('PULIDO') || finishDesc.includes('BRILLANTE') ? 'Refleja luz, espacios más amplios' :
+                            finishDesc.includes('LAPPATO') ? 'Semi-brillo elegante y práctico' :
+                            finishDesc.includes('TEXTUR') || finishDesc.includes('ANTIDERRAPANTE') ? 'Antiderrapante, seguro mojado' : '';
+
+          let techSheet = `📋 *FICHA TÉCNICA*\n\n`;
+          techSheet += `📐 *Formato:* ${lProduct.format || 'Consultar'}\n`;
+          techSheet += `✨ *Acabado:* ${lProduct.finish || 'Premium'}${finishTip ? ' — ' + finishTip : ''}\n`;
+          techSheet += `🏗 *Tipo:* ${lProduct.type || 'Porcelánico'}\n`;
+          if (lProduct.pei) techSheet += `💪 *Resistencia PEI:* ${lProduct.pei}${peiDesc ? ' — ' + peiDesc : ''}\n`;
+          if (lProduct.water_absorption) techSheet += `💧 *Absorción:* ${lProduct.water_absorption}%${absDesc ? ' — ' + absDesc : ''}\n`;
+          if (lProduct.mohs) techSheet += `🔷 *Dureza Mohs:* ${lProduct.mohs}\n`;
+          if (lProduct.usage) techSheet += `🏠 *Uso recomendado:* ${lProduct.usage}\n`;
+
+          // Spaces recommendation
+          const spaces = [];
+          if (pei >= 4) spaces.push('cocinas', 'pasillos', 'comercios');
+          else if (pei >= 3) spaces.push('salas', 'recámaras', 'comedores');
+          if (abs <= 0.5) spaces.push('baños', 'exteriores');
+          if (finishDesc.includes('ANTIDERRAPANTE') || finishDesc.includes('TEXTUR')) spaces.push('terrazas', 'albercas');
+          if (spaces.length > 0) techSheet += `\n🏡 *Ideal para:* ${[...new Set(spaces)].join(', ')}\n`;
+
+          if (lProduct.description) {
+            techSheet += `\n📝 ${lProduct.description}\n`;
+          }
+
+          techSheet += `\n🔗 *Ver galería completa:* ${baseUrl}/p/${lProduct.sku || lProduct.slug || lProduct.id}`;
+
+          await sendWhatsApp(from, techSheet);
+
+          await new Promise(r => setTimeout(r, 800));
+          await sendWhatsApp(from, `Hola! 👋 Soy Terra de Cesantoni. Esa es la ficha completa del piso *${lProduct.name}*.\n\n¿Te preparo una cotización? Solo dime cuántos m² necesitas y tu ciudad 😊`);
         } else {
           await sendWhatsApp(from, `Hola! 👋 Soy Terra de Cesantoni. Vi que te interesa el piso *${lProductName}*.\n\nDejame buscarte la info y te la mando. ¿En qué más te puedo ayudar? 😊`);
         }
