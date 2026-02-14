@@ -1020,12 +1020,13 @@
             }
         }
 
-        function renderMexicoMap(stateData) {
+        async function renderMexicoMap(stateData) {
+            const normalize = (str) => (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
             const stateScans = {};
             stateData.forEach(s => {
-                stateScans[s.state] = s.scans || s.count || 0;
+                stateScans[normalize(s.state)] = s.scans || s.count || 0;
             });
-            
+
             const getHeatColor = (count) => {
                 if (!count || count === 0) return '#eae8e2';
                 if (count <= 10) return '#F5EED6';
@@ -1035,66 +1036,37 @@
                 if (count <= 200) return '#A88C42';
                 return '#8B7340';
             };
-            
-            // Mexico SVG paths by state
-            const mexicoSVG = `
-            <svg viewBox="0 0 800 600" style="width:100%;height:auto">
-              <g id="mexico-states">
-                <path id="Baja California" d="M40,50 L80,40 L95,80 L100,150 L90,200 L70,220 L50,180 L35,120 Z" />
-                <path id="Baja California Sur" d="M50,220 L70,230 L85,280 L90,350 L70,380 L45,360 L40,300 L45,250 Z" />
-                <path id="Sonora" d="M100,50 L180,45 L200,80 L210,150 L180,180 L140,190 L100,160 L95,100 Z" />
-                <path id="Chihuahua" d="M180,50 L280,55 L290,120 L280,200 L220,220 L180,190 L185,120 Z" />
-                <path id="Coahuila" d="M280,80 L360,85 L380,140 L360,200 L300,210 L280,160 Z" />
-                <path id="Nuevo León" d="M360,100 L420,110 L430,170 L400,210 L360,200 L365,140 Z" />
-                <path id="Tamaulipas" d="M420,120 L470,140 L480,220 L450,280 L400,260 L390,200 L410,160 Z" />
-                <path id="Sinaloa" d="M140,200 L180,195 L200,250 L190,320 L150,340 L120,290 L130,240 Z" />
-                <path id="Durango" d="M180,200 L260,210 L270,280 L240,330 L190,320 L175,260 Z" />
-                <path id="Zacatecas" d="M260,220 L320,225 L340,290 L310,340 L250,330 L245,270 Z" />
-                <path id="San Luis Potosí" d="M320,230 L390,240 L400,310 L360,360 L310,345 L305,280 Z" />
-                <path id="Nayarit" d="M150,340 L190,330 L200,380 L170,410 L140,390 Z" />
-                <path id="Aguascalientes" d="M270,330 L300,335 L305,360 L280,370 L265,355 Z" />
-                <path id="Jalisco" d="M170,380 L250,360 L280,380 L270,450 L200,470 L160,430 Z" />
-                <path id="Guanajuato" d="M280,360 L340,355 L360,400 L330,430 L290,420 L275,390 Z" />
-                <path id="Querétaro" d="M340,360 L380,365 L390,400 L365,420 L340,405 Z" />
-                <path id="Hidalgo" d="M380,370 L420,375 L430,410 L405,440 L375,425 Z" />
-                <path id="Colima" d="M180,450 L210,445 L220,480 L195,495 L175,475 Z" />
-                <path id="Michoacán" d="M210,430 L290,420 L310,470 L270,510 L210,500 L195,460 Z" />
-                <path id="Ciudad de México" d="M370,430 L395,428 L400,450 L380,460 L365,445 Z" />
-                <path id="Estado de México" d="M330,420 L370,425 L385,470 L350,500 L310,480 L320,440 Z" />
-                <path id="Tlaxcala" d="M400,435 L425,432 L430,455 L410,465 L395,450 Z" />
-                <path id="Morelos" d="M360,470 L390,465 L400,495 L375,510 L355,495 Z" />
-                <path id="Puebla" d="M400,450 L460,445 L480,510 L440,550 L390,530 L385,480 Z" />
-                <path id="Guerrero" d="M270,510 L350,500 L380,550 L340,600 L260,590 L240,550 Z" />
-                <path id="Oaxaca" d="M350,540 L450,520 L490,570 L450,620 L370,610 L340,580 Z" />
-                <path id="Veracruz" d="M420,380 L480,360 L520,420 L510,520 L460,540 L430,480 L440,420 Z" />
-                <path id="Tabasco" d="M510,480 L570,470 L590,510 L560,540 L520,530 Z" />
-                <path id="Chiapas" d="M500,540 L580,530 L620,580 L580,630 L510,620 L490,580 Z" />
-                <path id="Campeche" d="M570,450 L630,440 L650,500 L620,540 L570,520 Z" />
-                <path id="Yucatán" d="M600,380 L680,370 L700,420 L670,460 L620,450 L605,410 Z" />
-                <path id="Quintana Roo" d="M680,400 L730,390 L750,480 L720,550 L680,530 L670,460 L690,420 Z" />
-              </g>
-            </svg>`;
-            
-            document.getElementById('mexico-map').innerHTML = mexicoSVG;
-            
-            // Apply colors to each state
-            document.querySelectorAll('#mexico-states path').forEach(path => {
-                const stateName = path.id;
-                const count = stateScans[stateName] || 0;
+
+            // Load real Mexico SVG
+            try {
+                const res = await fetch('/mexico.svg');
+                const svgText = await res.text();
+                document.getElementById('mexico-map').innerHTML = svgText;
+            } catch (e) {
+                document.getElementById('mexico-map').innerHTML = '<p style="color:#aaa;text-align:center;padding:40px">Error cargando mapa</p>';
+                return;
+            }
+
+            // Apply colors — match by name attribute (Spanish state name), normalized
+            document.querySelectorAll('#mexico-map svg path').forEach(path => {
+                const stateName = path.getAttribute('name') || path.id;
+                const count = stateScans[normalize(stateName)] || 0;
                 const color = getHeatColor(count);
-                
+
                 path.style.fill = color;
                 path.style.stroke = '#fff';
-                path.style.strokeWidth = '1';
+                path.style.strokeWidth = '0.5';
                 path.style.cursor = 'pointer';
-                path.style.transition = 'all 0.2s';
-                
+                path.style.transition = 'all 0.3s';
+
                 path.onmouseenter = (e) => {
-                    path.style.opacity = '0.8';
+                    path.style.opacity = '0.75';
+                    path.style.filter = 'brightness(1.1)';
                     showMapTooltip(e, stateName, count);
                 };
                 path.onmouseleave = () => {
                     path.style.opacity = '1';
+                    path.style.filter = '';
                     hideMapTooltip();
                 };
                 path.onclick = () => {
