@@ -1945,6 +1945,36 @@ async function sendWhatsAppImage(to, imageUrl, caption) {
   }
 }
 
+// Send WhatsApp interactive buttons
+async function sendWhatsAppButtons(to, body, buttons) {
+  if (!WA_TOKEN) return null;
+  try {
+    const res = await fetch(`https://graph.facebook.com/v21.0/${WA_PHONE_ID}/messages`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp', to, type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: { text: body },
+          action: {
+            buttons: buttons.map((b, i) => ({
+              type: 'reply',
+              reply: { id: b.id || `btn_${i}`, title: b.title }
+            }))
+          }
+        }
+      })
+    });
+    const data = await res.json();
+    if (data.error) console.error('WA buttons error:', data.error);
+    return data;
+  } catch (err) {
+    console.error('WA buttons error:', err.message);
+    return null;
+  }
+}
+
 // Mark message as read
 async function markAsRead(messageId) {
   if (!WA_TOKEN) return;
@@ -2274,9 +2304,16 @@ app.post('/webhook', async (req, res) => {
 
           await new Promise(r => setTimeout(r, 800));
 
-          // One follow-up: ask for m² only
-          const storeRef = lStoreObj ? ` Un asesor en *${lStoreObj.name}* te atiende ahora.` : '';
-          await sendWhatsApp(from, `Hola! Soy Terra 👋 Dime cuántos m² necesitas y te doy el total.${storeRef}`);
+          // Follow-up with interactive buttons
+          const storeRef = lStoreObj ? `\nUn asesor en *${lStoreObj.name}* te atiende ahora.` : '';
+          await sendWhatsAppButtons(from,
+            `Hola! Soy Terra 👋 ¿En qué te ayudo?${storeRef}`,
+            [
+              { id: 'calcular_m2', title: '📐 Calcular m²' },
+              { id: 'ver_similares', title: '🔍 Ver similares' },
+              { id: 'hablar_asesor', title: '👤 Hablar c/asesor' }
+            ]
+          );
         } else {
           await sendWhatsApp(from, `Hola! 👋 Soy Terra de Cesantoni. Vi que te interesa el piso *${lProductName}*.\n\nDejame buscarte la info y te la mando. ¿En qué más te puedo ayudar? 😊`);
         }
@@ -2305,6 +2342,51 @@ app.post('/webhook', async (req, res) => {
           await sendWhatsAppImage(from, product.image_url, `${product.name} - Cesantoni`);
         }
       }
+    } else if (message.type === 'interactive') {
+      // Handle button replies
+      const btnId = message.interactive?.button_reply?.id || '';
+      const btnTitle = message.interactive?.button_reply?.title || '';
+      console.log(`   🔘 Button: ${btnId} "${btnTitle}"`);
+
+      run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', `[Botón] ${btnTitle}`]);
+
+      // Get lead context
+      const lead = queryOne('SELECT * FROM leads WHERE phone = ?', [from]);
+      const prods = lead?.products_interested ? JSON.parse(lead.products_interested) : [];
+      const prodName = prods[0] || '';
+      const product = prodName ? queryOne('SELECT * FROM products WHERE LOWER(name) LIKE ?', [`%${prodName.toLowerCase()}%`]) : null;
+
+      if (btnId === 'calcular_m2') {
+        await sendWhatsApp(from, `¡Perfecto! ¿Cuántos m² necesitas de *${prodName || 'piso'}*? Si no sabes exacto, dime las medidas del espacio y lo calculo. 📐`);
+      } else if (btnId === 'ver_similares') {
+        // Find similar products (same category or finish)
+        const similares = product ?
+          query('SELECT name, base_price, format FROM products WHERE active = 1 AND id != ? AND (category = ? OR finish = ?) LIMIT 3',
+            [product.id, product.category, product.finish]) :
+          query('SELECT name, base_price, format FROM products WHERE active = 1 LIMIT 3');
+        if (similares.length > 0) {
+          const lista = similares.map((s, i) => `${i+1}. *${s.name}* — $${s.base_price || '?'}/m² · ${s.format || ''}`).join('\n');
+          await sendWhatsApp(from, `Pisos similares a *${prodName}*:\n\n${lista}\n\n¿Cuál te interesa? Escribe el número o nombre.`);
+        } else {
+          await sendWhatsApp(from, `Deja busco opciones similares. ¿Qué estilo buscas? ¿Madera, mármol, piedra? 🤔`);
+        }
+      } else if (btnId === 'hablar_asesor') {
+        const store = lead?.store_id ? queryOne('SELECT * FROM stores WHERE id = ?', [lead.store_id]) : null;
+        if (store?.whatsapp) {
+          await sendWhatsApp(from, `Te conecto con un asesor en *${store.name}*. Escríbele directo:\n\nwa.me/${store.whatsapp.replace(/\D/g, '')}\n\nDile que vienes de Terra y te atienden al momento. 😊`);
+        } else if (store?.phone) {
+          await sendWhatsApp(from, `Llama a *${store.name}*: ${store.phone}. Diles que vienes de Terra. 😊`);
+        } else {
+          await sendWhatsApp(from, `Un asesor te atiende en tienda ahora mismo. Muéstrale este chat y te ayuda. 👍`);
+        }
+        if (lead) run("UPDATE leads SET status = 'contacted' WHERE id = ?", [lead.id]);
+      } else {
+        // Unknown button, pass to AI
+        const reply = await processWhatsAppMessage(from, btnTitle, contactName);
+        await sendWhatsApp(from, reply);
+      }
+
+      run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'assistant', `[Respuesta botón ${btnId}]`]);
     } else if (message.type === 'image' || message.type === 'document') {
       await sendWhatsApp(from, 'Gracias por la imagen. Soy Terra, tu asesora de pisos Cesantoni. ¿En qué te puedo ayudar? 😊');
     } else {
