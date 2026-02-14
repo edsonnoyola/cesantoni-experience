@@ -334,6 +334,31 @@
                 </div>
             </div>
 
+            <!-- FUNNEL ANALYTICS -->
+            <div style="margin-bottom:20px">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">📊 Funnel de Conversión</span>
+                        <span class="card-action" onclick="loadFunnel()">Actualizar →</span>
+                    </div>
+                    <div id="funnel-viz" style="padding:16px 0">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+                            <select id="funnel-days" onchange="loadFunnel()" style="padding:4px 8px;border:1px solid #ddd;border-radius:4px;font-size:0.7rem">
+                                <option value="7">7 días</option>
+                                <option value="30" selected>30 días</option>
+                                <option value="90">90 días</option>
+                            </select>
+                        </div>
+                        <div id="funnel-bars" style="display:flex;flex-direction:column;gap:10px"></div>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px;text-align:center" id="funnel-rates"></div>
+                        <div style="margin-top:16px;border-top:1px solid #f0f0f0;padding-top:12px">
+                            <div style="font-size:0.7rem;color:#888;margin-bottom:8px;font-weight:600">Top pisos escaneados</div>
+                            <div id="funnel-top-products" style="font-size:0.75rem;color:#555"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- LEADS CRM -->
             <div style="margin-bottom:20px">
                 <div class="card">
@@ -1826,6 +1851,58 @@
             alert('Función de PDF en desarrollo. Por ahora usa "Copiar URLs" y genera los QRs con un generador externo como qr-code-generator.com');
         }
         
+        // ==================== FUNNEL ANALYTICS ====================
+        async function loadFunnel() {
+            try {
+                const days = document.getElementById('funnel-days').value;
+                const res = await fetch(`/api/funnel?days=${days}`);
+                const data = await res.json();
+                const f = data.funnel;
+                const maxVal = Math.max(f.scans, 1);
+
+                const steps = [
+                    { label: 'QR Scans', value: f.scans, color: '#3498db', icon: '📱' },
+                    { label: 'WhatsApp Clicks', value: f.wa_clicks, color: '#25D366', icon: '💬' },
+                    { label: 'Leads', value: f.leads, color: '#f39c12', icon: '🎯' },
+                    { label: 'Contactados', value: f.contacted, color: '#e67e22', icon: '📞' },
+                    { label: 'Convertidos', value: f.converted, color: '#27ae60', icon: '✅' }
+                ];
+
+                document.getElementById('funnel-bars').innerHTML = steps.map(s => {
+                    const pct = maxVal > 0 ? Math.max((s.value / maxVal) * 100, 2) : 2;
+                    return `<div style="display:flex;align-items:center;gap:10px">
+                        <div style="width:110px;font-size:0.7rem;color:#888;text-align:right">${s.icon} ${s.label}</div>
+                        <div style="flex:1;background:#f5f5f5;border-radius:4px;height:28px;overflow:hidden">
+                            <div style="width:${pct}%;background:${s.color};height:100%;border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;min-width:40px;transition:width 0.5s ease">
+                                <span style="font-size:0.75rem;font-weight:700;color:white">${s.value}</span>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+
+                const r = data.conversion_rates;
+                document.getElementById('funnel-rates').innerHTML = `
+                    <div><div style="font-size:1.1rem;font-weight:700;color:#3498db">${r.scan_to_click}%</div><div style="font-size:0.55rem;color:#888">Scan→Click</div></div>
+                    <div><div style="font-size:1.1rem;font-weight:700;color:#25D366">${r.click_to_lead}%</div><div style="font-size:0.55rem;color:#888">Click→Lead</div></div>
+                    <div><div style="font-size:1.1rem;font-weight:700;color:#f39c12">${r.lead_to_contacted}%</div><div style="font-size:0.55rem;color:#888">Lead→Contacto</div></div>
+                    <div><div style="font-size:1.1rem;font-weight:700;color:#27ae60">${r.lead_to_converted}%</div><div style="font-size:0.55rem;color:#888">Lead→Venta</div></div>
+                `;
+
+                // Lead sources breakdown
+                const ls = data.leads_by_source;
+                const totalL = ls.landing + ls.terra_qr + ls.whatsapp_bot;
+
+                // Top products
+                if (data.top_products && data.top_products.length > 0) {
+                    document.getElementById('funnel-top-products').innerHTML = data.top_products.map((p, i) =>
+                        `<span style="display:inline-block;padding:3px 10px;margin:2px;background:${i === 0 ? '#C9A96220' : '#f5f5f5'};border-radius:10px;font-size:0.68rem;${i === 0 ? 'font-weight:600;border:1px solid #C9A962' : ''}">${p.name} (${p.scans})</span>`
+                    ).join('');
+                } else {
+                    document.getElementById('funnel-top-products').innerHTML = '<span style="color:#ccc">Sin datos</span>';
+                }
+            } catch (e) { console.error('Funnel error:', e); }
+        }
+
         // ==================== LEADS CRM ====================
         async function loadLeads(sourceFilter, statusFilter) {
             try {
@@ -2036,7 +2113,7 @@
         }
 
         // ==================== INIT ====================
-        loadAllData().then(() => { loadDashboard(); loadLeads(); loadWALeads(); });
+        loadAllData().then(() => { loadDashboard(); loadFunnel(); loadLeads(); loadWALeads(); });
     </script>
 </body>
 </html>

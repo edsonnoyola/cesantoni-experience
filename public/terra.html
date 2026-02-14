@@ -557,9 +557,12 @@
 
         <div class="welcome-form">
             <input type="text" class="welcome-input" id="welcome-name"
-                   placeholder="Como te llamas?" autocomplete="given-name"
+                   placeholder="Tu nombre (opcional)" autocomplete="given-name"
                    onkeydown="if(event.key==='Enter')startSession()">
             <button class="welcome-btn" id="welcome-btn" onclick="startSession()">Comenzar</button>
+            <div style="margin-top:12px;opacity:0;animation:wFade 0.4s ease 1.1s forwards">
+                <a href="#" onclick="startSession(true);return false" style="color:var(--gray-light);font-size:0.72rem;text-decoration:none;letter-spacing:0.05em">Omitir →</a>
+            </div>
         </div>
 
         <div class="welcome-powered">Experiencia Cesantoni</div>
@@ -712,6 +715,9 @@
         // ===== PERSONALIZATION =====
         let customerName = '';
         let customerGender = 'm';
+        const nn = () => customerName || ''; // name or empty
+        const hi = () => customerName ? `${customerName}, ` : ''; // "Name, " or ""
+        const hola = () => customerName ? `Hola ${customerName}!` : 'Hola!';
         let storeName = '';
         let storeSlug = '';
         let storeWhatsapp = '';
@@ -836,19 +842,14 @@
             setTimeout(() => document.getElementById('welcome-name').focus(), 1500);
         }
 
-        function startSession() {
+        function startSession(skip) {
             const nameInput = document.getElementById('welcome-name');
-            customerName = nameInput.value.trim();
+            customerName = skip ? '' : nameInput.value.trim();
 
-            if (!customerName) {
-                nameInput.style.borderColor = '#E74C3C';
-                nameInput.placeholder = 'Por favor, tu nombre';
-                nameInput.focus();
-                return;
+            if (customerName) {
+                customerName = customerName.charAt(0).toUpperCase() + customerName.slice(1).toLowerCase();
+                customerGender = detectGender(customerName);
             }
-
-            customerName = customerName.charAt(0).toUpperCase() + customerName.slice(1).toLowerCase();
-            customerGender = detectGender(customerName);
 
             localStorage.setItem('terra_customer', JSON.stringify({
                 name: customerName,
@@ -986,7 +987,7 @@
                             })
                         });
                         const introData = await introRes.json();
-                        const introSpeech = introData.speech || `${customerName}, este es ${scannedProduct.name}. Preguntame lo que quieras.`;
+                        const introSpeech = introData.speech || `${hi()}Este es ${scannedProduct.name}. Preguntame lo que quieras.`;
                         speak(introSpeech);
 
                         updateSuggestions([
@@ -996,7 +997,7 @@
                             'Que mas opciones hay?'
                         ]);
                     } catch (e) {
-                        speak(`${customerName}, este es ${scannedProduct.name}. Preguntame lo que quieras sobre este piso.`);
+                        speak(`${hi()}Este es ${scannedProduct.name}. Preguntame lo que quieras sobre este piso.`);
                     }
                     return;
                 }
@@ -1004,7 +1005,7 @@
 
             // Greeting — warm, short introduction
             if (storeMode && !productSlug) {
-                const storeGreeting = `Hola ${customerName}! Soy Terra. Escanea el QR de cualquier piso que te guste y te cuento todo sobre el.`;
+                const storeGreeting = `${hola()} Soy Terra. Escanea el QR de cualquier piso que te guste y te cuento todo sobre el.`;
                 speechText.textContent = storeGreeting;
                 setTimeout(() => speak(storeGreeting), 300);
 
@@ -1014,7 +1015,7 @@
                     'Escanear un piso'
                 ]);
             } else {
-                const defaultGreeting = `Hola ${customerName}! Soy Terra. Escanea el QR de cualquier piso y te cuento todo sobre el.`;
+                const defaultGreeting = `${hola()} Soy Terra. Escanea el QR de cualquier piso y te cuento todo sobre el.`;
                 speechText.textContent = defaultGreeting;
                 setTimeout(() => speak(defaultGreeting), 300);
 
@@ -1265,13 +1266,13 @@
                     updateSuggestions(getProductSuggestions(data.product));
                 }
 
-                speak(data.speech || `Disculpa ${customerName}, no entendi. Podrias repetirlo?`);
+                speak(data.speech || `Disculpa${customerName ? ' ' + customerName : ''}, no entendi. Podrias repetirlo?`);
 
                 // Save session to sessionStorage
                 saveSessionState();
 
             } catch (err) {
-                speak(`Disculpa ${customerName}, hubo un problema. Intenta de nuevo.`);
+                speak(`Disculpa, hubo un problema. Intenta de nuevo.`);
                 resetAppState();
             }
         }
@@ -1402,17 +1403,18 @@
 
         async function sendWhatsAppSummary() {
             if (visitedProducts.length === 0) {
-                speak(`${customerName}, todavia no hemos visto ningun producto. Dime que te interesa y empezamos.`);
+                speak(`Todavia no hemos visto ningun producto. Dime que te interesa y empezamos.`);
                 resetAppState();
                 return;
             }
 
             hapticWhatsApp();
-            speak(`Listo ${customerName}! Te abro WhatsApp para mandarte tu resumen.`);
+            speak(`${customerName ? 'Listo ' + customerName + '!' : 'Listo!'} Te abro WhatsApp para mandarte tu resumen.`);
 
             // Build pre-filled message with Terra marker for webhook detection
             const productList = visitedProducts.map(p => p.name).join(', ');
-            const msg = `Hola Terra! Soy ${customerName} desde ${storeName || 'Cesantoni'}. Me gustaron: ${productList}. Mandame mi resumen!`;
+            const senderName = customerName || 'Cliente';
+            const msg = `Hola Terra! Soy ${senderName} desde ${storeName || 'Cesantoni'}. Me gustaron: ${productList}. Mandame mi resumen!`;
 
             const waUrl = `https://wa.me/${WA_BOT_NUMBER}?text=${encodeURIComponent(msg)}`;
 
@@ -1481,7 +1483,7 @@
                 if (Date.now() - lastInteractionTime > 300000 && !idleReminderSent) { // 5 min
                     idleReminderSent = true;
                     if (!app.classList.contains('speaking') && !app.classList.contains('thinking') && !isListening) {
-                        speak(`${customerName}, sigo aqui! Escanea otro piso o preguntame algo.`);
+                        speak(`${customerName ? customerName + ', s' : 'S'}igo aqui! Escanea otro piso o preguntame algo.`);
                     }
                 }
             }, 30000);
@@ -1637,7 +1639,7 @@
                 // No store phone — use bot number
                 callBtn.style.display = 'none';
                 waBtn.onclick = () => {
-                    const msg = `Hola! Soy ${customerName}, estoy en ${storeName || 'la tienda'} y necesito ayuda de un asesor.`;
+                    const msg = `Hola! ${customerName ? 'Soy ' + customerName + ', e' : 'E'}stoy en ${storeName || 'la tienda'} y necesito ayuda de un asesor.`;
                     window.open(`https://wa.me/5215651747912?text=${encodeURIComponent(msg)}`, '_blank');
                     closeHelpModal();
                 };
@@ -1648,7 +1650,7 @@
                     closeHelpModal();
                 };
                 waBtn.onclick = () => {
-                    const msg = `Hola! Soy ${customerName}, estoy en ${storeName || 'la tienda'} viendo pisos con Terra y necesito ayuda de un asesor.`;
+                    const msg = `Hola! ${customerName ? 'Soy ' + customerName + ', e' : 'E'}stoy en ${storeName || 'la tienda'} viendo pisos con Terra y necesito ayuda de un asesor.`;
                     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
                     closeHelpModal();
                 };

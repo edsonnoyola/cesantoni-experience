@@ -1968,13 +1968,34 @@ async function processWhatsAppMessage(from, text, customerName) {
   // Save incoming message
   run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
 
+  // Get lead info for context
+  const lead = queryOne('SELECT * FROM leads WHERE phone = ?', [from]);
+  let leadContext = '';
+  if (lead) {
+    let prods = [];
+    try { prods = JSON.parse(lead.products_interested || '[]'); } catch(e) {}
+    leadContext = `\nCONTEXTO DEL LEAD:
+- Fuente: ${lead.source === 'landing' ? 'Landing page (escaneo QR en tienda)' : lead.source === 'terra_qr' ? 'Terra en tienda (escaneo QR)' : 'Contacto directo WhatsApp'}
+- Tienda: ${lead.store_name || 'No especificada'}
+- Pisos de interés: ${prods.length > 0 ? prods.join(', ') : 'No especificados'}
+- Estado: ${lead.status === 'new' ? 'Lead nuevo' : lead.status === 'contacted' ? 'Ya contactado' : lead.status}
+- Notas: ${lead.notes || 'Sin notas'}
+
+ESTRATEGIA PARA ESTE LEAD:
+${lead.source === 'landing' || lead.source === 'terra_qr' ? '- Este cliente VIO el piso en tienda o landing. Ya tiene interés real. Enfócate en cerrar: ofrece cotización, pregunta m², sugiere pisos complementarios.' : '- Lead orgánico. Descubre qué necesita y guíalo al producto ideal.'}
+- Si ya sabe qué piso quiere, pregunta cuántos m² necesita y en qué ciudad para cotizar
+- Si está indeciso, sugiere 2-3 opciones del catálogo y explica por qué cada una
+- Sugiere pisos similares o complementarios cuando sea natural
+- Si ya tienes sus datos (m², ciudad, producto), ofrece conectarlo con la tienda más cercana`;
+  }
+
   // Get product catalog (compact)
-  const products = query('SELECT id, name, slug, category, format, finish, pei, usage FROM products WHERE active = 1 ORDER BY name');
+  const products = query('SELECT id, name, slug, category, format, finish, pei, usage, base_price FROM products WHERE active = 1 ORDER BY name');
   const catalogText = products.map(p =>
-    `${p.name}|${p.category||'PREMIUM'}|${p.format||''}|PEI:${p.pei||''}|${p.finish||''}|${p.usage||''}`
+    `${p.name}|${p.slug}|${p.category||'PREMIUM'}|${p.format||''}|PEI:${p.pei||''}|${p.finish||''}|${p.usage||''}${p.base_price ? '|$'+p.base_price : ''}`
   ).join('\n');
 
-  const systemPrompt = `Eres Terra, la asesora de pisos de Cesantoni por WhatsApp. Eres amable, experta y directa.
+  const systemPrompt = `Eres Terra, la asesora de pisos de Cesantoni por WhatsApp. Eres amable, experta y directa. Tu meta es convertir cada conversación en una cotización o visita a tienda.
 
 REGLAS:
 - Responde en español mexicano, cálido y profesional
@@ -1982,14 +2003,22 @@ REGLAS:
 - Si preguntan por un producto específico, menciona características clave: formato, acabado, PEI, uso
 - Si no saben qué quieren, pregunta: para qué espacio, qué estilo, si tienen mascotas/niños
 - Puedes recomendar productos del catálogo por nombre
-- Si preguntan precio, di que varía por tienda y sugiere visitar la más cercana o pedir cotización
-- Si preguntan ubicación de tiendas, di que tienen 407 tiendas en todo México y que pueden buscar la más cercana
-- Si piden cotización, pide: producto, metros cuadrados aproximados, y ciudad
+- Si preguntan precio, di el rango si existe en catálogo o di que varía por tienda. SIEMPRE ofrece hacer cotización
+- Si preguntan ubicación de tiendas, di que tienen 407 tiendas en todo México
+- Para cotización necesitas: producto, metros cuadrados aproximados, y ciudad
 - NUNCA inventes productos que no están en el catálogo
-- Si mencionan un producto, al final agrega el link: cesantoni-experience-za74.onrender.com/landing/{slug}
+- Si mencionan un producto, al final agrega el link: cesantoni-experience-za74.onrender.com/p/{slug}
+- Usa emojis moderadamente (1-2 por mensaje máximo)
+- Si el cliente da datos para cotizar (m², ciudad), dile que la tienda más cercana lo contactará pronto
 
+FLUJO DE CONVERSIÓN:
+1. Cliente muestra interés → Confirma el producto, destaca beneficios clave
+2. Cliente pregunta más → Responde y pregunta "¿Te preparo una cotización?"
+3. Cliente quiere cotizar → Pide: m² aprox y ciudad
+4. Tienes los datos → Agradece y di que la tienda más cercana lo contactará
+${leadContext}
 CESANTONI: Empresa mexicana premium de porcelanato. 123 productos. 407 tiendas en México. Tecnología HD, gran formato, garantía.
-TÉCNICO SIMPLE: PEI 3=toda la casa, PEI 4=comercios. Mate=no resbala. Porcelánico=el más resistente. <0.5% absorción=exterior/baño.
+TÉCNICO: PEI 3=toda la casa, PEI 4=comercios, PEI 5=industrial. Mate=no resbala. Porcelánico=el más resistente. <0.5% absorción=exterior/baño.
 
 Cliente: ${customerName || from}
 ${history.length > 0 ? 'HISTORIAL:\n' + history.map(h => `${h.role === 'user' ? 'Cliente' : 'Terra'}: ${h.message}`).join('\n') : ''}
@@ -2021,6 +2050,16 @@ Responde SOLO el texto del mensaje, nada más. No uses JSON ni markdown.`;
 
     // Save bot reply
     run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'assistant', reply]);
+
+    // Auto-update lead status based on conversation progress
+    if (lead && lead.status === 'new') {
+      const allMsgs = history.map(h => h.message).join(' ') + ' ' + text;
+      const hasCotizacion = /cotiza|metros|m2|m²|cuant.*cuest|precio/i.test(allMsgs);
+      if (hasCotizacion) {
+        run('UPDATE leads SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', ['contacted', lead.id]);
+        console.log(`📊 Lead ${lead.id} auto-updated to 'contacted'`);
+      }
+    }
 
     return reply;
   } catch (err) {
@@ -2305,6 +2344,63 @@ app.put('/api/leads/:id', (req, res) => {
     if (status) run('UPDATE leads SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [status, req.params.id]);
     if (notes) run('UPDATE leads SET notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [notes, req.params.id]);
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =====================================================
+// FUNNEL ANALYTICS
+// =====================================================
+
+app.get('/api/funnel', (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const dateFilter = `datetime('now', '-${days} days')`;
+
+    const scans = scalar(`SELECT COUNT(*) FROM scans WHERE created_at >= ${dateFilter}`) || 0;
+    const waClicks = scalar(`SELECT COUNT(*) FROM whatsapp_clicks WHERE created_at >= ${dateFilter}`) || 0;
+    const totalLeads = scalar(`SELECT COUNT(*) FROM leads WHERE created_at >= ${dateFilter}`) || 0;
+    const landingLeads = scalar(`SELECT COUNT(*) FROM leads WHERE source = 'landing' AND created_at >= ${dateFilter}`) || 0;
+    const terraLeads = scalar(`SELECT COUNT(*) FROM leads WHERE source = 'terra_qr' AND created_at >= ${dateFilter}`) || 0;
+    const waLeads = scalar(`SELECT COUNT(*) FROM leads WHERE source = 'whatsapp_bot' AND created_at >= ${dateFilter}`) || 0;
+    const contacted = scalar(`SELECT COUNT(*) FROM leads WHERE status = 'contacted' AND created_at >= ${dateFilter}`) || 0;
+    const converted = scalar(`SELECT COUNT(*) FROM leads WHERE status = 'converted' AND created_at >= ${dateFilter}`) || 0;
+
+    // Daily breakdown for chart
+    const daily = query(`
+      SELECT date(created_at) as day, COUNT(*) as count
+      FROM scans WHERE created_at >= ${dateFilter}
+      GROUP BY date(created_at) ORDER BY day
+    `);
+    const dailyLeads = query(`
+      SELECT date(created_at) as day, COUNT(*) as count
+      FROM leads WHERE created_at >= ${dateFilter}
+      GROUP BY date(created_at) ORDER BY day
+    `);
+
+    // Top products scanned
+    const topProducts = query(`
+      SELECT p.name, COUNT(s.id) as scans
+      FROM scans s JOIN products p ON s.product_id = p.id
+      WHERE s.created_at >= ${dateFilter}
+      GROUP BY s.product_id ORDER BY scans DESC LIMIT 10
+    `);
+
+    res.json({
+      period_days: days,
+      funnel: { scans, wa_clicks: waClicks, leads: totalLeads, contacted, converted },
+      leads_by_source: { landing: landingLeads, terra_qr: terraLeads, whatsapp_bot: waLeads },
+      conversion_rates: {
+        scan_to_click: scans > 0 ? ((waClicks / scans) * 100).toFixed(1) : '0',
+        click_to_lead: waClicks > 0 ? ((totalLeads / waClicks) * 100).toFixed(1) : '0',
+        lead_to_contacted: totalLeads > 0 ? ((contacted / totalLeads) * 100).toFixed(1) : '0',
+        lead_to_converted: totalLeads > 0 ? ((converted / totalLeads) * 100).toFixed(1) : '0'
+      },
+      daily_scans: daily,
+      daily_leads: dailyLeads,
+      top_products: topProducts
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
