@@ -2006,12 +2006,14 @@ ${productPrices ? '- Precios: ' + productPrices : ''}
 - Notas: ${lead.notes || ''}
 
 IMPORTANTE PARA ESTE LEAD:
-${lead.source === 'landing' || lead.source === 'terra_qr' ? '- Este cliente ESTUVO EN LA TIENDA o vio el producto. Ya tiene interés real.' : '- Lead orgánico.'}
-${storeCity ? '- YA SABES su ciudad (' + storeCity + ') — NO le preguntes ciudad.' : ''}
-${lead.store_name ? '- YA SABES su tienda (' + lead.store_name + ') — NO le preguntes tienda.' : ''}
-${productPrices ? '- YA TIENES precios — dáselos directamente cuando pregunte.' : ''}
-- Solo necesitas preguntarle los m² para darle cotización
-- Si ya dijo m², calcula el total (precio × m² × 1.1 para merma) y dale el estimado directo`;
+${lead.source === 'landing' || lead.source === 'terra_qr' ? '- Este cliente ESTÁ EN LA TIENDA AHORA (escaneó QR ahí). NO le digas "pasa a la tienda" ni "te contactaremos" — YA ESTÁ AHÍ.' : '- Lead orgánico, puede no estar en tienda.'}
+${storeCity ? '- YA SABES su ciudad (' + storeCity + ') — NUNCA preguntes ciudad.' : ''}
+${lead.store_name ? '- YA SABES su tienda (' + lead.store_name + ') — NUNCA preguntes tienda.' : ''}
+${productPrices ? '- YA TIENES precios — dáselos DIRECTO cuando pregunte.' : ''}
+- Solo necesitas los m² para cotizar
+- Si dijo m², calcula: precio × m² × 1.1 (merma) y da el total directo
+- Si está en tienda, dile "pídele a un asesor ahí que te ayude a cerrar"
+- NUNCA digas "te contactaremos" ni "la tienda se pondrá en contacto"`;
   }
 
   // Get product catalog (compact)
@@ -2037,9 +2039,9 @@ REGLAS ESTRICTAS:
 
 FLUJO DE CONVERSIÓN (una pregunta a la vez):
 1. Cliente muestra interés → "Excelente! ¿Cuántos m² necesitas?"
-2. Da m² → Si ya sabes tienda/ciudad del contexto, calcula directo: "Para 20 m² de DAYTONA serían aprox $X (incluye 10% de merma). Pasa a [tienda] para cerrar tu compra!"
-3. Si NO sabes ciudad → "¿En qué ciudad es tu proyecto?"
-4. Da ciudad → "Listo! Te cotizo: X m² × $Y = $Z aprox. La tienda más cercana te contactará."
+2. Da m² y ya tienes precio → Calcula directo: "20 m² × $450 + 10% merma = $9,900 aprox. Pídele a un asesor ahí en la tienda que te cierre!"
+3. Si NO sabes ciudad (lead orgánico) → "¿En qué ciudad estás?"
+4. Da ciudad → "Te cotizo: X m² de Y = $Z aprox. Te paso la tienda más cercana."
 ${leadContext}
 CESANTONI: Empresa mexicana premium de porcelanato. 123 productos. 407 tiendas en México. Tecnología HD, gran formato, garantía.
 TÉCNICO: PEI 3=toda la casa, PEI 4=comercios, PEI 5=industrial. Mate=no resbala. Porcelánico=el más resistente. <0.5% absorción=exterior/baño.
@@ -2298,7 +2300,11 @@ app.post('/webhook', async (req, res) => {
           await sendWhatsApp(from, techSheet);
 
           await new Promise(r => setTimeout(r, 800));
-          await sendWhatsApp(from, `Hola! 👋 Soy Terra de Cesantoni. Esa es la ficha completa del piso *${lProduct.name}*.\n\n¿Te preparo una cotización? Solo dime cuántos m² necesitas y tu ciudad 😊`);
+          const priceInfo = lProduct.base_price ? ` ($${lProduct.base_price}/m²)` : '';
+          const storeMsg = lStoreObj
+            ? `Dime cuántos m² necesitas y te calculo el total. Un asesor en *${lStoreObj.name}* te puede atender ahora mismo`
+            : `Dime cuántos m² necesitas y te calculo el total`;
+          await sendWhatsApp(from, `Hola! 👋 Soy Terra. Esa es la ficha del piso *${lProduct.name}*${priceInfo}.\n\n${storeMsg} 😊`);
         } else {
           await sendWhatsApp(from, `Hola! 👋 Soy Terra de Cesantoni. Vi que te interesa el piso *${lProductName}*.\n\nDejame buscarte la info y te la mando. ¿En qué más te puedo ayudar? 😊`);
         }
