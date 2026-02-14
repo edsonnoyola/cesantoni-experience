@@ -2250,61 +2250,33 @@ app.post('/webhook', async (req, res) => {
         const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
 
         if (lProduct) {
-          // Send product image with name
-          const imageCaption = `*${lProduct.name}*\n${lProduct.category || 'Piso Premium'} · Cesantoni`;
-          if (lProduct.image_url) {
-            await sendWhatsAppImage(from, lProduct.image_url, imageCaption);
-          }
-
-          await new Promise(r => setTimeout(r, 800));
-
-          // Send full technical sheet
+          // Build compact caption with all key info
           const pei = parseInt(lProduct.pei) || 0;
-          const peiDesc = pei >= 5 ? 'Industrial — soporta el tráfico más intenso' :
-                          pei >= 4 ? 'Alto tráfico — cocinas, pasillos, comercios' :
-                          pei >= 3 ? 'Toda la casa — salas, recámaras, comedores' :
-                          pei >= 2 ? 'Tráfico ligero — baños, vestidores' : '';
-          const abs = parseFloat(lProduct.water_absorption) || 0;
-          const absDesc = abs <= 0.1 ? 'Prácticamente impermeable — albercas, regaderas' :
-                          abs <= 0.5 ? 'Muy baja — ideal para baños, cocinas, exteriores' :
-                          abs <= 3 ? 'Baja — resistente a salpicaduras' : '';
-          const finishDesc = (lProduct.finish || '').toUpperCase();
-          const finishTip = finishDesc.includes('MATE') ? 'No resbala, disimula huellas' :
-                            finishDesc.includes('PULIDO') || finishDesc.includes('BRILLANTE') ? 'Refleja luz, espacios más amplios' :
-                            finishDesc.includes('LAPPATO') ? 'Semi-brillo elegante y práctico' :
-                            finishDesc.includes('TEXTUR') || finishDesc.includes('ANTIDERRAPANTE') ? 'Antiderrapante, seguro mojado' : '';
+          const peiTip = pei >= 4 ? 'Alto tráfico' : pei >= 3 ? 'Toda la casa' : pei >= 2 ? 'Tráfico ligero' : '';
+          const finishUpper = (lProduct.finish || '').toUpperCase();
+          const finishTip = finishUpper.includes('MATE') ? 'no resbala' :
+                            finishUpper.includes('PULIDO') ? 'brillo espejo' :
+                            finishUpper.includes('LAPPATO') ? 'semi-brillo' :
+                            finishUpper.includes('TEXTUR') || finishUpper.includes('ANTIDERRAPANTE') ? 'antiderrapante' : '';
 
-          let techSheet = `📋 *FICHA TÉCNICA*\n\n`;
-          techSheet += `📐 *Formato:* ${lProduct.format || 'Consultar'}\n`;
-          techSheet += `✨ *Acabado:* ${lProduct.finish || 'Premium'}${finishTip ? ' — ' + finishTip : ''}\n`;
-          techSheet += `🏗 *Tipo:* ${lProduct.type || 'Porcelánico'}\n`;
-          if (lProduct.pei) techSheet += `💪 *Resistencia PEI:* ${lProduct.pei}${peiDesc ? ' — ' + peiDesc : ''}\n`;
-          if (lProduct.water_absorption) techSheet += `💧 *Absorción:* ${lProduct.water_absorption}%${absDesc ? ' — ' + absDesc : ''}\n`;
-          if (lProduct.mohs) techSheet += `🔷 *Dureza Mohs:* ${lProduct.mohs}\n`;
-          if (lProduct.usage) techSheet += `🏠 *Uso recomendado:* ${lProduct.usage}\n`;
+          let caption = `*${lProduct.name}*${lProduct.base_price ? ' · $' + lProduct.base_price + '/m²' : ''}\n\n`;
+          caption += `📐 ${lProduct.format || 'Gran formato'}\n`;
+          caption += `✨ ${lProduct.finish || 'Premium'}${finishTip ? ' (' + finishTip + ')' : ''}\n`;
+          if (lProduct.pei) caption += `💪 PEI ${lProduct.pei} — ${peiTip}\n`;
+          if (lProduct.usage) caption += `🏠 ${lProduct.usage}\n`;
+          caption += `\n🔗 ${baseUrl}/p/${lProduct.sku || lProduct.slug || lProduct.id}`;
 
-          // Spaces recommendation
-          const spaces = [];
-          if (pei >= 4) spaces.push('cocinas', 'pasillos', 'comercios');
-          else if (pei >= 3) spaces.push('salas', 'recámaras', 'comedores');
-          if (abs <= 0.5) spaces.push('baños', 'exteriores');
-          if (finishDesc.includes('ANTIDERRAPANTE') || finishDesc.includes('TEXTUR')) spaces.push('terrazas', 'albercas');
-          if (spaces.length > 0) techSheet += `\n🏡 *Ideal para:* ${[...new Set(spaces)].join(', ')}\n`;
-
-          if (lProduct.description) {
-            techSheet += `\n📝 ${lProduct.description}\n`;
+          if (lProduct.image_url) {
+            await sendWhatsAppImage(from, lProduct.image_url, caption);
+          } else {
+            await sendWhatsApp(from, caption);
           }
 
-          techSheet += `\n🔗 *Ver galería completa:* ${baseUrl}/p/${lProduct.sku || lProduct.slug || lProduct.id}`;
-
-          await sendWhatsApp(from, techSheet);
-
           await new Promise(r => setTimeout(r, 800));
-          const priceInfo = lProduct.base_price ? ` ($${lProduct.base_price}/m²)` : '';
-          const storeMsg = lStoreObj
-            ? `Dime cuántos m² necesitas y te calculo el total. Un asesor en *${lStoreObj.name}* te puede atender ahora mismo`
-            : `Dime cuántos m² necesitas y te calculo el total`;
-          await sendWhatsApp(from, `Hola! 👋 Soy Terra. Esa es la ficha del piso *${lProduct.name}*${priceInfo}.\n\n${storeMsg} 😊`);
+
+          // One follow-up: ask for m² only
+          const storeRef = lStoreObj ? ` Un asesor en *${lStoreObj.name}* te atiende ahora.` : '';
+          await sendWhatsApp(from, `Hola! Soy Terra 👋 Dime cuántos m² necesitas y te doy el total.${storeRef}`);
         } else {
           await sendWhatsApp(from, `Hola! 👋 Soy Terra de Cesantoni. Vi que te interesa el piso *${lProductName}*.\n\nDejame buscarte la info y te la mando. ¿En qué más te puedo ayudar? 😊`);
         }
