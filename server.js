@@ -2359,14 +2359,18 @@ app.post('/webhook', async (req, res) => {
       if (btnId === 'calcular_m2') {
         await sendWhatsApp(from, `¡Perfecto! ¿Cuántos m² necesitas de *${prodName || 'piso'}*? Si no sabes exacto, dime las medidas del espacio y lo calculo. 📐`);
       } else if (btnId === 'ver_similares') {
-        // Find similar products (same category or finish)
+        // Find similar products (same category or finish) with slug/sku for landing links
+        const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
         const similares = product ?
-          query('SELECT name, base_price, format FROM products WHERE active = 1 AND id != ? AND (category = ? OR finish = ?) LIMIT 3',
+          query('SELECT name, base_price, format, sku, slug, image_url FROM products WHERE active = 1 AND id != ? AND (category = ? OR finish = ?) LIMIT 3',
             [product.id, product.category, product.finish]) :
-          query('SELECT name, base_price, format FROM products WHERE active = 1 LIMIT 3');
+          query('SELECT name, base_price, format, sku, slug, image_url FROM products WHERE active = 1 LIMIT 3');
         if (similares.length > 0) {
-          const lista = similares.map((s, i) => `${i+1}. *${s.name}* — $${s.base_price || '?'}/m² · ${s.format || ''}`).join('\n');
-          await sendWhatsApp(from, `Pisos similares a *${prodName}*:\n\n${lista}\n\n¿Cuál te interesa? Escribe el número o nombre.`);
+          const lista = similares.map((s, i) => {
+            const link = `${baseUrl}/p/${s.sku || s.slug || s.name}`;
+            return `${i+1}. *${s.name}* — $${s.base_price || '?'}/m² · ${s.format || ''}\n   👁 ${link}`;
+          }).join('\n\n');
+          await sendWhatsApp(from, `Pisos similares a *${prodName}*:\n\n${lista}\n\n¿Cuál te interesa?`);
         } else {
           await sendWhatsApp(from, `Deja busco opciones similares. ¿Qué estilo buscas? ¿Madera, mármol, piedra? 🤔`);
         }
