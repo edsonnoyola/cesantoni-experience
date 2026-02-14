@@ -19,7 +19,18 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', (req, res) => res.json({ version: 'v3.2.1', commit: 'e9bdc1f', terra_routes: true }));
+app.get('/api/health', (req, res) => {
+  const landingPath = path.join(__dirname, 'public', 'landing.html');
+  const stats = fs.existsSync(landingPath) ? fs.statSync(landingPath) : null;
+  res.json({
+    version: 'v3.2.2',
+    commit: '6063055',
+    dirname: __dirname,
+    landing_size: stats ? stats.size : 'NOT_FOUND',
+    landing_mtime: stats ? stats.mtimeMs : null,
+    cwd: process.cwd()
+  });
+});
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
