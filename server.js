@@ -1974,19 +1974,40 @@ async function processWhatsAppMessage(from, text, customerName) {
   if (lead) {
     let prods = [];
     try { prods = JSON.parse(lead.products_interested || '[]'); } catch(e) {}
-    leadContext = `\nCONTEXTO DEL LEAD:
-- Fuente: ${lead.source === 'landing' ? 'Landing page (escaneo QR en tienda)' : lead.source === 'terra_qr' ? 'Terra en tienda (escaneo QR)' : 'Contacto directo WhatsApp'}
-- Tienda: ${lead.store_name || 'No especificada'}
-- Pisos de interés: ${prods.length > 0 ? prods.join(', ') : 'No especificados'}
-- Estado: ${lead.status === 'new' ? 'Lead nuevo' : lead.status === 'contacted' ? 'Ya contactado' : lead.status}
-- Notas: ${lead.notes || 'Sin notas'}
 
-ESTRATEGIA PARA ESTE LEAD:
-${lead.source === 'landing' || lead.source === 'terra_qr' ? '- Este cliente VIO el piso en tienda o landing. Ya tiene interés real. Enfócate en cerrar: ofrece cotización, pregunta m², sugiere pisos complementarios.' : '- Lead orgánico. Descubre qué necesita y guíalo al producto ideal.'}
-- Si ya sabe qué piso quiere, pregunta cuántos m² necesita y en qué ciudad para cotizar
-- Si está indeciso, sugiere 2-3 opciones del catálogo y explica por qué cada una
-- Sugiere pisos similares o complementarios cuando sea natural
-- Si ya tienes sus datos (m², ciudad, producto), ofrece conectarlo con la tienda más cercana`;
+    // Get store info if available
+    let storeInfo = null;
+    if (lead.store_name) {
+      storeInfo = queryOne('SELECT name, city, state, address, phone, whatsapp FROM stores WHERE name LIKE ? OR slug LIKE ?',
+        [`%${lead.store_name}%`, `%${lead.store_name}%`]);
+    }
+
+    // Get product prices for interested products
+    let productPrices = '';
+    if (prods.length > 0) {
+      const prodData = prods.map(pName => queryOne('SELECT name, base_price, format FROM products WHERE LOWER(name) LIKE ?', [`%${pName.toLowerCase()}%`])).filter(Boolean);
+      if (prodData.length > 0) {
+        productPrices = prodData.map(p => `${p.name}: $${p.base_price || 'consultar'}/m² · ${p.format || ''}`).join(', ');
+      }
+    }
+
+    const storeCity = storeInfo ? `${storeInfo.city || ''}, ${storeInfo.state || ''}`.trim().replace(/^,|,$/g, '') : '';
+    const storePhone = storeInfo ? (storeInfo.whatsapp || storeInfo.phone || '') : '';
+
+    leadContext = `\nCONTEXTO DEL LEAD (YA TIENES ESTA INFO, ÚSALA):
+- Fuente: ${lead.source === 'landing' ? 'Escaneó QR en tienda' : lead.source === 'terra_qr' ? 'Usó Terra en tienda' : 'WhatsApp directo'}
+- Tienda: ${lead.store_name || 'No especificada'}${storeCity ? ' (' + storeCity + ')' : ''}${storePhone ? ' · Tel: ' + storePhone : ''}
+- Pisos que le interesan: ${prods.length > 0 ? prods.join(', ') : 'No especificados'}
+${productPrices ? '- Precios: ' + productPrices : ''}
+- Notas: ${lead.notes || ''}
+
+IMPORTANTE PARA ESTE LEAD:
+${lead.source === 'landing' || lead.source === 'terra_qr' ? '- Este cliente ESTUVO EN LA TIENDA o vio el producto. Ya tiene interés real.' : '- Lead orgánico.'}
+${storeCity ? '- YA SABES su ciudad (' + storeCity + ') — NO le preguntes ciudad.' : ''}
+${lead.store_name ? '- YA SABES su tienda (' + lead.store_name + ') — NO le preguntes tienda.' : ''}
+${productPrices ? '- YA TIENES precios — dáselos directamente cuando pregunte.' : ''}
+- Solo necesitas preguntarle los m² para darle cotización
+- Si ya dijo m², calcula el total (precio × m² × 1.1 para merma) y dale el estimado directo`;
   }
 
   // Get product catalog (compact)
@@ -2011,9 +2032,10 @@ REGLAS ESTRICTAS:
 - PROHIBIDO: listas con viñetas, formularios, preguntas múltiples, mensajes largos
 
 FLUJO DE CONVERSIÓN (una pregunta a la vez):
-1. Cliente muestra interés → "Excelente elección! ¿Cuántos m² necesitas?"
-2. Da m² → "¿En qué ciudad es tu proyecto?"
-3. Da ciudad → "Listo! La tienda más cercana te contactará para cotizarte. ¿Algo más?"
+1. Cliente muestra interés → "Excelente! ¿Cuántos m² necesitas?"
+2. Da m² → Si ya sabes tienda/ciudad del contexto, calcula directo: "Para 20 m² de DAYTONA serían aprox $X (incluye 10% de merma). Pasa a [tienda] para cerrar tu compra!"
+3. Si NO sabes ciudad → "¿En qué ciudad es tu proyecto?"
+4. Da ciudad → "Listo! Te cotizo: X m² × $Y = $Z aprox. La tienda más cercana te contactará."
 ${leadContext}
 CESANTONI: Empresa mexicana premium de porcelanato. 123 productos. 407 tiendas en México. Tecnología HD, gran formato, garantía.
 TÉCNICO: PEI 3=toda la casa, PEI 4=comercios, PEI 5=industrial. Mate=no resbala. Porcelánico=el más resistente. <0.5% absorción=exterior/baño.
