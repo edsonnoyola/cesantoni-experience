@@ -36,31 +36,25 @@
             position: relative;
         }
 
-        /* Header */
+        /* Header — compact */
         .header {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 16px 24px;
+            padding: 12px 20px;
             border-bottom: 1px solid var(--gray-dark);
         }
-        .header-logo { height: 32px; width: auto; }
+        .header-logo { height: 24px; width: auto; opacity: 0.8; }
         .header-left { display: flex; align-items: center; gap: 12px; }
         .header-label {
-            font-size: 0.6rem; letter-spacing: 0.25em; text-transform: uppercase;
-            color: var(--gold); border: 1px solid var(--gold); padding: 6px 12px;
+            font-size: 0.55rem; letter-spacing: 0.2em; text-transform: uppercase;
+            color: var(--gold); border: 1px solid rgba(201,169,98,0.4); padding: 4px 10px;
         }
-        .header-right { text-align: right; display: flex; align-items: center; gap: 10px; }
+        .header-right { text-align: right; display: flex; align-items: center; gap: 8px; }
         .header-store {
-            font-size: 0.55rem; letter-spacing: 0.15em; text-transform: uppercase;
+            font-size: 0.5rem; letter-spacing: 0.15em; text-transform: uppercase;
             color: var(--gray-light); margin-top: 2px;
         }
-        /* Auto-listen toggle */
-        .auto-listen-toggle {
-            display: none; font-size: 0.55rem; letter-spacing: 0.1em;
-            color: var(--gray); background: var(--gray-dark); border: 1px solid var(--gray);
-            padding: 4px 8px; border-radius: 10px; cursor: pointer; text-transform: uppercase;
-        }
-        .auto-listen-toggle.active { color: var(--gold); border-color: var(--gold); }
-        .auto-listen-toggle.show { display: inline-block; }
+        /* Auto-listen toggle — hidden from UI, still functional */
+        .auto-listen-toggle { display: none !important; }
 
         /* Main area */
         .main {
@@ -96,32 +90,37 @@
             display: flex; align-items: center; justify-content: center;
         }
 
-        /* Orb */
+        /* Orb — compact, grows when product shown */
         .orb-wrapper {
-            position: relative; width: 224px; height: 224px;
-            margin-bottom: 30px; flex-shrink: 0;
+            position: relative; width: 160px; height: 160px;
+            margin-bottom: 16px; flex-shrink: 0;
             display: flex; align-items: center; justify-content: center;
-            transition: transform 0.4s ease;
+            transition: all 0.5s ease;
         }
+        .app.has-scanned .orb-wrapper { width: 180px; height: 180px; }
         .orb-container {
-            position: relative; width: 180px; height: 180px;
+            position: relative; width: 130px; height: 130px;
             border-radius: 50%; overflow: hidden;
+            transition: all 0.5s ease;
         }
+        .app.has-scanned .orb-container { width: 150px; height: 150px; }
         .orb {
             width: 100%; height: 100%; border-radius: 50%;
             background: radial-gradient(circle at 40% 40%, var(--gold-light), var(--gold-dark));
             opacity: 0.3; transition: all 0.5s ease;
         }
         .orb-ring {
-            position: absolute; inset: calc(50% - 100px); width: 200px; height: 200px;
+            position: absolute; inset: calc(50% - 74px); width: 148px; height: 148px;
             border-radius: 50%; border: 1px solid var(--gold); opacity: 0.2;
             transition: all 0.5s ease; pointer-events: none;
         }
+        .app.has-scanned .orb-ring { inset: calc(50% - 82px); width: 164px; height: 164px; }
         .orb-ring-2 {
-            position: absolute; inset: calc(50% - 112px); width: 224px; height: 224px;
+            position: absolute; inset: calc(50% - 80px); width: 160px; height: 160px;
             border-radius: 50%; border: 1px solid var(--gold); opacity: 0.1;
             transition: all 0.5s ease; pointer-events: none;
         }
+        .app.has-scanned .orb-ring-2 { inset: calc(50% - 90px); width: 180px; height: 180px; }
         /* Product images inside orb (cross-dissolve Phase 5c) */
         .orb-product-img {
             position: absolute; inset: 0; width: 100%; height: 100%;
@@ -175,18 +174,18 @@
 
         /* Speech bubble */
         .speech {
-            text-align: center; max-width: 320px;
-            margin-bottom: 20px; min-height: 60px;
-            display: flex; align-items: center; justify-content: center;
+            text-align: center; max-width: 300px;
+            margin-bottom: 12px; min-height: 40px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
         .speech-text {
-            font-size: 1rem; font-weight: 300; color: var(--gray-light);
-            line-height: 1.7; transition: opacity 0.3s;
+            font-size: 0.88rem; font-weight: 300; color: var(--gray-light);
+            line-height: 1.65; transition: opacity 0.3s;
         }
         .app.speaking .speech-text { color: var(--white); }
         .speech-text.greeting {
             font-family: 'Cormorant Garamond', serif;
-            font-size: 1.3rem; color: var(--gold-light);
+            font-size: 1.15rem; color: var(--gold-light);
         }
 
         /* User transcript */
@@ -196,21 +195,22 @@
             font-style: italic; max-width: 300px;
         }
 
-        /* Product card */
+        /* Product card — compact */
         .product-card {
-            display: none; width: 100%; max-width: 320px;
+            display: none; width: 100%; max-width: 300px;
             background: var(--charcoal); border: 1px solid var(--gray-dark);
-            margin-bottom: 20px; overflow: hidden;
+            margin-bottom: 10px; overflow: hidden;
             cursor: pointer; flex-shrink: 0;
             transition: transform 0.4s ease, opacity 0.4s ease;
             transform: translateY(20px); opacity: 0;
+            border-radius: 6px;
         }
         .product-card.show { display: block; transform: translateY(0); opacity: 1; }
-        .product-card:hover { transform: translateY(-3px); }
-        .product-card-inner { display: flex; align-items: center; gap: 16px; padding: 16px; }
+        .product-card:hover { transform: translateY(-2px); }
+        .product-card-inner { display: flex; align-items: center; gap: 12px; padding: 10px 14px; }
         .product-card-img {
-            width: 70px; height: 70px; object-fit: cover; flex-shrink: 0;
-            border: 1px solid var(--gray-dark);
+            width: 50px; height: 50px; object-fit: cover; flex-shrink: 0;
+            border: 1px solid var(--gray-dark); border-radius: 4px;
         }
         .product-card-info { flex: 1; }
         .product-card-name {
@@ -239,30 +239,30 @@
         }
         .visited-badge.show { display: flex; }
 
-        /* Mic button */
+        /* Mic button — smaller, inline with input */
         .mic-area {
-            padding: 16px 0 20px; flex-shrink: 0;
-            display: flex; flex-direction: column; align-items: center; gap: 10px;
+            padding: 8px 0 12px; flex-shrink: 0;
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
         }
         .mic-btn {
-            width: 72px; height: 72px; border-radius: 50%;
+            width: 56px; height: 56px; border-radius: 50%;
             background: var(--gold); border: none; color: var(--black);
             cursor: pointer; display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 20px rgba(201,169,98,0.3);
+            box-shadow: 0 3px 15px rgba(201,169,98,0.25);
             transition: all 0.3s ease;
         }
-        .mic-btn:hover { transform: scale(1.08); box-shadow: 0 6px 30px rgba(201,169,98,0.5); }
+        .mic-btn:hover { transform: scale(1.06); }
         .mic-btn:active { transform: scale(0.95); }
-        .mic-btn svg { width: 28px; height: 28px; }
+        .mic-btn svg { width: 22px; height: 22px; }
 
         .app.listening .mic-btn {
-            background: #E74C3C; box-shadow: 0 4px 20px rgba(231,76,60,0.4);
+            background: #E74C3C; box-shadow: 0 3px 15px rgba(231,76,60,0.4);
         }
         .app.thinking .mic-btn,
         .app.speaking .mic-btn { opacity: 0.4; pointer-events: none; }
 
         .mic-label {
-            font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase;
+            font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
             color: var(--gray);
         }
         .app.listening .mic-label { color: #E74C3C; }
@@ -281,25 +281,28 @@
         .scan-btn svg { width: 22px; height: 22px; }
         .scan-btn-label { display: none; }
 
-        /* Store mode: prominent center scan button */
+        /* Store mode: scan is THE primary action */
         .app.store-mode .scan-btn {
             position: relative; right: auto; bottom: auto;
-            width: 64px; height: 64px;
-            border: 2px solid var(--gold);
-            animation: scanPulse 2s ease-in-out infinite;
-            flex-direction: column;
+            width: auto; height: auto; border-radius: 28px;
+            padding: 12px 28px;
+            border: 1.5px solid var(--gold);
+            animation: scanPulse 2.5s ease-in-out infinite;
+            flex-direction: row; gap: 8px;
         }
         .app.store-mode .scan-btn .scan-btn-label {
-            display: block; font-size: 0.5rem; letter-spacing: 0.1em;
-            text-transform: uppercase; margin-top: 2px;
+            display: block; font-size: 0.7rem; letter-spacing: 0.1em;
+            text-transform: uppercase; font-weight: 500;
         }
-        .app.store-mode .scan-btn svg { width: 26px; height: 26px; }
-        /* After first scan, keep visible but adjust position */
+        .app.store-mode .scan-btn svg { width: 20px; height: 20px; }
+        /* After first scan, make it smaller pill */
         .app.store-mode.has-scanned .scan-btn {
             position: relative; right: auto; bottom: auto;
-            width: 56px; height: 56px; animation: scanPulse 3s ease-in-out infinite;
+            width: auto; height: auto; padding: 8px 20px;
+            border-radius: 24px;
+            animation: scanPulse 3s ease-in-out infinite;
         }
-        .app.store-mode.has-scanned .scan-btn .scan-btn-label { display: block; font-size: 0.45rem; }
+        .app.store-mode.has-scanned .scan-btn .scan-btn-label { display: block; font-size: 0.6rem; }
 
         @keyframes scanPulse {
             0%, 100% { box-shadow: 0 0 0 0 rgba(201,169,98,0.4); }
@@ -346,14 +349,15 @@
         .nfc-dot { width: 6px; height: 6px; border-radius: 50%; background: #4CAF50; animation: nfcPulse 2s infinite; }
         @keyframes nfcPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        /* Help/call seller button */
+        /* Help/call seller button — top left, subtle */
         .help-btn {
-            display: none; position: fixed; bottom: 20px; left: 20px;
-            background: var(--gray-dark); border: 1px solid var(--gray);
-            color: var(--gray-light); padding: 8px 14px; border-radius: 20px;
-            font-size: 0.65rem; letter-spacing: 0.08em; cursor: pointer;
+            display: none; position: fixed; top: 14px; left: 16px;
+            background: rgba(45,45,45,0.8); border: 1px solid var(--gray);
+            color: var(--gray-light); padding: 6px 12px; border-radius: 16px;
+            font-size: 0.6rem; letter-spacing: 0.06em; cursor: pointer;
             font-family: 'Montserrat', sans-serif; z-index: 15;
-            align-items: center; gap: 6px; transition: all 0.3s;
+            align-items: center; gap: 5px; transition: all 0.3s;
+            backdrop-filter: blur(8px);
         }
         .app.store-mode .help-btn { display: flex; }
         .help-btn:hover { border-color: var(--gold); color: var(--gold); }
@@ -397,35 +401,36 @@
             border-radius: 4px;
         }
 
-        /* Suggestions */
+        /* Suggestions — compact chips */
         .suggestions {
             display: flex; flex-wrap: wrap; justify-content: center;
-            gap: 8px; padding: 0 20px 16px; max-width: 400px; margin: 0 auto;
+            gap: 6px; padding: 0 16px 10px; max-width: 360px; margin: 0 auto;
         }
         .suggestion-btn {
-            background: var(--gray-dark); border: 1px solid var(--gray);
-            color: var(--gray-light); padding: 8px 14px; font-size: 0.72rem;
+            background: var(--gray-dark); border: 1px solid rgba(107,107,107,0.5);
+            color: var(--gray-light); padding: 6px 12px; font-size: 0.65rem;
             cursor: pointer; transition: all 0.2s; font-family: 'Montserrat', sans-serif;
+            border-radius: 16px;
         }
         .suggestion-btn:hover { border-color: var(--gold); color: var(--gold); }
 
-        /* Text input — always visible in store mode (Phase 3b) */
+        /* Text input */
         .text-input-area {
-            display: none; padding: 0 20px 12px;
+            display: none; padding: 0 16px 8px;
         }
         .text-input-area.show { display: block; }
         .text-input-row {
-            display: flex; gap: 8px; max-width: 320px; margin: 0 auto;
+            display: flex; gap: 6px; max-width: 300px; margin: 0 auto;
         }
         .text-input-row input {
             flex: 1; background: var(--charcoal); border: 1px solid var(--gray-dark);
-            color: var(--white); padding: 10px 14px; font-size: 0.8rem;
-            font-family: 'Montserrat', sans-serif; outline: none; border-radius: 4px;
+            color: var(--white); padding: 8px 12px; font-size: 0.75rem;
+            font-family: 'Montserrat', sans-serif; outline: none; border-radius: 20px;
         }
         .text-input-row input:focus { border-color: var(--gold); }
         .text-input-row button {
             background: var(--gold); border: none; color: var(--black);
-            padding: 10px 16px; cursor: pointer; font-size: 0.9rem; border-radius: 4px;
+            padding: 8px 14px; cursor: pointer; font-size: 0.8rem; border-radius: 20px;
         }
 
         /* Welcome screen */
@@ -567,7 +572,6 @@
                 <img src="/images/logo-cesantoni.png" alt="Cesantoni" class="header-logo">
             </div>
             <div class="header-right">
-                <span class="auto-listen-toggle" id="auto-listen-toggle" onclick="toggleAutoListen()">Auto</span>
                 <div>
                     <div class="header-label">Terra</div>
                     <div class="header-store" id="header-store"></div>
@@ -597,7 +601,6 @@
             <!-- Speech -->
             <div class="speech">
                 <div class="speech-text greeting" id="speech-text"></div>
-                <div id="speech-name" style="font-size:0.85rem;color:var(--gold);text-align:center;margin-top:8px;opacity:0;transition:opacity 0.5s"></div>
             </div>
 
             <!-- User transcript -->
@@ -628,8 +631,8 @@
             </button>
         </div>
 
-        <!-- NFC active badge -->
-        <div class="nfc-badge" id="nfc-badge"><div class="nfc-dot"></div> NFC activo</div>
+        <!-- NFC active badge (hidden, functional only) -->
+        <div class="nfc-badge" id="nfc-badge" style="display:none!important"><div class="nfc-dot"></div> NFC</div>
 
         <!-- Mic -->
         <div class="mic-area">
@@ -809,8 +812,7 @@
             // Apply store mode class
             if (storeMode) {
                 app.classList.add('store-mode');
-                document.getElementById('auto-listen-toggle').classList.add('show');
-                if (autoListenEnabled) document.getElementById('auto-listen-toggle').classList.add('active');
+                // auto-listen still functional, toggle removed from UI
                 document.getElementById('text-input-area').classList.add('show');
             }
 
@@ -1003,13 +1005,10 @@
                 }
             }
 
-            // Greeting — warm introduction, name shown separately
-            const speechNameEl = document.getElementById('speech-name');
-
+            // Greeting — warm, short introduction
             if (storeMode && !productSlug) {
                 const storeGreeting = `Hola ${customerName}! Soy Terra. Escanea el QR de cualquier piso que te guste y te cuento todo sobre el.`;
                 speechText.textContent = storeGreeting;
-                speechNameEl.textContent = '';
                 setTimeout(() => speak(storeGreeting), 300);
 
                 updateSuggestions([
@@ -1020,7 +1019,6 @@
             } else {
                 const defaultGreeting = `Hola ${customerName}! Soy Terra. Escanea el QR de cualquier piso y te cuento todo sobre el.`;
                 speechText.textContent = defaultGreeting;
-                speechNameEl.textContent = '';
                 setTimeout(() => speak(defaultGreeting), 300);
 
                 updateSuggestions([
