@@ -958,13 +958,13 @@
         <!-- Benefits -->
         <section class="benefits">
             <div class="section-container">
-                <span class="section-label">Por que elegir este piso?</span>
+                <span class="section-label">¿Por qué elegir este piso?</span>
                 <h2 class="section-title">Excelencia en cada detalle</h2>
                 <div class="benefits-grid">
                     <div class="benefit-card">
                         <div class="benefit-icon">&#9670;</div>
                         <h3 class="benefit-title">Resistencia Superior</h3>
-                        <p class="benefit-text">Durabilidad excepcional para areas de alto trafico. Resistente a rayones, manchas y humedad.</p>
+                        <p class="benefit-text">Durabilidad excepcional para áreas de alto tráfico. Resistente a rayones, manchas y humedad.</p>
                     </div>
                     <div class="benefit-card">
                         <div class="benefit-icon">&#10023;</div>
@@ -997,7 +997,7 @@
                         <span class="section-label" style="color:var(--gold)">Te interesa este piso?</span>
                         <h2 class="section-title" style="color:var(--white);margin-bottom:20px">Recibe cotización y fotos por WhatsApp</h2>
                         <p style="color:var(--gray-light);font-size:0.95rem;line-height:1.8;margin-bottom:30px">
-                            Nuestro asistente Terra te envia al instante toda la información de este piso: imágenes, especificaciones, precios y disponibilidad. Sin compromisos.
+                            Nuestro asistente Terra te envía al instante toda la información de este piso: imágenes, especificaciones, precios y disponibilidad. Sin compromisos.
                         </p>
                         <a href="#" class="wa-capture-btn" id="wa-capture-btn" target="_blank">
                             <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
@@ -1013,14 +1013,14 @@
                                 <div class="wa-mock-avatar">T</div>
                                 <div>
                                     <div style="font-weight:600;font-size:0.8rem">Terra · Cesantoni</div>
-                                    <div style="font-size:0.65rem;color:#25D366">en linea</div>
+                                    <div style="font-size:0.65rem;color:#25D366">en línea</div>
                                 </div>
                             </div>
                             <div class="wa-mock-body">
                                 <div class="wa-mock-msg bot">¡Hola! Aquí tienes la info del piso que viste 👇</div>
                                 <div class="wa-mock-img" id="wa-mock-img"></div>
                                 <div class="wa-mock-msg bot"><strong id="wa-mock-name">Producto</strong><br>📐 <span id="wa-mock-format">Formato</span><br>✨ <span id="wa-mock-finish">Acabado</span></div>
-                                <div class="wa-mock-msg user">Cuanto cuesta?</div>
+                                <div class="wa-mock-msg user">¿Cuánto cuesta?</div>
                                 <div class="wa-mock-msg bot">Te preparo la cotización! 😊</div>
                             </div>
                         </div>
@@ -1082,7 +1082,7 @@
             <a href="/" class="logo-link">
                 <img src="/images/logo-cesantoni.png" alt="Cesantoni" class="footer-logo">
             </a>
-            <p>© 2026 Cesantoni. Tradicion e innovacion desde 1998.</p>
+            <p>© 2026 Cesantoni. Tradición e innovación desde 1998.</p>
         </footer>
     </main>
 
@@ -1100,12 +1100,12 @@
                 <button class="chat-close" onclick="toggleChat()">✕</button>
             </div>
             <div class="chat-messages" id="chat-messages">
-                <div class="chat-msg bot">Hola, soy tu asistente Cesantoni. Preguntame sobre este producto.</div>
+                <div class="chat-msg bot">Hola, soy tu asistente Cesantoni. Pregúntame sobre este producto.</div>
             </div>
             <div class="chat-suggestions" id="chat-suggestions">
                 <button onclick="sendSuggestion(this)">¿Es resistente?</button>
-                <button onclick="sendSuggestion(this)">¿Donde se puede usar?</button>
-                <button onclick="sendSuggestion(this)">¿Como se limpia?</button>
+                <button onclick="sendSuggestion(this)">¿Dónde se puede usar?</button>
+                <button onclick="sendSuggestion(this)">¿Cómo se limpia?</button>
             </div>
             <div class="chat-input-row">
                 <input type="text" id="chat-input" placeholder="Escribe tu pregunta..." onkeydown="if(event.key==='Enter')sendChat()">
@@ -1631,7 +1631,7 @@
                 typingDiv.remove();
                 const errDiv = document.createElement('div');
                 errDiv.className = 'chat-msg bot';
-                errDiv.textContent = 'Error de conexion. Intenta de nuevo.';
+                errDiv.textContent = 'Error de conexión. Intenta de nuevo.';
                 messages.appendChild(errDiv);
             }
             messages.scrollTop = messages.scrollHeight;

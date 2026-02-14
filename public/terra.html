@@ -681,7 +681,7 @@
         <div class="welcome-store" id="welcome-store"></div>
 
         <p class="welcome-tagline" id="welcome-tagline">
-            Escanea el QR de cualquier piso, <strong>preguntame lo que quieras</strong> y te ayudo a elegir el indicado para ti.
+            Escanea el QR de cualquier piso, <strong>pregúntame lo que quieras</strong> y te ayudo a elegir el indicado para ti.
         </p>
 
         <div class="welcome-form">
@@ -947,7 +947,7 @@
         function initWelcome() {
             if (storeMode) {
                 document.getElementById('welcome-subtitle').textContent = 'Tu asistente inteligente de pisos';
-                document.getElementById('welcome-tagline').innerHTML = 'Recorre la tienda, <strong>escanea el QR</strong> de cualquier piso que te guste y preguntame lo que necesites saber.';
+                document.getElementById('welcome-tagline').innerHTML = 'Recorre la tienda, <strong>escanea el QR</strong> de cualquier piso que te guste y pregúntame lo que necesites saber.';
             }
 
             // Restore saved name (4-hour expiry)
@@ -1115,7 +1115,7 @@
                 recognition.onerror = (event) => {
                     if (event.error === 'not-allowed') {
                         document.getElementById('text-input-area').classList.add('show');
-                        micLabel.textContent = 'Microfono no disponible';
+                        micLabel.textContent = 'Micrófono no disponible';
                     }
                     stopListening();
                 };
@@ -1166,17 +1166,17 @@
                             })
                         });
                         const introData = await introRes.json();
-                        const introSpeech = introData.speech || `${hi()}Este es ${scannedProduct.name}. Preguntame lo que quieras.`;
+                        const introSpeech = introData.speech || `${hi()}Este es ${scannedProduct.name}. Pregúntame lo que quieras.`;
                         speak(introSpeech, scannedProduct);
 
                         updateSuggestions([
-                            'Me gusta! Cuentame mas',
-                            'Sirve para mi cocina?',
-                            'Se limpia facil?',
-                            'Que mas opciones hay?'
+                            '¡Me gusta! Cuéntame más',
+                            '¿Sirve para mi cocina?',
+                            '¿Se limpia fácil?',
+                            '¿Qué más opciones hay?'
                         ]);
                     } catch (e) {
-                        speak(`${hi()}Este es ${scannedProduct.name}. Preguntame lo que quieras sobre este piso.`, scannedProduct);
+                        speak(`${hi()}Este es ${scannedProduct.name}. Pregúntame lo que quieras sobre este piso.`, scannedProduct);
                     }
                     return;
                 }
@@ -1184,21 +1184,21 @@
 
             // Greeting — warm, short introduction
             if (storeMode && !productSlug) {
-                const storeGreeting = `${hola()} Soy Terra. Escanea el QR de cualquier piso que te guste y te cuento todo sobre el.`;
+                const storeGreeting = `${hola()} Soy Terra. Escanea el QR de cualquier piso que te guste y te cuento todo sobre él.`;
                 setTimeout(() => speak(storeGreeting), 300);
 
                 updateSuggestions([
-                    'Que tipo de pisos hay?',
-                    'Cual me recomiendas para cocina?',
+                    '¿Qué tipo de pisos hay?',
+                    '¿Cuál me recomiendas para cocina?',
                     'Escanear un piso'
                 ]);
             } else {
-                const defaultGreeting = `${hola()} Soy Terra. Escanea el QR de cualquier piso y te cuento todo sobre el.`;
+                const defaultGreeting = `${hola()} Soy Terra. Escanea el QR de cualquier piso y te cuento todo sobre él.`;
                 setTimeout(() => speak(defaultGreeting), 300);
 
                 updateSuggestions([
-                    'Que es porcelanato?',
-                    'Cual es el mas resistente?',
+                    '¿Qué es porcelanato?',
+                    '¿Cuál es el más resistente?',
                     'Escanear un piso'
                 ]);
             }
@@ -1449,7 +1449,7 @@
                     updateSuggestions(getProductSuggestions(data.product));
                 }
 
-                speak(data.speech || `Disculpa${customerName ? ' ' + customerName : ''}, no entendi. Podrias repetirlo?`, productForBubble);
+                speak(data.speech || `Disculpa${customerName ? ' ' + customerName : ''}, no entendí. ¿Podrías repetirlo?`, productForBubble);
 
                 // Save session to sessionStorage
                 saveSessionState();
@@ -1561,7 +1561,7 @@
             currentProduct = fullProduct;
             showProduct(fullProduct);
             updateJourneyStrip();
-            processMessage(`Cuentame mas sobre el piso ${p.name}`);
+            processMessage(`Cuéntame más sobre el piso ${p.name}`);
         }
 
         // ===== SESSION PERSISTENCE (Phase 1e) =====
@@ -1581,7 +1581,7 @@
 
         async function sendWhatsAppSummary() {
             if (visitedProducts.length === 0) {
-                speak(`Todavia no hemos visto ningun producto. Dime que te interesa y empezamos.`);
+                speak(`Todavía no hemos visto ningún producto. Dime qué te interesa y empezamos.`);
                 resetAppState();
                 return;
             }
@@ -1616,23 +1616,23 @@
             const finish = (product.finish || '').toLowerCase();
 
             if (cat.includes('mader') || cat.includes('wood')) {
-                suggestions.push('Es mejor que poner madera real?');
+                suggestions.push('¿Es mejor que poner madera real?');
             } else if (cat.includes('marmol') || cat.includes('marble') || cat.includes('piedra')) {
-                suggestions.push('Se ve igual que marmol real?');
+                suggestions.push('¿Se ve igual que mármol real?');
             }
 
             if (finish.includes('mate') || finish.includes('textur')) {
-                suggestions.push('No me voy a resbalar verdad?');
+                suggestions.push('¿No me voy a resbalar verdad?');
             } else if (finish.includes('brill') || finish.includes('pulid')) {
-                suggestions.push('Se marca mucho con las huellas?');
+                suggestions.push('¿Se marca mucho con las huellas?');
             }
 
-            suggestions.push('Como lo cuido y limpio?');
+            suggestions.push('¿Cómo lo cuido y limpio?');
 
             if (visitedProducts.length >= 2) {
-                suggestions.push('Cual me conviene mas de los que vi?');
+                suggestions.push('¿Cuál me conviene más de los que vi?');
             } else {
-                suggestions.push('Que mas me recomiendas?');
+                suggestions.push('¿Qué más me recomiendas?');
             }
 
             suggestions.push('Lo puedo poner en mi bano?');
@@ -1661,7 +1661,7 @@
                 if (Date.now() - lastInteractionTime > 300000 && !idleReminderSent) { // 5 min
                     idleReminderSent = true;
                     if (!app.classList.contains('speaking') && !app.classList.contains('thinking') && !isListening) {
-                        speak(`${customerName ? customerName + ', s' : 'S'}igo aqui! Escanea otro piso o preguntame algo.`);
+                        speak(`${customerName ? customerName + ', s' : 'S'}igo aquí! Escanea otro piso o pregúntame algo.`);
                     }
                 }
             }, 30000);
@@ -1710,7 +1710,7 @@
                 .catch(err => {
                     console.error('Camera error:', err);
                     closeScanner();
-                    speak('No pude abrir la camara. Intenta escanear el QR con tu camara normal.');
+                    speak('No pude abrir la cámara. Intenta escanear el QR con tu cámara normal.');
                 });
         }
 
@@ -1762,7 +1762,7 @@
                     return;
                 }
             }
-            speak('No reconoci ese QR. Intenta con otro.');
+            speak('No reconocí ese QR. Intenta con otro.');
         }
 
         async function loadProductBySlug(slug) {
