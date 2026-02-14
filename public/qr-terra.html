@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Terra por Tienda - Cesantoni</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; }
+    .header { background: linear-gradient(135deg, #1a1a2e, #16213e); padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+    .header h1 { font-size: 22px; display: flex; align-items: center; gap: 10px; }
+    .header a { color: #c9a227; text-decoration: none; font-size: 14px; }
+    .filters { padding: 16px 30px; background: #111; border-bottom: 1px solid #222; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .filters select, .filters input { padding: 8px 14px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 14px; }
+    .filters input { flex: 1; min-width: 200px; }
+    .filters .count { color: #c9a227; font-weight: 600; font-size: 14px; margin-left: auto; }
+    .actions-bar { padding: 12px 30px; background: #0a0a0a; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #222; }
+    .actions-bar button { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .actions-bar button:hover { transform: translateY(-1px); }
+    .btn-primary { background: #c9a227; color: #000; }
+    .btn-secondary { background: #333; color: #fff; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; padding: 20px 30px; }
+    .card { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; overflow: hidden; transition: border-color 0.2s; }
+    .card:hover { border-color: #555; }
+    .card-qr { display: flex; justify-content: center; padding: 20px; background: #fff; }
+    .card-info { padding: 16px; }
+    .card-info h3 { font-size: 14px; margin-bottom: 6px; }
+    .card-info .meta { font-size: 12px; color: #888; line-height: 1.6; }
+    .card-info .meta span { display: block; }
+    .card-info .meta .highlight { color: #c9a227; }
+    .card-info .url { font-size: 10px; color: #555; margin-top: 8px; word-break: break-all; font-family: monospace; background: #111; padding: 6px 8px; border-radius: 4px; }
+    .toast { position: fixed; bottom: 20px; right: 20px; background: #1a472a; color: #4ade80; padding: 15px 25px; border-radius: 8px; display: none; z-index: 1000; }
+    .toast.show { display: block; }
+    @media print {
+      body { background: #fff; color: #000; }
+      .header, .filters, .actions-bar, .toast { display: none; }
+      .grid { padding: 10px; gap: 10px; }
+      .card { border: 1px solid #ddd; break-inside: avoid; }
+      .card-info .meta { color: #333; }
+      .card-info .url { color: #666; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🤖 QR Terra por Tienda</h1>
+    <div><a href="/">← Dashboard</a> | <a href="/qr-tiendas.html">QR Productos</a></div>
+  </div>
+
+  <div class="filters">
+    <select id="filterDist"><option value="">Distribuidor</option></select>
+    <select id="filterState"><option value="">Estado</option></select>
+    <select id="filterCity"><option value="">Ciudad</option></select>
+    <input type="text" id="search" placeholder="Buscar tienda...">
+    <div class="count"><span id="count">0</span> tiendas</div>
+  </div>
+
+  <div class="actions-bar">
+    <button class="btn-primary" onclick="window.print()">🖨 Imprimir QRs</button>
+    <button class="btn-secondary" onclick="copyAllURLs()">📋 Copiar URLs</button>
+    <button class="btn-secondary" onclick="downloadCSV()">📊 Exportar CSV</button>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="toast" id="toast"></div>
+
+<script>
+const BASE = window.location.origin;
+let stores = [];
+let distributors = {};
+
+async function init() {
+  const [storeRes, distRes] = await Promise.all([
+    fetch('/api/stores'),
+    fetch('/api/distributors').catch(() => ({ json: () => [] }))
+  ]);
+  stores = await storeRes.json();
+  const dists = await distRes.json();
+  dists.forEach(d => distributors[d.id] = d.name);
+
+  // Populate filters
+  const distNames = [...new Set(stores.map(s => distributors[s.distributor_id] || s.distributor || '').filter(Boolean))].sort();
+  const states = [...new Set(stores.map(s => s.state).filter(Boolean))].sort();
+  document.getElementById('filterDist').innerHTML = '<option value="">Todos los distribuidores</option>' + distNames.map(d => `<option>${d}</option>`).join('');
+  document.getElementById('filterState').innerHTML = '<option value="">Todos los estados</option>' + states.map(s => `<option>${s}</option>`).join('');
+
+  render();
+}
+
+function getFiltered() {
+  const dist = document.getElementById('filterDist').value;
+  const state = document.getElementById('filterState').value;
+  const city = document.getElementById('filterCity').value;
+  const search = document.getElementById('search').value.toLowerCase();
+
+  return stores.filter(s => {
+    const dName = distributors[s.distributor_id] || s.distributor || '';
+    if (dist && dName !== dist) return false;
+    if (state && s.state !== state) return false;
+    if (city && s.city !== city) return false;
+    if (search && !s.name.toLowerCase().includes(search) && !(s.city || '').toLowerCase().includes(search)) return false;
+    return true;
+  });
+}
+
+function updateCities() {
+  const state = document.getElementById('filterState').value;
+  const dist = document.getElementById('filterDist').value;
+  let filtered = stores;
+  if (state) filtered = filtered.filter(s => s.state === state);
+  if (dist) filtered = filtered.filter(s => (distributors[s.distributor_id] || s.distributor) === dist);
+  const cities = [...new Set(filtered.map(s => s.city).filter(Boolean))].sort();
+  document.getElementById('filterCity').innerHTML = '<option value="">Todas las ciudades</option>' + cities.map(c => `<option>${c}</option>`).join('');
+}
+
+function render() {
+  const filtered = getFiltered();
+  document.getElementById('count').textContent = filtered.length;
+  const grid = document.getElementById('grid');
+
+  grid.innerHTML = filtered.map(s => {
+    const dName = distributors[s.distributor_id] || s.distributor || '—';
+    const url = `${BASE}/terra.html?tienda=${s.slug}`;
+    return `<div class="card">
+      <div class="card-qr"><div id="qr-${s.id}"></div></div>
+      <div class="card-info">
+        <h3>${s.name}</h3>
+        <div class="meta">
+          <span>📍 ${s.city || ''}${s.state ? ', ' + s.state : ''}</span>
+          <span>🏢 <span class="highlight">${dName}</span></span>
+          ${s.address ? `<span>📮 ${s.address}</span>` : ''}
+          ${s.whatsapp ? `<span>📱 ${s.whatsapp}</span>` : ''}
+          ${s.manager_name ? `<span>👤 ${s.manager_name}</span>` : ''}
+        </div>
+        <div class="url">${url}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Generate QRs
+  filtered.forEach(s => {
+    const el = document.getElementById(`qr-${s.id}`);
+    if (el) {
+      el.innerHTML = '';
+      new QRCode(el, { text: `${BASE}/terra.html?tienda=${s.slug}`, width: 180, height: 180, correctLevel: QRCode.CorrectLevel.M });
+    }
+  });
+}
+
+function copyAllURLs() {
+  const urls = getFiltered().map(s => `${s.name}\t${s.city || ''}\t${s.state || ''}\t${distributors[s.distributor_id] || ''}\t${BASE}/terra.html?tienda=${s.slug}`).join('\n');
+  navigator.clipboard.writeText(urls);
+  showToast('URLs copiadas al portapapeles');
+}
+
+function downloadCSV() {
+  const rows = [['Tienda', 'Ciudad', 'Estado', 'Distribuidor', 'WhatsApp', 'Gerente', 'URL Terra']];
+  getFiltered().forEach(s => {
+    rows.push([s.name, s.city || '', s.state || '', distributors[s.distributor_id] || '', s.whatsapp || '', s.manager_name || '', `${BASE}/terra.html?tienda=${s.slug}`]);
+  });
+  const csv = rows.map(r => r.map(c => `"${(c||'').replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `qr-terra-tiendas-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  showToast('CSV descargado');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Events
+document.getElementById('filterDist').addEventListener('change', () => { updateCities(); render(); });
+document.getElementById('filterState').addEventListener('change', () => { updateCities(); render(); });
+document.getElementById('filterCity').addEventListener('change', render);
+document.getElementById('search').addEventListener('input', render);
+
+init();
+</script>
+</body>
+</html>
