@@ -343,12 +343,14 @@
                     </div>
                     <div id="leads-stats" style="display:flex;justify-content:space-around;text-align:center;padding:12px 0;border-bottom:1px solid #f0f0f0;margin-bottom:8px">
                         <div><div style="font-size:1.4rem;font-weight:700" id="leads-total">-</div><div style="font-size:0.65rem;color:#888">Total</div></div>
+                        <div><div style="font-size:1.4rem;font-weight:700" id="leads-landing">-</div><div style="font-size:0.65rem;color:#888">Landing</div></div>
                         <div><div style="font-size:1.4rem;font-weight:700" id="leads-terra">-</div><div style="font-size:0.65rem;color:#888">Terra QR</div></div>
                         <div><div style="font-size:1.4rem;font-weight:700" id="leads-wa">-</div><div style="font-size:0.65rem;color:#888">WhatsApp</div></div>
                         <div><div style="font-size:1.4rem;font-weight:700" id="leads-new">-</div><div style="font-size:0.65rem;color:#888">Nuevos</div></div>
                     </div>
                     <div style="display:flex;gap:6px;padding:0 0 10px;flex-wrap:wrap">
                         <button onclick="loadLeads()" style="font-size:0.65rem;padding:4px 10px;border:1px solid #ddd;background:#fff;border-radius:12px;cursor:pointer">Todos</button>
+                        <button onclick="loadLeads('landing')" style="font-size:0.65rem;padding:4px 10px;border:1px solid #ddd;background:#fff;border-radius:12px;cursor:pointer">Landing</button>
                         <button onclick="loadLeads('terra_qr')" style="font-size:0.65rem;padding:4px 10px;border:1px solid #ddd;background:#fff;border-radius:12px;cursor:pointer">Terra QR</button>
                         <button onclick="loadLeads('whatsapp_bot')" style="font-size:0.65rem;padding:4px 10px;border:1px solid #ddd;background:#fff;border-radius:12px;cursor:pointer">WhatsApp Bot</button>
                         <button onclick="loadLeads(null,'new')" style="font-size:0.65rem;padding:4px 10px;border:1px solid #27ae60;color:#27ae60;background:#fff;border-radius:12px;cursor:pointer">Nuevos</button>
@@ -1835,6 +1837,7 @@
 
                 // Stats
                 document.getElementById('leads-total').textContent = leads.length;
+                document.getElementById('leads-landing').textContent = leads.filter(l => l.source === 'landing').length;
                 document.getElementById('leads-terra').textContent = leads.filter(l => l.source === 'terra_qr').length;
                 document.getElementById('leads-wa').textContent = leads.filter(l => l.source === 'whatsapp_bot').length;
                 document.getElementById('leads-new').textContent = leads.filter(l => l.status === 'new').length;
@@ -1846,8 +1849,8 @@
                 }
                 listEl.innerHTML = leads.map(l => {
                     const date = l.created_at ? new Date(l.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-                    const sourceIcon = l.source === 'terra_qr' ? '🏪' : '💬';
-                    const sourceLabel = l.source === 'terra_qr' ? 'Terra QR' : 'WhatsApp';
+                    const sourceIcon = l.source === 'landing' ? '🌐' : l.source === 'terra_qr' ? '🏪' : '💬';
+                    const sourceLabel = l.source === 'landing' ? 'Landing' : l.source === 'terra_qr' ? 'Terra QR' : 'WhatsApp';
                     const statusColor = l.status === 'new' ? '#27ae60' : l.status === 'contacted' ? '#f39c12' : l.status === 'converted' ? '#3498db' : '#888';
                     const statusLabel = l.status === 'new' ? 'Nuevo' : l.status === 'contacted' ? 'Contactado' : l.status === 'converted' ? 'Convertido' : l.status;
                     let products = '';
@@ -1874,7 +1877,7 @@
                 const lead = await res.json();
                 const phone = lead.phone || '';
                 const displayPhone = phone.length > 10 ? '+' + phone.slice(0,2) + ' ' + phone.slice(2,5) + ' ' + phone.slice(5,8) + ' ' + phone.slice(8) : phone;
-                const sourceLabel = lead.source === 'terra_qr' ? '🏪 Terra QR (Tienda)' : '💬 WhatsApp Bot';
+                const sourceLabel = lead.source === 'landing' ? '🌐 Landing Page' : lead.source === 'terra_qr' ? '🏪 Terra QR (Tienda)' : '💬 WhatsApp Bot';
                 let products = '';
                 try { const p = JSON.parse(lead.products_interested || '[]'); products = p.map(n => `<span style="display:inline-block;padding:2px 8px;margin:2px;background:#f0f0f0;border-radius:10px;font-size:0.7rem">${n}</span>`).join(''); } catch(e) {}
 

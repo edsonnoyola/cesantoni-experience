@@ -2141,6 +2141,68 @@ app.post('/webhook', async (req, res) => {
         return; // Don't process as normal message
       }
 
+      // Detect Landing page referral: "Hola! Vi el piso X en Y y quiero mas info. REF:SKU"
+      const landingMatch = text.match(/Vi el piso\s+(.+?)\s+en\s+(.+?)\s+y quiero mas info\.?\s*REF:(\S+)/i);
+      if (landingMatch) {
+        const lProductName = landingMatch[1].trim();
+        const lStore = landingMatch[2].trim();
+        const lSku = landingMatch[3].trim();
+
+        console.log(`🌐 Landing lead: product=${lProductName}, store=${lStore}, sku=${lSku}`);
+
+        // Save conversation
+        run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
+
+        // Look up product by SKU or name
+        let lProduct = queryOne('SELECT * FROM products WHERE LOWER(sku) = LOWER(?) OR LOWER(slug) = LOWER(?)', [lSku, lSku]);
+        if (!lProduct) {
+          lProduct = queryOne('SELECT * FROM products WHERE LOWER(name) LIKE ?', [`%${lProductName.toLowerCase()}%`]);
+        }
+
+        // Create lead
+        const existingLead = queryOne('SELECT id FROM leads WHERE phone = ?', [from]);
+        if (existingLead) {
+          // Update existing lead with landing info
+          run(`UPDATE leads SET source = 'landing', store_name = ?, products_interested = ?,
+               notes = COALESCE(notes, '') || '\n' || ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+            [lStore, JSON.stringify([lProductName]), `Landing page: ${lProductName} (${lSku}) desde ${lStore}`, existingLead.id]);
+        } else {
+          run(`INSERT INTO leads (phone, name, source, store_name, products_interested, status, notes)
+               VALUES (?, ?, 'landing', ?, ?, 'new', ?)`,
+            [from, contactName || from, lStore, JSON.stringify([lProductName]),
+             `Desde landing page. Piso: ${lProductName} (${lSku}). Tienda: ${lStore}`]);
+        }
+
+        const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
+
+        if (lProduct) {
+          // Send product image + details
+          const details = `*${lProduct.name}*\n` +
+            `📐 Formato: ${lProduct.format || 'Gran formato'}\n` +
+            `✨ Acabado: ${lProduct.finish || 'Premium'}\n` +
+            (lProduct.pei ? `💪 PEI ${lProduct.pei} — ${parseInt(lProduct.pei) >= 4 ? 'Alto tráfico' : parseInt(lProduct.pei) >= 3 ? 'Toda la casa' : 'Tráfico ligero'}\n` : '') +
+            (lProduct.usage ? `🏠 Uso: ${lProduct.usage}\n` : '') +
+            (lProduct.water_absorption ? `💧 Absorción: ${lProduct.water_absorption}%\n` : '') +
+            `\n🔗 Ver más: ${baseUrl}/p/${lProduct.sku || lProduct.slug || lProduct.id}`;
+
+          if (lProduct.image_url) {
+            await sendWhatsAppImage(from, lProduct.image_url, details);
+          } else {
+            await sendWhatsApp(from, details);
+          }
+
+          await new Promise(r => setTimeout(r, 800));
+          await sendWhatsApp(from, `Hola! 👋 Soy Terra de Cesantoni. Te mando la info del piso *${lProduct.name}* que viste.\n\n¿Quieres que te cotice? ¿O te ayudo a elegir otro piso? Escribeme lo que necesites 😊`);
+        } else {
+          await sendWhatsApp(from, `Hola! 👋 Soy Terra de Cesantoni. Vi que te interesa el piso *${lProductName}*.\n\nDejame buscarte la info y te la mando. ¿En qué más te puedo ayudar? 😊`);
+        }
+
+        run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
+          [from, 'assistant', `Landing lead: ${lProductName} (${lSku}) desde ${lStore}`]);
+
+        return;
+      }
+
       // Create lead if first message from this phone (WhatsApp bot lead)
       const existingLead = queryOne('SELECT id FROM leads WHERE phone = ?', [from]);
       if (!existingLead) {
