@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #1a1a1a; --accent: #c41e3a; --green: #28a745; --gold: #f4b942; --gray: #f5f5f5; }
+        :root { --primary: #1a1a1a; --accent: #c41e3a; --green: #28a745; --gold: #C9A962; --gold-light: #F5EED6; --gold-dark: #8B7340; --gray: #FAFAF8; --gray-100: #F5F4F0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Source Sans 3', sans-serif; background: var(--gray); color: var(--primary); }
         
@@ -15,13 +15,13 @@
         .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 220px; background: var(--primary); padding: 20px 0; z-index: 100; }
         .logo { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
         .logo h1 { font-family: 'Playfair Display', serif; color: white; font-size: 1.3rem; }
-        .logo span { color: var(--accent); font-size: 0.75rem; }
+        .logo span { color: var(--gold); font-size: 0.75rem; }
         .nav-item, a.nav-item { display: flex; align-items: center; gap: 10px; padding: 12px 20px; color: rgba(255,255,255,0.6); cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
         .nav-item:hover { background: rgba(255,255,255,0.05); color: white; }
-        .nav-item.active { background: rgba(196,30,58,0.2); color: var(--accent); border-left: 3px solid var(--accent); }
+        .nav-item.active { background: rgba(201,169,98,0.1); color: var(--gold); border-left: 3px solid var(--gold); }
         
         /* Main */
-        .main { margin-left: 220px; padding: 20px; min-height: 100vh; }
+        .main { margin-left: 220px; padding: 28px 32px; min-height: 100vh; }
         
         /* Header */
         .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
@@ -43,7 +43,7 @@
         .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 20px; }
         
         /* Cards */
-        .card { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .card { background: white; border-radius: 12px; padding: 20px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         .card-title { font-family: 'Playfair Display', serif; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
         .card-action { font-size: 0.75rem; color: var(--accent); cursor: pointer; }
@@ -168,6 +168,67 @@
         .badge-danger { background: #f8d7da; color: #721c24; }
         .badge-warning { background: #fff3cd; color: #856404; }
         
+        /* Period pills */
+        .period-pills { display: flex; gap: 4px; }
+        .period-pill { padding: 6px 16px; border: 1px solid #e0e0e0; background: white; border-radius: 20px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; color: #888; }
+        .period-pill:hover { border-color: var(--gold); color: var(--gold); }
+        .period-pill.active { background: var(--gold); color: white; border-color: var(--gold); }
+
+        /* Funnel redesign */
+        .funnel-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+        .funnel-steps { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 8px 0; }
+        .funnel-step { position: relative; text-align: center; padding: 14px 0; width: 100%; }
+        .funnel-step-bar { margin: 0 auto; height: 44px; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: width 0.5s ease; }
+        .funnel-step-bar .step-value { font-size: 1rem; font-weight: 700; color: white; }
+        .funnel-step-bar .step-label { font-size: 0.72rem; color: rgba(255,255,255,0.85); }
+        .funnel-dropoff { font-size: 0.65rem; color: #bbb; padding: 2px 0; display: flex; align-items: center; justify-content: center; gap: 4px; }
+        .funnel-dropoff span { color: var(--accent); font-weight: 600; }
+        .funnel-sidebar { display: flex; flex-direction: column; gap: 16px; }
+        .rate-card { background: var(--gray-100); border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+        .rate-card .rate-value { font-size: 1.4rem; font-weight: 700; color: var(--gold-dark); }
+        .rate-card .rate-label { font-size: 0.7rem; color: #888; }
+        .rate-card .rate-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; background: var(--gold-light); }
+        .funnel-products { margin-top: auto; }
+        .funnel-products .fp-title { font-size: 0.72rem; color: #888; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .funnel-product-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 0.8rem; }
+        .funnel-product-item .fp-rank { width: 22px; height: 22px; border-radius: 50%; background: var(--gold-light); color: var(--gold-dark); font-size: 0.65rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+        .funnel-product-item .fp-rank.top { background: var(--gold); color: white; }
+        .funnel-product-item .fp-name { flex: 1; color: #444; }
+        .funnel-product-item .fp-count { font-weight: 700; color: var(--gold-dark); }
+
+        /* Leads summary widget */
+        .leads-summary { display: flex; flex-direction: column; gap: 16px; }
+        .source-bar-container { display: flex; flex-direction: column; gap: 6px; }
+        .source-bar { height: 8px; border-radius: 4px; overflow: hidden; display: flex; background: var(--gray-100); }
+        .source-bar .seg { height: 100%; transition: width 0.4s ease; }
+        .source-bar .seg-landing { background: #3498db; }
+        .source-bar .seg-terra { background: var(--gold); }
+        .source-bar .seg-wa { background: #25D366; }
+        .source-legend { display: flex; gap: 14px; font-size: 0.68rem; color: #888; }
+        .source-legend .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
+        .lead-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .lead-stat { background: var(--gray-100); border-radius: 10px; padding: 12px; text-align: center; }
+        .lead-stat .ls-value { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+        .lead-stat .ls-label { font-size: 0.65rem; color: #888; text-transform: uppercase; margin-top: 2px; }
+        .lead-stat.highlight { background: var(--gold-light); }
+        .lead-stat.highlight .ls-value { color: var(--gold-dark); }
+        .recent-leads-list { display: flex; flex-direction: column; gap: 0; }
+        .recent-lead { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.15s; }
+        .recent-lead:last-child { border-bottom: none; }
+        .recent-lead:hover { background: #fafafa; margin: 0 -8px; padding: 10px 8px; border-radius: 8px; }
+        .lead-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 600; color: white; flex-shrink: 0; }
+        .lead-avatar.src-landing { background: #3498db; }
+        .lead-avatar.src-terra { background: var(--gold); }
+        .lead-avatar.src-wa { background: #25D366; }
+        .recent-lead .rl-info { flex: 1; min-width: 0; }
+        .recent-lead .rl-name { font-size: 0.82rem; font-weight: 600; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .recent-lead .rl-meta { font-size: 0.68rem; color: #999; }
+        .recent-lead .rl-time { font-size: 0.65rem; color: #bbb; white-space: nowrap; }
+
+        /* Skeleton loading */
+        @keyframes skeleton-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+        .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%); background-size: 200% 100%; animation: skeleton-pulse 1.5s ease-in-out infinite; border-radius: 6px; }
+
         @media (max-width: 1200px) {
             .stats-row { grid-template-columns: repeat(3, 1fr); }
             .grid-3 { grid-template-columns: 1fr 1fr; }
@@ -175,9 +236,11 @@
         @media (max-width: 900px) {
             .sidebar { width: 60px; }
             .sidebar .logo h1, .sidebar .logo span, .nav-item span:last-child { display: none; }
-            .main { margin-left: 60px; }
+            .main { margin-left: 60px; padding: 20px; }
             .stats-row { grid-template-columns: repeat(2, 1fr); }
             .grid-2, .grid-2-1 { grid-template-columns: 1fr; }
+            .funnel-layout { grid-template-columns: 1fr; }
+            .lead-stats-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
@@ -243,7 +306,7 @@
             <div class="grid-2-1">
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">🗺️ Escaneos por Estado</span>
+                        <span class="card-title">Escaneos por Estado</span>
                     </div>
                     <div class="mexico-map" id="mexico-map"></div>
                     <div class="map-legend">
@@ -257,7 +320,7 @@
                 </div>
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">📈 Tendencia</span>
+                        <span class="card-title">Tendencia</span>
                     </div>
                     <div class="chart-container">
                         <canvas id="trendChart"></canvas>
@@ -269,19 +332,19 @@
             <div class="grid-3">
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">🏆 Top Productos</span>
+                        <span class="card-title">Top Productos</span>
                     </div>
                     <ul class="ranking-list" id="top-products"></ul>
                 </div>
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">🏪 Top Tiendas</span>
+                        <span class="card-title">Top Tiendas</span>
                     </div>
                     <ul class="ranking-list" id="top-stores"></ul>
                 </div>
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">📍 Top Estados</span>
+                        <span class="card-title">Top Estados</span>
                     </div>
                     <ul class="ranking-list" id="top-states"></ul>
                 </div>
@@ -291,7 +354,7 @@
             <div class="grid-2" style="margin-bottom:20px">
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">🤖 Terra - Resumen IA</span>
+                        <span class="card-title">Terra - Resumen IA</span>
                         <span class="card-action" id="terra-refresh" onclick="loadTerraInsights()" style="cursor:pointer">Actualizar →</span>
                     </div>
                     <div id="terra-summary" style="font-size:0.85rem;line-height:1.5;color:#444;max-height:300px;overflow-y:auto">
@@ -300,7 +363,7 @@
                 </div>
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">💬 Últimas preguntas</span>
+                        <span class="card-title">Ultimas preguntas</span>
                         <span style="font-size:0.7rem;color:#888" id="terra-total"></span>
                     </div>
                     <div id="terra-recent" style="max-height:300px;overflow-y:auto">
@@ -313,7 +376,7 @@
             <div class="grid-2" style="margin-bottom:20px">
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">🏪 Visitas Terra</span>
+                        <span class="card-title">Visitas Terra</span>
                         <span class="card-action" onclick="loadTerraSessions()">Actualizar →</span>
                     </div>
                     <div id="terra-sessions-stats" style="display:flex;justify-content:space-around;text-align:center;padding:12px 0;border-bottom:1px solid #f0f0f0;margin-bottom:8px">
@@ -328,7 +391,7 @@
                 </div>
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">📊 Detalle de Visitas</span>
+                        <span class="card-title">Detalle de Visitas</span>
                     </div>
                     <div id="terra-sessions-detail" style="max-height:280px;overflow-y:auto;font-size:0.8rem">
                         <span style="color:#aaa">Selecciona una visita para ver detalle</span>
@@ -340,66 +403,63 @@
             <div style="margin-bottom:20px">
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">📊 Funnel de Conversión</span>
-                        <span class="card-action" onclick="loadFunnel()">Actualizar →</span>
-                    </div>
-                    <div id="funnel-viz" style="padding:16px 0">
-                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-                            <select id="funnel-days" onchange="loadFunnel()" style="padding:4px 8px;border:1px solid #ddd;border-radius:4px;font-size:0.7rem">
-                                <option value="7">7 días</option>
-                                <option value="30" selected>30 días</option>
-                                <option value="90">90 días</option>
-                            </select>
+                        <span class="card-title">Funnel de Conversion</span>
+                        <div style="display:flex;align-items:center;gap:12px">
+                            <div class="period-pills">
+                                <button class="period-pill" onclick="setFunnelDays(7)" data-days="7">7d</button>
+                                <button class="period-pill active" onclick="setFunnelDays(30)" data-days="30">30d</button>
+                                <button class="period-pill" onclick="setFunnelDays(90)" data-days="90">90d</button>
+                            </div>
                         </div>
-                        <div id="funnel-bars" style="display:flex;flex-direction:column;gap:10px"></div>
-                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px;text-align:center" id="funnel-rates"></div>
-                        <div style="margin-top:16px;border-top:1px solid #f0f0f0;padding-top:12px">
-                            <div style="font-size:0.7rem;color:#888;margin-bottom:8px;font-weight:600">Top pisos escaneados</div>
-                            <div id="funnel-top-products" style="font-size:0.75rem;color:#555"></div>
+                    </div>
+                    <div id="funnel-viz">
+                        <div class="funnel-layout">
+                            <div class="funnel-steps" id="funnel-steps">
+                                <!-- Skeleton loading -->
+                                <div class="funnel-step"><div class="skeleton" style="width:100%;height:44px;margin:0 auto"></div></div>
+                                <div class="funnel-step"><div class="skeleton" style="width:85%;height:44px;margin:0 auto"></div></div>
+                                <div class="funnel-step"><div class="skeleton" style="width:65%;height:44px;margin:0 auto"></div></div>
+                                <div class="funnel-step"><div class="skeleton" style="width:45%;height:44px;margin:0 auto"></div></div>
+                                <div class="funnel-step"><div class="skeleton" style="width:30%;height:44px;margin:0 auto"></div></div>
+                            </div>
+                            <div class="funnel-sidebar">
+                                <div id="funnel-rates"></div>
+                                <div class="funnel-products" id="funnel-top-products"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- LEADS CRM -->
+            <!-- LEADS SUMMARY -->
             <div style="margin-bottom:20px">
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">🎯 Leads</span>
-                        <span class="card-action" onclick="loadLeads()">Actualizar →</span>
+                        <span class="card-title">Leads</span>
+                        <span class="card-action" onclick="showPage('leads')">Ver todos →</span>
                     </div>
-                    <div id="leads-stats" style="display:flex;justify-content:space-around;text-align:center;padding:12px 0;border-bottom:1px solid #f0f0f0;margin-bottom:8px">
-                        <div><div style="font-size:1.4rem;font-weight:700" id="leads-total">-</div><div style="font-size:0.65rem;color:#888">Total</div></div>
-                        <div><div style="font-size:1.4rem;font-weight:700" id="leads-landing">-</div><div style="font-size:0.65rem;color:#888">Landing</div></div>
-                        <div><div style="font-size:1.4rem;font-weight:700" id="leads-terra">-</div><div style="font-size:0.65rem;color:#888">Terra QR</div></div>
-                        <div><div style="font-size:1.4rem;font-weight:700" id="leads-wa">-</div><div style="font-size:0.65rem;color:#888">WhatsApp</div></div>
-                        <div><div style="font-size:1.4rem;font-weight:700" id="leads-new">-</div><div style="font-size:0.65rem;color:#888">Nuevos</div></div>
-                    </div>
-                    <div style="display:flex;gap:6px;padding:0 0 10px;flex-wrap:wrap">
-                        <button onclick="loadLeads()" style="font-size:0.65rem;padding:4px 10px;border:1px solid #ddd;background:#fff;border-radius:12px;cursor:pointer">Todos</button>
-                        <button onclick="loadLeads('landing')" style="font-size:0.65rem;padding:4px 10px;border:1px solid #ddd;background:#fff;border-radius:12px;cursor:pointer">Landing</button>
-                        <button onclick="loadLeads('terra_qr')" style="font-size:0.65rem;padding:4px 10px;border:1px solid #ddd;background:#fff;border-radius:12px;cursor:pointer">Terra QR</button>
-                        <button onclick="loadLeads('whatsapp_bot')" style="font-size:0.65rem;padding:4px 10px;border:1px solid #ddd;background:#fff;border-radius:12px;cursor:pointer">WhatsApp Bot</button>
-                        <button onclick="loadLeads(null,'new')" style="font-size:0.65rem;padding:4px 10px;border:1px solid #27ae60;color:#27ae60;background:#fff;border-radius:12px;cursor:pointer">Nuevos</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid-2" style="margin-bottom:20px">
-                <div class="card">
-                    <div class="card-header">
-                        <span class="card-title">📋 Lista de Leads</span>
-                    </div>
-                    <div id="leads-list" style="max-height:350px;overflow-y:auto;font-size:0.8rem">
-                        <span style="color:#aaa">Cargando leads...</span>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-header">
-                        <span class="card-title">👤 Detalle del Lead</span>
-                    </div>
-                    <div id="lead-detail" style="max-height:350px;overflow-y:auto;font-size:0.8rem">
-                        <span style="color:#aaa">Selecciona un lead para ver detalle</span>
+                    <div class="leads-summary" id="leads-widget">
+                        <!-- Source bar -->
+                        <div class="source-bar-container">
+                            <div class="source-bar" id="leads-source-bar"></div>
+                            <div class="source-legend" id="leads-source-legend"></div>
+                        </div>
+                        <!-- Stats -->
+                        <div class="lead-stats-grid" id="leads-stats-grid">
+                            <div class="lead-stat highlight"><div class="ls-value">-</div><div class="ls-label">Total</div></div>
+                            <div class="lead-stat"><div class="ls-value">-</div><div class="ls-label">Nuevos</div></div>
+                            <div class="lead-stat"><div class="ls-value">-</div><div class="ls-label">Contactados</div></div>
+                            <div class="lead-stat"><div class="ls-value">-</div><div class="ls-label">Convertidos</div></div>
+                        </div>
+                        <!-- Recent leads -->
+                        <div>
+                            <div style="font-size:0.72rem;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Recientes</div>
+                            <div class="recent-leads-list" id="leads-recent">
+                                <div class="recent-lead"><div class="skeleton" style="width:36px;height:36px;border-radius:50%"></div><div style="flex:1"><div class="skeleton" style="width:60%;height:12px;margin-bottom:6px"></div><div class="skeleton" style="width:40%;height:10px"></div></div></div>
+                                <div class="recent-lead"><div class="skeleton" style="width:36px;height:36px;border-radius:50%"></div><div style="flex:1"><div class="skeleton" style="width:55%;height:12px;margin-bottom:6px"></div><div class="skeleton" style="width:35%;height:10px"></div></div></div>
+                                <div class="recent-lead"><div class="skeleton" style="width:36px;height:36px;border-radius:50%"></div><div style="flex:1"><div class="skeleton" style="width:50%;height:12px;margin-bottom:6px"></div><div class="skeleton" style="width:45%;height:10px"></div></div></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -408,13 +468,13 @@
             <div class="grid-2">
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">⚠️ Alertas</span>
+                        <span class="card-title">Alertas</span>
                     </div>
                     <div id="alerts-list"></div>
                 </div>
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">💰 Promociones</span>
+                        <span class="card-title">Promociones</span>
                         <span class="card-action" onclick="showPage('promociones')">Ver todas →</span>
                     </div>
                     <div id="promos-summary"></div>
@@ -738,7 +798,9 @@
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(`page-${page}`).classList.add('active');
-            event.currentTarget.classList.add('active');
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(n => { if (n.textContent.trim().toLowerCase().includes(page === 'dashboard' ? 'dashboard' : page)) n.classList.add('active'); });
+            if (typeof event !== 'undefined' && event && event.currentTarget && event.currentTarget.classList) event.currentTarget.classList.add('active');
             
             if (page === 'dashboard') loadDashboard();
             if (page === 'leads') loadLeadsPage();
@@ -1890,161 +1952,152 @@
         }
         
         // ==================== FUNNEL ANALYTICS ====================
+        let currentFunnelDays = 30;
+        function setFunnelDays(days) {
+            currentFunnelDays = days;
+            document.querySelectorAll('.period-pill').forEach(p => p.classList.toggle('active', p.dataset.days == days));
+            loadFunnel();
+        }
+
         async function loadFunnel() {
             try {
-                const days = document.getElementById('funnel-days').value;
+                const days = currentFunnelDays;
                 const res = await fetch(`/api/funnel?days=${days}`);
                 const data = await res.json();
                 const f = data.funnel;
                 const maxVal = Math.max(f.scans, 1);
 
                 const steps = [
-                    { label: 'QR Scans', value: f.scans, color: '#3498db', icon: '📱' },
-                    { label: 'WhatsApp Clicks', value: f.wa_clicks, color: '#25D366', icon: '💬' },
-                    { label: 'Leads', value: f.leads, color: '#f39c12', icon: '🎯' },
-                    { label: 'Contactados', value: f.contacted, color: '#e67e22', icon: '📞' },
-                    { label: 'Convertidos', value: f.converted, color: '#27ae60', icon: '✅' }
+                    { label: 'QR Scans', value: f.scans, color: '#3498db', width: 100 },
+                    { label: 'WhatsApp Clicks', value: f.wa_clicks, color: '#25D366', width: 0 },
+                    { label: 'Leads', value: f.leads, color: '#C9A962', width: 0 },
+                    { label: 'Contactados', value: f.contacted, color: '#e67e22', width: 0 },
+                    { label: 'Convertidos', value: f.converted, color: '#27ae60', width: 0 }
                 ];
+                // Calculate widths as percentage of max (trapezoid effect)
+                steps.forEach((s, i) => {
+                    if (i > 0) s.width = maxVal > 0 ? Math.max((s.value / maxVal) * 100, 18) : 18;
+                });
 
-                document.getElementById('funnel-bars').innerHTML = steps.map(s => {
-                    const pct = maxVal > 0 ? Math.max((s.value / maxVal) * 100, 2) : 2;
-                    return `<div style="display:flex;align-items:center;gap:10px">
-                        <div style="width:110px;font-size:0.7rem;color:#888;text-align:right">${s.icon} ${s.label}</div>
-                        <div style="flex:1;background:#f5f5f5;border-radius:4px;height:28px;overflow:hidden">
-                            <div style="width:${pct}%;background:${s.color};height:100%;border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;min-width:40px;transition:width 0.5s ease">
-                                <span style="font-size:0.75rem;font-weight:700;color:white">${s.value}</span>
-                            </div>
+                let stepsHtml = '';
+                for (let i = 0; i < steps.length; i++) {
+                    const s = steps[i];
+                    stepsHtml += `<div class="funnel-step">
+                        <div class="funnel-step-bar" style="width:${s.width}%;background:${s.color}">
+                            <span class="step-value">${s.value.toLocaleString()}</span>
+                            <span class="step-label">${s.label}</span>
                         </div>
                     </div>`;
-                }).join('');
+                    if (i < steps.length - 1) {
+                        const dropoff = steps[i].value > 0 ? ((1 - steps[i+1].value / steps[i].value) * 100).toFixed(0) : 0;
+                        stepsHtml += `<div class="funnel-dropoff">↓ <span>-${dropoff}%</span></div>`;
+                    }
+                }
+                document.getElementById('funnel-steps').innerHTML = stepsHtml;
 
+                // Conversion rates sidebar
                 const r = data.conversion_rates;
-                document.getElementById('funnel-rates').innerHTML = `
-                    <div><div style="font-size:1.1rem;font-weight:700;color:#3498db">${r.scan_to_click}%</div><div style="font-size:0.55rem;color:#888">Scan→Click</div></div>
-                    <div><div style="font-size:1.1rem;font-weight:700;color:#25D366">${r.click_to_lead}%</div><div style="font-size:0.55rem;color:#888">Click→Lead</div></div>
-                    <div><div style="font-size:1.1rem;font-weight:700;color:#f39c12">${r.lead_to_contacted}%</div><div style="font-size:0.55rem;color:#888">Lead→Contacto</div></div>
-                    <div><div style="font-size:1.1rem;font-weight:700;color:#27ae60">${r.lead_to_converted}%</div><div style="font-size:0.55rem;color:#888">Lead→Venta</div></div>
-                `;
-
-                // Lead sources breakdown
-                const ls = data.leads_by_source;
-                const totalL = ls.landing + ls.terra_qr + ls.whatsapp_bot;
+                const rates = [
+                    { label: 'Scan → Click', value: r.scan_to_click, icon: '📱' },
+                    { label: 'Click → Lead', value: r.click_to_lead, icon: '💬' },
+                    { label: 'Lead → Contacto', value: r.lead_to_contacted, icon: '📞' },
+                    { label: 'Lead → Venta', value: r.lead_to_converted, icon: '✅' }
+                ];
+                document.getElementById('funnel-rates').innerHTML = rates.map(rc =>
+                    `<div class="rate-card">
+                        <div class="rate-icon">${rc.icon}</div>
+                        <div><div class="rate-value">${rc.value}%</div><div class="rate-label">${rc.label}</div></div>
+                    </div>`
+                ).join('');
 
                 // Top products
+                const tpEl = document.getElementById('funnel-top-products');
                 if (data.top_products && data.top_products.length > 0) {
-                    document.getElementById('funnel-top-products').innerHTML = data.top_products.map((p, i) =>
-                        `<span style="display:inline-block;padding:3px 10px;margin:2px;background:${i === 0 ? '#C9A96220' : '#f5f5f5'};border-radius:10px;font-size:0.68rem;${i === 0 ? 'font-weight:600;border:1px solid #C9A962' : ''}">${p.name} (${p.scans})</span>`
-                    ).join('');
+                    tpEl.innerHTML = `<div class="fp-title">Top pisos escaneados</div>` +
+                        data.top_products.slice(0, 5).map((p, i) =>
+                            `<div class="funnel-product-item">
+                                <span class="fp-rank ${i === 0 ? 'top' : ''}">${i + 1}</span>
+                                <span class="fp-name">${p.name}</span>
+                                <span class="fp-count">${p.scans}</span>
+                            </div>`
+                        ).join('');
                 } else {
-                    document.getElementById('funnel-top-products').innerHTML = '<span style="color:#ccc">Sin datos</span>';
+                    tpEl.innerHTML = '<div class="fp-title">Top pisos escaneados</div><span style="color:#ccc;font-size:0.8rem">Sin datos</span>';
                 }
             } catch (e) { console.error('Funnel error:', e); }
         }
 
-        // ==================== LEADS CRM ====================
-        async function loadLeads(sourceFilter, statusFilter) {
+        // ==================== LEADS SUMMARY WIDGET ====================
+        function getTimeAgo(dateStr) {
+            const d = mxDate(dateStr);
+            if (!d) return '';
+            const now = new Date();
+            const diff = Math.floor((now - d) / 1000);
+            if (diff < 60) return 'ahora';
+            if (diff < 3600) return `hace ${Math.floor(diff/60)}m`;
+            if (diff < 86400) return `hace ${Math.floor(diff/3600)}h`;
+            if (diff < 604800) return `hace ${Math.floor(diff/86400)}d`;
+            return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+        }
+
+        async function loadLeads() {
             try {
-                let url = '/api/leads?days=90';
-                if (sourceFilter) url += `&source=${sourceFilter}`;
-                if (statusFilter) url += `&status=${statusFilter}`;
-                const res = await fetch(url);
+                const res = await fetch('/api/leads?days=90');
                 const leads = await res.json();
 
-                // Stats
-                document.getElementById('leads-total').textContent = leads.length;
-                document.getElementById('leads-landing').textContent = leads.filter(l => l.source === 'landing').length;
-                document.getElementById('leads-terra').textContent = leads.filter(l => l.source === 'terra_qr').length;
-                document.getElementById('leads-wa').textContent = leads.filter(l => l.source === 'whatsapp_bot').length;
-                document.getElementById('leads-new').textContent = leads.filter(l => l.status === 'new').length;
+                const total = leads.length;
+                const landing = leads.filter(l => l.source === 'landing').length;
+                const terra = leads.filter(l => l.source === 'terra_qr').length;
+                const wa = leads.filter(l => l.source === 'whatsapp_bot').length;
+                const nuevos = leads.filter(l => l.status === 'new').length;
+                const contactados = leads.filter(l => l.status === 'contacted').length;
+                const convertidos = leads.filter(l => l.status === 'converted').length;
 
-                const listEl = document.getElementById('leads-list');
-                if (leads.length === 0) {
-                    listEl.innerHTML = '<span style="color:#aaa">Sin leads aun.</span>';
+                // Source bar
+                const barEl = document.getElementById('leads-source-bar');
+                if (total > 0) {
+                    const pLanding = (landing / total * 100).toFixed(1);
+                    const pTerra = (terra / total * 100).toFixed(1);
+                    const pWa = (wa / total * 100).toFixed(1);
+                    barEl.innerHTML = `<div class="seg seg-landing" style="width:${pLanding}%"></div><div class="seg seg-terra" style="width:${pTerra}%"></div><div class="seg seg-wa" style="width:${pWa}%"></div>`;
+                    document.getElementById('leads-source-legend').innerHTML = `
+                        <span><span class="dot" style="background:#3498db"></span>Landing ${pLanding}%</span>
+                        <span><span class="dot" style="background:#C9A962"></span>Terra ${pTerra}%</span>
+                        <span><span class="dot" style="background:#25D366"></span>WhatsApp ${pWa}%</span>`;
+                } else {
+                    barEl.innerHTML = '';
+                    document.getElementById('leads-source-legend').innerHTML = '<span style="color:#ccc">Sin datos</span>';
+                }
+
+                // Stats grid
+                document.getElementById('leads-stats-grid').innerHTML = `
+                    <div class="lead-stat highlight"><div class="ls-value">${total}</div><div class="ls-label">Total</div></div>
+                    <div class="lead-stat"><div class="ls-value">${nuevos}</div><div class="ls-label">Nuevos</div></div>
+                    <div class="lead-stat"><div class="ls-value">${contactados}</div><div class="ls-label">Contactados</div></div>
+                    <div class="lead-stat"><div class="ls-value">${convertidos}</div><div class="ls-label">Convertidos</div></div>`;
+
+                // Recent leads (top 5)
+                const recentEl = document.getElementById('leads-recent');
+                const recent = leads.slice(0, 5);
+                if (recent.length === 0) {
+                    recentEl.innerHTML = '<div style="color:#ccc;font-size:0.8rem;padding:8px 0">Sin leads aun</div>';
                     return;
                 }
-                listEl.innerHTML = leads.map(l => {
-                    const date = l.created_at ? mxDate(l.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-                    const sourceIcon = l.source === 'landing' ? '🌐' : l.source === 'terra_qr' ? '🏪' : '💬';
-                    const sourceLabel = l.source === 'landing' ? 'Landing' : l.source === 'terra_qr' ? 'Terra QR' : 'WhatsApp';
-                    const statusColor = l.status === 'new' ? '#27ae60' : l.status === 'contacted' ? '#f39c12' : l.status === 'converted' ? '#3498db' : '#888';
-                    const statusLabel = l.status === 'new' ? 'Nuevo' : l.status === 'contacted' ? 'Contactado' : l.status === 'converted' ? 'Convertido' : l.status;
-                    let products = '';
-                    try { const p = JSON.parse(l.products_interested || '[]'); products = p.join(', '); } catch(e) { products = l.products_interested || ''; }
-                    const phone = l.phone || '';
-                    const displayPhone = phone.length > 10 ? '+' + phone.slice(0,2) + ' ' + phone.slice(2,5) + ' ' + phone.slice(5,8) + ' ' + phone.slice(8) : phone;
-                    return `<div style="padding:10px 0;border-bottom:1px solid #f0f0f0;cursor:pointer" onclick="showLeadDetail(${l.id})">
-                        <div style="display:flex;justify-content:space-between;align-items:center">
-                            <strong>${sourceIcon} ${l.name || displayPhone}</strong>
-                            <span style="font-size:0.6rem;padding:2px 8px;border-radius:10px;background:${statusColor}15;color:${statusColor};border:1px solid ${statusColor}">${statusLabel}</span>
+                recentEl.innerHTML = recent.map(l => {
+                    const srcClass = l.source === 'landing' ? 'src-landing' : l.source === 'terra_qr' ? 'src-terra' : 'src-wa';
+                    const srcLabel = l.source === 'landing' ? 'Landing' : l.source === 'terra_qr' ? 'Terra' : 'WhatsApp';
+                    const initial = (l.name || '?')[0].toUpperCase();
+                    const store = l.store_name || l.store_full_name || '';
+                    return `<div class="recent-lead" onclick="showPage('leads')">
+                        <div class="lead-avatar ${srcClass}">${initial}</div>
+                        <div class="rl-info">
+                            <div class="rl-name">${l.name || l.phone}</div>
+                            <div class="rl-meta">${srcLabel}${store ? ' · ' + store : ''}</div>
                         </div>
-                        <div style="font-size:0.7rem;color:#555;margin-top:3px">${displayPhone}</div>
-                        ${products ? `<div style="font-size:0.65rem;color:#888;margin-top:2px">Pisos: ${products}</div>` : ''}
-                        <div style="font-size:0.6rem;color:#aaa;margin-top:2px">${sourceLabel} · ${l.store_name || ''} · ${date}</div>
+                        <div class="rl-time">${getTimeAgo(l.created_at)}</div>
                     </div>`;
                 }).join('');
             } catch (e) { console.error('Leads error:', e); }
-        }
-
-        async function showLeadDetail(leadId) {
-            const detailEl = document.getElementById('lead-detail');
-            try {
-                const res = await fetch(`/api/leads/${leadId}`);
-                const lead = await res.json();
-                const phone = lead.phone || '';
-                const displayPhone = phone.length > 10 ? '+' + phone.slice(0,2) + ' ' + phone.slice(2,5) + ' ' + phone.slice(5,8) + ' ' + phone.slice(8) : phone;
-                const sourceLabel = lead.source === 'landing' ? '🌐 Landing Page' : lead.source === 'terra_qr' ? '🏪 Terra QR (Tienda)' : '💬 WhatsApp Bot';
-                let products = '';
-                try { const p = JSON.parse(lead.products_interested || '[]'); products = p.map(n => `<span style="display:inline-block;padding:2px 8px;margin:2px;background:#f0f0f0;border-radius:10px;font-size:0.7rem">${n}</span>`).join(''); } catch(e) {}
-
-                let html = `
-                    <div style="padding:8px 0;border-bottom:1px solid #f0f0f0">
-                        <h3 style="margin:0 0 4px">${lead.name || 'Sin nombre'}</h3>
-                        <div style="font-size:0.8rem;color:#25D366;font-weight:600">${displayPhone ? `<a href="https://wa.me/${phone}" target="_blank" style="color:#25D366;text-decoration:none">📱 ${displayPhone}</a>` : 'Sin telefono'}</div>
-                    </div>
-                    <div style="padding:8px 0;border-bottom:1px solid #f0f0f0">
-                        <div style="font-size:0.7rem;color:#888">Fuente</div>
-                        <div style="font-size:0.85rem">${sourceLabel}</div>
-                        ${lead.store_name ? `<div style="font-size:0.7rem;color:#888;margin-top:6px">Tienda</div><div style="font-size:0.85rem">${lead.store_name}</div>` : ''}
-                    </div>
-                    ${products ? `<div style="padding:8px 0;border-bottom:1px solid #f0f0f0"><div style="font-size:0.7rem;color:#888;margin-bottom:4px">Pisos de interes</div>${products}</div>` : ''}
-                    ${lead.notes ? `<div style="padding:8px 0;border-bottom:1px solid #f0f0f0"><div style="font-size:0.7rem;color:#888">Notas</div><div style="font-size:0.8rem">${lead.notes}</div></div>` : ''}
-                    <div style="padding:8px 0;border-bottom:1px solid #f0f0f0">
-                        <div style="font-size:0.7rem;color:#888;margin-bottom:4px">Status</div>
-                        <select onchange="updateLeadStatus(${lead.id}, this.value)" style="padding:4px 8px;border:1px solid #ddd;border-radius:4px;font-size:0.8rem">
-                            <option value="new" ${lead.status==='new'?'selected':''}>Nuevo</option>
-                            <option value="contacted" ${lead.status==='contacted'?'selected':''}>Contactado</option>
-                            <option value="converted" ${lead.status==='converted'?'selected':''}>Convertido</option>
-                            <option value="lost" ${lead.status==='lost'?'selected':''}>Perdido</option>
-                        </select>
-                    </div>`;
-
-                // Show WA conversation if exists
-                if (lead.conversation && lead.conversation.length > 0) {
-                    html += `<div style="padding:8px 0"><div style="font-size:0.7rem;color:#888;margin-bottom:6px">Conversacion WhatsApp (${lead.conversation.length} msgs)</div>`;
-                    html += lead.conversation.slice(-10).map(m => {
-                        const isUser = m.role === 'user';
-                        const time = m.created_at ? mxDate(m.created_at).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '';
-                        return `<div style="padding:5px 8px;margin:3px 0;border-radius:8px;max-width:90%;font-size:0.75rem;${isUser ? 'background:#dcf8c6;margin-left:auto;text-align:right' : 'background:#f0f0f0'}">
-                            ${m.message}
-                            <div style="font-size:0.55rem;color:#888;margin-top:1px">${isUser ? '👤' : '🤖'} ${time}</div>
-                        </div>`;
-                    }).join('');
-                    html += '</div>';
-                }
-
-                detailEl.innerHTML = html;
-            } catch (e) { detailEl.innerHTML = '<span style="color:#aaa">Error cargando lead</span>'; }
-        }
-
-        async function updateLeadStatus(leadId, status) {
-            try {
-                await fetch(`/api/leads/${leadId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status })
-                });
-                loadLeads();
-            } catch (e) { console.error('Update lead error:', e); }
         }
 
         // UTC date from SQLite → local Mexico time
