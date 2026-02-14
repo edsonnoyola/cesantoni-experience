@@ -654,25 +654,26 @@
                 <div class="stat-card"><div class="label">Nuevos</div><div class="value" id="lp-new">-</div></div>
             </div>
             <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-                <button onclick="loadLeadsPage()" class="lp-filter active" style="font-size:0.75rem;padding:6px 14px;border:1px solid #ddd;background:#fff;border-radius:20px;cursor:pointer">Todos</button>
+                <button onclick="loadLeadsPage()" class="lp-filter" style="font-size:0.75rem;padding:6px 14px;border:1px solid #ddd;background:#C41E3A;color:#fff;border-radius:20px;cursor:pointer">Todos</button>
                 <button onclick="loadLeadsPage('landing')" class="lp-filter" style="font-size:0.75rem;padding:6px 14px;border:1px solid #ddd;background:#fff;border-radius:20px;cursor:pointer">🌐 Landing</button>
                 <button onclick="loadLeadsPage('terra_qr')" class="lp-filter" style="font-size:0.75rem;padding:6px 14px;border:1px solid #ddd;background:#fff;border-radius:20px;cursor:pointer">🏪 Terra QR</button>
                 <button onclick="loadLeadsPage('whatsapp_bot')" class="lp-filter" style="font-size:0.75rem;padding:6px 14px;border:1px solid #ddd;background:#fff;border-radius:20px;cursor:pointer">💬 WhatsApp</button>
-                <button onclick="loadLeadsPage(null,'new')" class="lp-filter" style="font-size:0.75rem;padding:6px 14px;border:1px solid #27ae60;color:#27ae60;background:#fff;border-radius:20px;cursor:pointer">🟢 Nuevos</button>
-                <button onclick="loadLeadsPage(null,'contacted')" class="lp-filter" style="font-size:0.75rem;padding:6px 14px;border:1px solid #f39c12;color:#f39c12;background:#fff;border-radius:20px;cursor:pointer">🟡 Contactados</button>
-                <button onclick="loadLeadsPage(null,'converted')" class="lp-filter" style="font-size:0.75rem;padding:6px 14px;border:1px solid #3498db;color:#3498db;background:#fff;border-radius:20px;cursor:pointer">🔵 Convertidos</button>
+                <button onclick="loadLeadsPage(null,'new')" class="lp-filter" style="font-size:0.75rem;padding:6px 14px;border:1px solid #27ae60;color:#27ae60;background:#fff;border-radius:20px;cursor:pointer">Nuevos</button>
+                <button onclick="loadLeadsPage(null,'contacted')" class="lp-filter" style="font-size:0.75rem;padding:6px 14px;border:1px solid #f39c12;color:#f39c12;background:#fff;border-radius:20px;cursor:pointer">Contactados</button>
+                <button onclick="loadLeadsPage(null,'converted')" class="lp-filter" style="font-size:0.75rem;padding:6px 14px;border:1px solid #3498db;color:#3498db;background:#fff;border-radius:20px;cursor:pointer">Convertidos</button>
             </div>
-            <div class="grid-2">
-                <div class="card">
-                    <div class="card-header"><span class="card-title">📋 Leads</span></div>
-                    <div id="lp-list" style="max-height:calc(100vh - 280px);overflow-y:auto;font-size:0.85rem">
+            <div style="display:grid;grid-template-columns:380px 1fr;gap:16px">
+                <div class="card" style="margin:0">
+                    <div class="card-header"><span class="card-title">📋 Leads</span><span class="card-action" onclick="loadLeadsPage()">Actualizar</span></div>
+                    <div id="lp-list" style="max-height:calc(100vh - 300px);overflow-y:auto">
                         <span style="color:#aaa">Cargando...</span>
                     </div>
                 </div>
-                <div class="card">
-                    <div class="card-header"><span class="card-title">👤 Detalle</span></div>
-                    <div id="lp-detail" style="max-height:calc(100vh - 280px);overflow-y:auto;font-size:0.85rem">
-                        <span style="color:#aaa">Selecciona un lead</span>
+                <div class="card" style="margin:0">
+                    <div id="lp-detail" style="max-height:calc(100vh - 260px);overflow-y:auto">
+                        <div style="display:flex;align-items:center;justify-content:center;height:300px;color:#aaa;font-size:0.9rem">
+                            Selecciona un lead para ver su informacion completa
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2172,24 +2173,27 @@
                 document.getElementById('lp-new').textContent = leads.filter(l => l.status === 'new').length;
 
                 const listEl = document.getElementById('lp-list');
-                if (leads.length === 0) { listEl.innerHTML = '<span style="color:#aaa">Sin leads.</span>'; return; }
+                if (leads.length === 0) { listEl.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa">Sin leads. Prueba el flujo desde una landing page.</div>'; return; }
                 listEl.innerHTML = leads.map(l => {
                     const date = l.created_at ? mxDate(l.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
                     const sourceIcon = l.source === 'landing' ? '🌐' : l.source === 'terra_qr' ? '🏪' : '💬';
-                    const statusColor = l.status === 'new' ? '#27ae60' : l.status === 'contacted' ? '#f39c12' : l.status === 'converted' ? '#3498db' : '#888';
-                    const statusLabel = l.status === 'new' ? 'Nuevo' : l.status === 'contacted' ? 'Contactado' : l.status === 'converted' ? 'Convertido' : l.status;
+                    const statusDot = l.status === 'new' ? '#27ae60' : l.status === 'contacted' ? '#f39c12' : l.status === 'converted' ? '#3498db' : '#ccc';
                     let products = '';
                     try { products = JSON.parse(l.products_interested || '[]').join(', '); } catch(e) { products = l.products_interested || ''; }
-                    const phone = l.phone || '';
-                    const dp = phone.length > 10 ? '+' + phone.slice(0,2) + ' ' + phone.slice(2,5) + ' ' + phone.slice(5,8) + ' ' + phone.slice(8) : phone;
-                    return `<div style="padding:12px 0;border-bottom:1px solid #f0f0f0;cursor:pointer" onclick="showLeadPage(${l.id})">
+                    const city = l.store_city || '';
+                    const store = l.store_full_name || l.store_name || '';
+                    return `<div style="padding:12px 14px;border-bottom:1px solid #f5f5f5;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''" onclick="showLeadPage(${l.id})">
                         <div style="display:flex;justify-content:space-between;align-items:center">
-                            <strong>${sourceIcon} ${l.name || dp}</strong>
-                            <span style="font-size:0.65rem;padding:2px 10px;border-radius:12px;background:${statusColor}15;color:${statusColor};border:1px solid ${statusColor}">${statusLabel}</span>
+                            <div style="display:flex;align-items:center;gap:8px">
+                                <span style="width:8px;height:8px;border-radius:50%;background:${statusDot};display:inline-block"></span>
+                                <strong style="font-size:0.9rem">${l.name || 'Sin nombre'}</strong>
+                            </div>
+                            <span style="font-size:0.65rem;color:#aaa">${date}</span>
                         </div>
-                        <div style="font-size:0.75rem;color:#25D366;margin-top:3px">📱 ${dp}</div>
-                        ${products ? `<div style="font-size:0.7rem;color:#555;margin-top:2px">🧱 ${products}</div>` : ''}
-                        <div style="font-size:0.65rem;color:#aaa;margin-top:2px">${l.store_name || ''} · ${date}</div>
+                        <div style="margin-left:16px;margin-top:4px">
+                            <div style="font-size:0.75rem;color:#555">${sourceIcon} ${store}${city ? ' · ' + city : ''}</div>
+                            ${products ? `<div style="font-size:0.7rem;color:#888;margin-top:2px">${products}</div>` : ''}
+                        </div>
                     </div>`;
                 }).join('');
             } catch (e) { console.error('Leads page error:', e); }
@@ -2202,57 +2206,116 @@
                 const l = await res.json();
                 const phone = l.phone || '';
                 const dp = phone.length > 10 ? '+' + phone.slice(0,2) + ' ' + phone.slice(2,5) + ' ' + phone.slice(5,8) + ' ' + phone.slice(8) : phone;
-                const sourceLabel = l.source === 'landing' ? '🌐 Landing Page' : l.source === 'terra_qr' ? '🏪 Terra QR' : '💬 WhatsApp Bot';
-                let products = '';
-                try { products = JSON.parse(l.products_interested || '[]').map(n => `<span style="display:inline-block;padding:3px 10px;margin:2px;background:#C41E3A15;color:#C41E3A;border-radius:12px;font-size:0.75rem;font-weight:500">${n}</span>`).join(''); } catch(e) {}
+                const sourceLabel = l.source === 'landing' ? '🌐 Landing Page' : l.source === 'terra_qr' ? '🏪 Terra en Tienda' : '💬 WhatsApp Directo';
                 const created = l.created_at ? mxDate(l.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+                const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
 
+                // Header: name + status + WhatsApp button
                 let html = `
-                    <div style="padding:12px 0;border-bottom:1px solid #f0f0f0">
-                        <h3 style="margin:0 0 6px;font-size:1.1rem">${l.name || 'Sin nombre'}</h3>
-                        <a href="https://wa.me/${phone}" target="_blank" style="color:#25D366;text-decoration:none;font-weight:600;font-size:0.9rem">📱 ${dp}</a>
-                        <div style="font-size:0.7rem;color:#aaa;margin-top:4px">${created}</div>
-                    </div>
-                    <div style="padding:10px 0;border-bottom:1px solid #f0f0f0;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                        <div><div style="font-size:0.65rem;color:#888;margin-bottom:2px">Fuente</div><div style="font-size:0.85rem">${sourceLabel}</div></div>
-                        <div><div style="font-size:0.65rem;color:#888;margin-bottom:2px">Tienda</div><div style="font-size:0.85rem">${l.store_name || '—'}</div></div>
-                    </div>
-                    ${products ? `<div style="padding:10px 0;border-bottom:1px solid #f0f0f0"><div style="font-size:0.65rem;color:#888;margin-bottom:4px">Pisos de interes</div>${products}</div>` : ''}
-                    ${l.notes ? `<div style="padding:10px 0;border-bottom:1px solid #f0f0f0"><div style="font-size:0.65rem;color:#888;margin-bottom:2px">Notas</div><div style="font-size:0.8rem;color:#555">${l.notes}</div></div>` : ''}
-                    <div style="padding:10px 0;border-bottom:1px solid #f0f0f0">
-                        <div style="font-size:0.65rem;color:#888;margin-bottom:4px">Status</div>
-                        <select onchange="updateLeadPageStatus(${l.id}, this.value)" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;font-size:0.8rem;width:100%">
-                            <option value="new" ${l.status==='new'?'selected':''}>🟢 Nuevo</option>
-                            <option value="contacted" ${l.status==='contacted'?'selected':''}>🟡 Contactado</option>
-                            <option value="converted" ${l.status==='converted'?'selected':''}>🔵 Convertido</option>
-                            <option value="lost" ${l.status==='lost'?'selected':''}>🔴 Perdido</option>
+                <div style="padding:16px 20px;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:10px;color:#fff;margin-bottom:16px">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                        <div>
+                            <h2 style="margin:0;font-size:1.3rem;font-family:'Playfair Display',serif">${l.name || 'Sin nombre'}</h2>
+                            <div style="font-size:0.8rem;opacity:0.7;margin-top:4px">${created}</div>
+                        </div>
+                        <select onchange="updateLeadPageStatus(${l.id}, this.value)" style="padding:5px 10px;border:none;border-radius:8px;font-size:0.75rem;font-weight:600;cursor:pointer;
+                            background:${l.status==='new'?'#27ae60':l.status==='contacted'?'#f39c12':l.status==='converted'?'#3498db':'#888'};color:#fff">
+                            <option value="new" ${l.status==='new'?'selected':''}>Nuevo</option>
+                            <option value="contacted" ${l.status==='contacted'?'selected':''}>Contactado</option>
+                            <option value="converted" ${l.status==='converted'?'selected':''}>Convertido</option>
+                            <option value="lost" ${l.status==='lost'?'selected':''}>Perdido</option>
                         </select>
-                    </div>`;
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:12px">
+                        <a href="https://wa.me/${phone}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#25D366;color:#fff;border-radius:8px;text-decoration:none;font-size:0.8rem;font-weight:600">📱 WhatsApp ${dp}</a>
+                        ${l.store_whatsapp ? `<a href="https://wa.me/${l.store_whatsapp}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(255,255,255,0.15);color:#fff;border-radius:8px;text-decoration:none;font-size:0.75rem">🏪 WA Tienda</a>` : ''}
+                        ${l.store_phone ? `<a href="tel:${l.store_phone}" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(255,255,255,0.15);color:#fff;border-radius:8px;text-decoration:none;font-size:0.75rem">📞 Tienda</a>` : ''}
+                    </div>
+                </div>`;
 
-                // Conversation
+                // Info cards grid
+                html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">`;
+
+                // Fuente
+                html += `<div style="padding:12px 16px;background:#f8f9fa;border-radius:8px">
+                    <div style="font-size:0.65rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Fuente</div>
+                    <div style="font-size:0.9rem;font-weight:600">${sourceLabel}</div>
+                </div>`;
+
+                // Tienda
+                html += `<div style="padding:12px 16px;background:#f8f9fa;border-radius:8px">
+                    <div style="font-size:0.65rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Tienda</div>
+                    <div style="font-size:0.9rem;font-weight:600">${l.store_full_name || l.store_name || '—'}</div>
+                    ${l.store_address ? `<div style="font-size:0.7rem;color:#666;margin-top:2px">${l.store_address}</div>` : ''}
+                </div>`;
+
+                // Ciudad / Estado
+                html += `<div style="padding:12px 16px;background:#f8f9fa;border-radius:8px">
+                    <div style="font-size:0.65rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Ciudad</div>
+                    <div style="font-size:0.9rem;font-weight:600">${l.store_city || '—'}${l.store_state ? ', ' + l.store_state : ''}</div>
+                </div>`;
+
+                // Distribuidor
+                html += `<div style="padding:12px 16px;background:#f8f9fa;border-radius:8px">
+                    <div style="font-size:0.65rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Distribuidor</div>
+                    <div style="font-size:0.9rem;font-weight:600">${l.distributor_name || '—'}</div>
+                    ${l.store_manager ? `<div style="font-size:0.7rem;color:#666;margin-top:2px">Gerente: ${l.store_manager}</div>` : ''}
+                </div>`;
+
+                html += `</div>`;
+
+                // Pisos de interes (con imagen y link)
+                if (l.products_detail && l.products_detail.length > 0) {
+                    html += `<div style="margin-bottom:16px">
+                        <div style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Pisos de interes</div>`;
+                    html += l.products_detail.map(p => {
+                        const link = p.sku ? `${baseUrl}/p/${p.sku}` : (p.slug ? `${baseUrl}/p/${p.slug}` : '');
+                        return `<div style="display:flex;align-items:center;gap:12px;padding:10px;background:#f8f9fa;border-radius:8px;margin-bottom:8px">
+                            ${p.image_url ? `<img src="${p.image_url}" style="width:60px;height:60px;object-fit:cover;border-radius:6px" onerror="this.style.display='none'">` : '<div style="width:60px;height:60px;background:#eee;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.2rem">🧱</div>'}
+                            <div style="flex:1">
+                                <div style="font-weight:600;font-size:0.9rem">${p.name}</div>
+                                <div style="font-size:0.75rem;color:#666;margin-top:2px">${p.format || ''} · ${p.finish || ''} ${p.base_price ? '· $' + p.base_price + '/m²' : ''}</div>
+                                ${p.usage ? `<div style="font-size:0.7rem;color:#888;margin-top:1px">${p.usage}</div>` : ''}
+                            </div>
+                            ${link ? `<a href="${link}" target="_blank" style="padding:6px 12px;background:#C41E3A;color:#fff;border-radius:6px;text-decoration:none;font-size:0.7rem;white-space:nowrap">Ver landing</a>` : ''}
+                        </div>`;
+                    }).join('');
+                    html += `</div>`;
+                }
+
+                // Notas
+                if (l.notes) {
+                    html += `<div style="padding:12px 16px;background:#fff9e6;border-radius:8px;border-left:3px solid #f39c12;margin-bottom:16px">
+                        <div style="font-size:0.65rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Notas</div>
+                        <div style="font-size:0.8rem;color:#555">${l.notes}</div>
+                    </div>`;
+                }
+
+                // Conversation WhatsApp
                 if (l.conversation && l.conversation.length > 0) {
-                    html += `<div style="padding:10px 0"><div style="font-size:0.65rem;color:#888;margin-bottom:8px">💬 Conversacion (${l.conversation.length} msgs)</div>`;
-                    html += `<div style="background:#e5ddd5;border-radius:8px;padding:10px;max-height:400px;overflow-y:auto">`;
+                    html += `<div>
+                        <div style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Conversacion WhatsApp (${l.conversation.length} mensajes)</div>
+                        <div style="background:#e5ddd5;border-radius:10px;padding:12px;max-height:350px;overflow-y:auto">`;
                     html += l.conversation.map(m => {
                         const isUser = m.role === 'user';
                         const time = m.created_at ? mxDate(m.created_at).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '';
                         const date = m.created_at ? mxDate(m.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'short'}) : '';
-                        return `<div style="padding:8px 10px;margin:4px 0;border-radius:8px;max-width:85%;font-size:0.8rem;${isUser ? 'background:#dcf8c6;margin-left:auto;text-align:right' : 'background:#fff'}">
+                        return `<div style="padding:8px 12px;margin:4px 0;border-radius:8px;max-width:85%;font-size:0.8rem;box-shadow:0 1px 1px rgba(0,0,0,0.08);${isUser ? 'background:#dcf8c6;margin-left:auto;text-align:right' : 'background:#fff'}">
                             ${m.message}
-                            <div style="font-size:0.55rem;color:#888;margin-top:2px">${isUser ? '👤 Cliente' : '🤖 Terra'} · ${date} ${time}</div>
+                            <div style="font-size:0.55rem;color:#888;margin-top:3px">${isUser ? '👤 Cliente' : '🤖 Terra'} · ${date} ${time}</div>
                         </div>`;
                     }).join('');
-                    html += '</div></div>';
+                    html += `</div></div>`;
                 }
 
                 el.innerHTML = html;
-            } catch (e) { el.innerHTML = '<span style="color:#aaa">Error cargando lead</span>'; }
+            } catch (e) { el.innerHTML = '<span style="color:#aaa">Error cargando lead</span>'; console.error(e); }
         }
 
         async function updateLeadPageStatus(leadId, status) {
             try {
                 await fetch(`/api/leads/${leadId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
-                loadLeadsPage();
+                showLeadPage(leadId);
             } catch (e) { console.error(e); }
         }
 

@@ -2439,11 +2439,18 @@ app.get('/api/leads', (req, res) => {
   try {
     const { status, source, days } = req.query;
     const d = parseInt(days) || 90;
-    let sql = `SELECT * FROM leads WHERE created_at >= datetime('now', '-${d} days')`;
+    let sql = `SELECT l.*,
+      s.name as store_full_name, s.city as store_city, s.state as store_state, s.address as store_address,
+      s.whatsapp as store_whatsapp, s.phone as store_phone, s.manager_name as store_manager,
+      d.name as distributor_name
+      FROM leads l
+      LEFT JOIN stores s ON l.store_id = s.id
+      LEFT JOIN distributors d ON s.distributor_id = d.id
+      WHERE l.created_at >= datetime('now', '-${d} days')`;
     const params = [];
-    if (status) { sql += ' AND status = ?'; params.push(status); }
-    if (source) { sql += ' AND source = ?'; params.push(source); }
-    sql += ' ORDER BY created_at DESC LIMIT 200';
+    if (status) { sql += ' AND l.status = ?'; params.push(status); }
+    if (source) { sql += ' AND l.source = ?'; params.push(source); }
+    sql += ' ORDER BY l.created_at DESC LIMIT 200';
     res.json(query(sql, params));
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -2452,14 +2459,32 @@ app.get('/api/leads', (req, res) => {
 
 app.get('/api/leads/:id', (req, res) => {
   try {
-    const lead = queryOne('SELECT * FROM leads WHERE id = ?', [req.params.id]);
+    const lead = queryOne(`SELECT l.*,
+      s.name as store_full_name, s.city as store_city, s.state as store_state, s.address as store_address,
+      s.whatsapp as store_whatsapp, s.phone as store_phone, s.manager_name as store_manager, s.slug as store_slug,
+      d.name as distributor_name
+      FROM leads l
+      LEFT JOIN stores s ON l.store_id = s.id
+      LEFT JOIN distributors d ON s.distributor_id = d.id
+      WHERE l.id = ?`, [req.params.id]);
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
-    // Also get WA conversation if phone exists
+
+    // Get product details
+    let products_detail = [];
+    try {
+      const prods = JSON.parse(lead.products_interested || '[]');
+      products_detail = prods.map(pName => {
+        const p = queryOne('SELECT id, name, sku, slug, base_price, format, finish, image_url, usage FROM products WHERE LOWER(name) LIKE ?', [`%${pName.toLowerCase()}%`]);
+        return p || { name: pName };
+      });
+    } catch(e) {}
+
+    // WA conversation
     let conversation = [];
     if (lead.phone) {
       conversation = query('SELECT role, message, created_at FROM wa_conversations WHERE phone = ? ORDER BY created_at ASC', [lead.phone]);
     }
-    res.json({ ...lead, conversation });
+    res.json({ ...lead, products_detail, conversation });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
