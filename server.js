@@ -2269,9 +2269,9 @@ app.post('/webhook', async (req, res) => {
         // Create lead with proper store info
         const existingLead = queryOne('SELECT id FROM leads WHERE phone = ?', [from]);
         if (existingLead) {
-          run(`UPDATE leads SET source = 'landing', store_name = ?, store_id = ?, products_interested = ?,
+          run(`UPDATE leads SET source = 'landing', name = COALESCE(NULLIF(?, ''), name), store_name = ?, store_id = ?, products_interested = ?,
                notes = COALESCE(notes, '') || '\n' || ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-            [lStoreName, lStoreId, JSON.stringify([lProductName]), `Landing page: ${lProductName} (${lSku}) desde ${lStoreName}`, existingLead.id]);
+            [contactName, lStoreName, lStoreId, JSON.stringify([lProductName]), `Landing page: ${lProductName} (${lSku}) desde ${lStoreName}`, existingLead.id]);
         } else {
           run(`INSERT INTO leads (phone, name, source, store_name, store_id, products_interested, status, notes)
                VALUES (?, ?, 'landing', ?, ?, ?, 'new', ?)`,
