@@ -2188,10 +2188,24 @@ app.post('/webhook', async (req, res) => {
         // Save as lead conversation
         run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
 
-        // Create full lead in CRM
-        run(`INSERT INTO leads (phone, name, source, store_name, products_interested, status, notes)
-             VALUES (?, ?, 'terra_qr', ?, ?, 'new', ?)`,
-          [from, tName, tStore, JSON.stringify(tProducts), `Visita en tienda via Terra. Pisos: ${tProducts.join(', ')}`]);
+        // Resolve store
+        const tStoreSlug = tStore.toLowerCase().replace(/\s+/g, '-');
+        const tStoreObj = queryOne('SELECT * FROM stores WHERE slug = ? OR LOWER(name) = LOWER(?) OR LOWER(name) LIKE ?',
+          [tStoreSlug, tStore, `%${tStore}%`]);
+        const tStoreName = tStoreObj ? tStoreObj.name : tStore;
+        const tStoreId = tStoreObj ? tStoreObj.id : null;
+
+        // Create or update lead in CRM
+        const tExisting = queryOne('SELECT id FROM leads WHERE phone = ?', [from]);
+        if (tExisting) {
+          run(`UPDATE leads SET source = 'terra_qr', name = ?, store_name = ?, store_id = ?, products_interested = ?,
+               notes = COALESCE(notes, '') || '\n' || ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+            [tName, tStoreName, tStoreId, JSON.stringify(tProducts), `Visita en tienda via Terra. Pisos: ${tProducts.join(', ')}`, tExisting.id]);
+        } else {
+          run(`INSERT INTO leads (phone, name, source, store_name, store_id, products_interested, status, notes)
+               VALUES (?, ?, 'terra_qr', ?, ?, ?, 'new', ?)`,
+            [from, tName, tStoreName, tStoreId, JSON.stringify(tProducts), `Visita en tienda via Terra. Pisos: ${tProducts.join(', ')}`]);
+        }
 
         // Look up products from DB
         const allProds = query('SELECT id, name, slug, category, format, finish, pei, usage, image_url FROM products WHERE active = 1');
@@ -2269,9 +2283,10 @@ app.post('/webhook', async (req, res) => {
         // Create lead with proper store info
         const existingLead = queryOne('SELECT id FROM leads WHERE phone = ?', [from]);
         if (existingLead) {
-          run(`UPDATE leads SET source = 'landing', name = COALESCE(NULLIF(?, ''), name), store_name = ?, store_id = ?, products_interested = ?,
+          run(`UPDATE leads SET source = 'landing', store_name = ?, store_id = ?, products_interested = ?,
+               name = CASE WHEN name IS NULL OR name = phone THEN ? ELSE name END,
                notes = COALESCE(notes, '') || '\n' || ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-            [contactName, lStoreName, lStoreId, JSON.stringify([lProductName]), `Landing page: ${lProductName} (${lSku}) desde ${lStoreName}`, existingLead.id]);
+            [lStoreName, lStoreId, JSON.stringify([lProductName]), contactName || from, `Landing page: ${lProductName} (${lSku}) desde ${lStoreName}`, existingLead.id]);
         } else {
           run(`INSERT INTO leads (phone, name, source, store_name, store_id, products_interested, status, notes)
                VALUES (?, ?, 'landing', ?, ?, ?, 'new', ?)`,
