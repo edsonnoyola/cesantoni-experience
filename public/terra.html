@@ -346,6 +346,57 @@
         .nfc-dot { width: 6px; height: 6px; border-radius: 50%; background: #4CAF50; animation: nfcPulse 2s infinite; }
         @keyframes nfcPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
+        /* Help/call seller button */
+        .help-btn {
+            display: none; position: fixed; bottom: 20px; left: 20px;
+            background: var(--gray-dark); border: 1px solid var(--gray);
+            color: var(--gray-light); padding: 8px 14px; border-radius: 20px;
+            font-size: 0.65rem; letter-spacing: 0.08em; cursor: pointer;
+            font-family: 'Montserrat', sans-serif; z-index: 15;
+            align-items: center; gap: 6px; transition: all 0.3s;
+        }
+        .app.store-mode .help-btn { display: flex; }
+        .help-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+        /* Help modal */
+        .help-modal {
+            position: fixed; inset: 0; z-index: 250;
+            background: rgba(0,0,0,0.85);
+            display: none; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 30px; gap: 16px;
+        }
+        .help-modal.show { display: flex; }
+        .help-modal-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.6rem; color: var(--gold-light); font-weight: 300;
+        }
+        .help-modal-sub {
+            font-size: 0.8rem; color: var(--gray-light); font-weight: 300;
+            margin-bottom: 10px; text-align: center;
+        }
+        .help-modal-btn {
+            width: 260px; padding: 14px 20px; border-radius: 6px;
+            border: none; cursor: pointer; font-family: 'Montserrat', sans-serif;
+            font-size: 0.85rem; font-weight: 500; display: flex;
+            align-items: center; justify-content: center; gap: 10px;
+            transition: all 0.2s;
+        }
+        .help-modal-btn.call {
+            background: var(--gold); color: var(--black);
+        }
+        .help-modal-btn.call:hover { background: var(--gold-light); }
+        .help-modal-btn.wa {
+            background: #25D366; color: #fff;
+        }
+        .help-modal-btn.wa:hover { background: #20bd5a; }
+        .help-modal-close {
+            margin-top: 10px; background: none; border: 1px solid var(--gray);
+            color: var(--gray-light); padding: 8px 30px; cursor: pointer;
+            font-family: 'Montserrat', sans-serif; font-size: 0.75rem;
+            border-radius: 4px;
+        }
+
         /* Suggestions */
         .suggestions {
             display: flex; flex-wrap: wrap; justify-content: center;
@@ -601,6 +652,27 @@
 
         <!-- Suggestions -->
         <div class="suggestions" id="suggestions"></div>
+    </div>
+
+    <!-- Help / Call seller button -->
+    <button class="help-btn" id="help-btn" onclick="openHelpModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+        Necesito ayuda
+    </button>
+
+    <!-- Help modal -->
+    <div class="help-modal" id="help-modal">
+        <div class="help-modal-title">Necesitas ayuda?</div>
+        <div class="help-modal-sub">Contacta a un asesor de la tienda</div>
+        <button class="help-modal-btn call" id="help-call-btn" onclick="callSeller()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+            Llamar a la tienda
+        </button>
+        <button class="help-modal-btn wa" id="help-wa-btn" onclick="whatsappSeller()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492l4.625-1.468A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75c-2.24 0-4.31-.733-5.988-1.97l-.43-.32-2.746.872.871-2.685-.35-.453A9.7 9.7 0 012.25 12c0-5.385 4.365-9.75 9.75-9.75S21.75 6.615 21.75 12s-4.365 9.75-9.75 9.75z"/></svg>
+            WhatsApp al asesor
+        </button>
+        <button class="help-modal-close" onclick="closeHelpModal()">Cerrar</button>
     </div>
 
     <!-- QR Scanner overlay -->
@@ -1612,6 +1684,44 @@
                 speak(`No encontre ese producto. Preguntame por nombre y te ayudo.`);
             }
         }
+
+        // ===== HELP / CALL SELLER =====
+        function openHelpModal() {
+            const modal = document.getElementById('help-modal');
+            const callBtn = document.getElementById('help-call-btn');
+            const waBtn = document.getElementById('help-wa-btn');
+            const phone = storeWhatsapp ? storeWhatsapp.replace(/\D/g, '') : '';
+
+            if (!phone) {
+                // No store phone — use bot number
+                callBtn.style.display = 'none';
+                waBtn.onclick = () => {
+                    const msg = `Hola! Soy ${customerName}, estoy en ${storeName || 'la tienda'} y necesito ayuda de un asesor.`;
+                    window.open(`https://wa.me/5215651747912?text=${encodeURIComponent(msg)}`, '_blank');
+                    closeHelpModal();
+                };
+            } else {
+                callBtn.style.display = 'flex';
+                callBtn.onclick = () => {
+                    window.location.href = `tel:+${phone}`;
+                    closeHelpModal();
+                };
+                waBtn.onclick = () => {
+                    const msg = `Hola! Soy ${customerName}, estoy en ${storeName || 'la tienda'} viendo pisos con Terra y necesito ayuda de un asesor.`;
+                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+                    closeHelpModal();
+                };
+            }
+
+            modal.classList.add('show');
+        }
+
+        function closeHelpModal() {
+            document.getElementById('help-modal').classList.remove('show');
+        }
+
+        function callSeller() {} // handled by onclick override in openHelpModal
+        function whatsappSeller() {} // handled by onclick override in openHelpModal
 
         // ===== NFC LISTENER =====
         function initNFC() {
