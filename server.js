@@ -1875,7 +1875,7 @@ app.post('/api/tts', async (req, res) => {
           generationConfig: {
             responseModalities: ['AUDIO'],
             speechConfig: {
-              voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } }
+              voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } }
             }
           }
         })
