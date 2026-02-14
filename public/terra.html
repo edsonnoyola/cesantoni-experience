@@ -59,9 +59,9 @@
         /* Main area */
         .main {
             flex: 1; display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            padding: 20px; position: relative;
-            overflow-y: auto;
+            align-items: center; justify-content: flex-start;
+            padding: 0; position: relative;
+            overflow: hidden;
         }
 
         /* Journey strip (Phase 2a) */
@@ -72,7 +72,7 @@
             scrollbar-width: none;
         }
         .journey-strip::-webkit-scrollbar { display: none; }
-        .journey-strip.show { display: flex; align-items: center; gap: 8px; }
+        .journey-strip.show { display: flex; align-items: center; gap: 10px; padding-bottom: 18px; }
         .journey-thumb {
             width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
             object-fit: cover; border: 2px solid var(--gray-dark);
@@ -90,37 +90,37 @@
             display: flex; align-items: center; justify-content: center;
         }
 
-        /* Orb — compact, grows when product shown */
+        /* Orb — smaller for chat layout */
         .orb-wrapper {
-            position: relative; width: 160px; height: 160px;
-            margin-bottom: 16px; flex-shrink: 0;
+            position: relative; width: 100px; height: 100px;
+            margin: 12px 0 4px; flex-shrink: 0;
             display: flex; align-items: center; justify-content: center;
             transition: all 0.5s ease;
         }
-        .app.has-scanned .orb-wrapper { width: 180px; height: 180px; }
+        .app.has-scanned .orb-wrapper { width: 110px; height: 110px; }
         .orb-container {
-            position: relative; width: 130px; height: 130px;
+            position: relative; width: 80px; height: 80px;
             border-radius: 50%; overflow: hidden;
             transition: all 0.5s ease;
         }
-        .app.has-scanned .orb-container { width: 150px; height: 150px; }
+        .app.has-scanned .orb-container { width: 90px; height: 90px; }
         .orb {
             width: 100%; height: 100%; border-radius: 50%;
             background: radial-gradient(circle at 40% 40%, var(--gold-light), var(--gold-dark));
             opacity: 0.3; transition: all 0.5s ease;
         }
         .orb-ring {
-            position: absolute; inset: calc(50% - 74px); width: 148px; height: 148px;
+            position: absolute; inset: calc(50% - 46px); width: 92px; height: 92px;
             border-radius: 50%; border: 1px solid var(--gold); opacity: 0.2;
             transition: all 0.5s ease; pointer-events: none;
         }
-        .app.has-scanned .orb-ring { inset: calc(50% - 82px); width: 164px; height: 164px; }
+        .app.has-scanned .orb-ring { inset: calc(50% - 50px); width: 100px; height: 100px; }
         .orb-ring-2 {
-            position: absolute; inset: calc(50% - 80px); width: 160px; height: 160px;
+            position: absolute; inset: calc(50% - 50px); width: 100px; height: 100px;
             border-radius: 50%; border: 1px solid var(--gold); opacity: 0.1;
             transition: all 0.5s ease; pointer-events: none;
         }
-        .app.has-scanned .orb-ring-2 { inset: calc(50% - 90px); width: 180px; height: 180px; }
+        .app.has-scanned .orb-ring-2 { inset: calc(50% - 55px); width: 110px; height: 110px; }
         /* Product images inside orb (cross-dissolve Phase 5c) */
         .orb-product-img {
             position: absolute; inset: 0; width: 100%; height: 100%;
@@ -172,27 +172,156 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Speech bubble */
-        .speech {
-            text-align: center; max-width: 300px;
-            margin-bottom: 12px; min-height: 40px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        /* Old speech/transcript — hidden, kept for TTS reference */
+        .speech { display: none; }
+        .transcript { display: none; }
+
+        /* ===== CHAT UI ===== */
+        .chat-area {
+            flex: 1; display: flex; flex-direction: column;
+            gap: 6px; overflow-y: auto; padding: 6px 14px 10px;
+            scroll-behavior: smooth; width: 100%;
         }
-        .speech-text {
-            font-size: 0.88rem; font-weight: 300; color: var(--gray-light);
-            line-height: 1.65; transition: opacity 0.3s;
+        .chat-area::-webkit-scrollbar { width: 3px; }
+        .chat-area::-webkit-scrollbar-thumb { background: var(--gray-dark); border-radius: 3px; }
+
+        .chat-msg {
+            max-width: 82%; padding: 10px 14px;
+            font-size: 0.82rem; line-height: 1.6;
+            animation: chatIn 0.35s ease; word-wrap: break-word;
         }
-        .app.speaking .speech-text { color: var(--white); }
-        .speech-text.greeting {
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 1.15rem; color: var(--gold-light);
+        @keyframes chatIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .chat-msg.terra {
+            align-self: flex-start;
+            background: var(--charcoal); border: 1px solid var(--gray-dark);
+            border-radius: 2px 16px 16px 16px;
+            color: var(--white); font-weight: 300;
+        }
+        .chat-msg.user {
+            align-self: flex-end;
+            background: rgba(201,169,98,0.12); border: 1px solid rgba(201,169,98,0.2);
+            border-radius: 16px 2px 16px 16px;
+            color: var(--gold-light); font-style: italic; font-size: 0.78rem;
         }
 
-        /* User transcript */
-        .transcript {
-            font-size: 0.8rem; color: var(--gray); text-align: center;
-            min-height: 20px; margin-bottom: 10px;
-            font-style: italic; max-width: 300px;
+        /* Typing indicator */
+        .typing-indicator {
+            display: none; align-self: flex-start;
+            padding: 12px 18px; background: var(--charcoal);
+            border: 1px solid var(--gray-dark);
+            border-radius: 2px 16px 16px 16px;
+            gap: 5px; align-items: center;
+        }
+        .typing-indicator.show { display: flex; }
+        .typing-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--gold); animation: typingBounce 1.4s infinite;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
+            30% { transform: translateY(-8px); opacity: 1; }
+        }
+
+        /* Inline product card in chat */
+        .msg-product-card {
+            display: flex; align-items: center; gap: 10px;
+            margin-top: 10px; padding: 10px 12px;
+            background: var(--gray-dark); border: 1px solid rgba(201,169,98,0.25);
+            border-radius: 8px; cursor: pointer;
+            text-decoration: none; color: inherit;
+            transition: all 0.3s ease;
+            animation: cardGlow 2.5s ease 0.3s;
+        }
+        .msg-product-card:hover {
+            border-color: var(--gold);
+            box-shadow: 0 0 16px rgba(201,169,98,0.2);
+        }
+        @keyframes cardGlow {
+            0% { box-shadow: 0 0 0 0 rgba(201,169,98,0); }
+            20% { box-shadow: 0 0 20px 4px rgba(201,169,98,0.35); }
+            50% { box-shadow: 0 0 12px 2px rgba(201,169,98,0.15); }
+            80% { box-shadow: 0 0 20px 4px rgba(201,169,98,0.25); }
+            100% { box-shadow: 0 0 0 0 rgba(201,169,98,0); }
+        }
+        .msg-product-card img {
+            width: 48px; height: 48px; border-radius: 6px;
+            object-fit: cover; border: 1px solid var(--gray);
+        }
+        .msg-product-info { flex: 1; }
+        .msg-product-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.05rem; color: var(--white); margin-bottom: 2px;
+        }
+        .msg-product-cat {
+            font-size: 0.6rem; letter-spacing: 0.12em;
+            text-transform: uppercase; color: var(--gold);
+        }
+        .msg-product-cta {
+            display: flex; align-items: center; gap: 4px;
+            background: linear-gradient(90deg, var(--gold-dark), var(--gold));
+            color: var(--black); font-size: 0.6rem; font-weight: 600;
+            letter-spacing: 0.08em; text-transform: uppercase;
+            padding: 6px 10px; border-radius: 12px; white-space: nowrap;
+            animation: ctaPulse 2s ease 1s infinite;
+        }
+        @keyframes ctaPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .msg-product-cta .cta-arrow {
+            display: inline-block; animation: ctaArrow 1.2s ease infinite;
+        }
+        @keyframes ctaArrow {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(3px); }
+        }
+
+        /* WhatsApp FAB */
+        .wa-fab {
+            display: none; position: fixed; bottom: 90px; right: 14px;
+            z-index: 20; cursor: pointer;
+            animation: fabIn 0.5s ease;
+        }
+        .wa-fab.show { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .wa-fab-btn {
+            width: 52px; height: 52px; border-radius: 50%;
+            background: #25D366; border: none; color: white;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 18px rgba(37,211,102,0.45);
+            animation: waPulse 2.5s ease infinite;
+            cursor: pointer;
+        }
+        .wa-fab-btn svg { width: 26px; height: 26px; }
+        .wa-fab-label {
+            font-size: 0.55rem; color: var(--gray-light); letter-spacing: 0.05em;
+            background: var(--charcoal); padding: 3px 8px; border-radius: 8px;
+            border: 1px solid var(--gray-dark); white-space: nowrap;
+        }
+        @keyframes fabIn {
+            from { opacity: 0; transform: scale(0.3) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes waPulse {
+            0%, 100% { box-shadow: 0 4px 18px rgba(37,211,102,0.45); }
+            50% { box-shadow: 0 4px 28px rgba(37,211,102,0.65), 0 0 0 10px rgba(37,211,102,0.08); }
+        }
+
+        /* Improved journey strip */
+        .journey-thumb {
+            width: 44px; height: 44px;
+        }
+        .journey-name {
+            position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%);
+            font-size: 0.45rem; color: var(--gray-light); white-space: nowrap;
+            max-width: 60px; overflow: hidden; text-overflow: ellipsis;
+        }
+        .journey-item {
+            position: relative; flex-shrink: 0;
         }
 
         /* Product card — compact */
@@ -591,7 +720,7 @@
             <!-- Visited badge -->
             <div class="visited-badge" id="visited-badge" onclick="sendText('Mandame el resumen por WhatsApp')">0</div>
 
-            <!-- Orb with product image -->
+            <!-- Small orb at top -->
             <div class="orb-wrapper" id="orb-wrapper">
                 <div class="orb-ring-2"></div>
                 <div class="orb-ring"></div>
@@ -602,26 +731,19 @@
                 </div>
             </div>
 
-            <!-- Speech -->
-            <div class="speech">
-                <div class="speech-text greeting" id="speech-text"></div>
-            </div>
-
-            <!-- User transcript -->
-            <div class="transcript" id="transcript"></div>
-
-            <!-- Product card -->
-            <div class="product-card" id="product-card">
-                <div class="product-card-inner">
-                    <img class="product-card-img" id="pc-img" src="" alt="">
-                    <div class="product-card-info">
-                        <div class="product-card-name" id="pc-name"></div>
-                        <div class="product-card-cat" id="pc-cat"></div>
-                        <div class="product-card-number" id="pc-number"></div>
-                    </div>
-                    <div class="product-card-arrow">&#8250;</div>
+            <!-- Chat area -->
+            <div class="chat-area" id="chat-area">
+                <!-- Messages added dynamically -->
+                <div class="typing-indicator" id="typing-indicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
                 </div>
             </div>
+
+            <!-- Hidden elements for TTS reference -->
+            <div class="speech"><div class="speech-text" id="speech-text"></div></div>
+            <div class="transcript" id="transcript"></div>
         </div>
 
         <!-- Store mode: scan area between mic and suggestions -->
@@ -661,6 +783,14 @@
         <div class="suggestions" id="suggestions"></div>
     </div>
 
+    <!-- WhatsApp FAB -->
+    <div class="wa-fab" id="wa-fab">
+        <button class="wa-fab-btn" onclick="sendWhatsAppSummary()">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492l4.625-1.468A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75c-2.24 0-4.31-.733-5.988-1.97l-.43-.32-2.746.872.871-2.685-.35-.453A9.7 9.7 0 012.25 12c0-5.385 4.365-9.75 9.75-9.75S21.75 6.615 21.75 12s-4.365 9.75-9.75 9.75z"/></svg>
+        </button>
+        <span class="wa-fab-label">Resumen</span>
+    </div>
+
     <!-- Help / Call seller button -->
     <button class="help-btn" id="help-btn" onclick="openHelpModal()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
@@ -695,7 +825,6 @@
         const speechText = document.getElementById('speech-text');
         const transcriptEl = document.getElementById('transcript');
         const micLabel = document.getElementById('mic-label');
-        const productCard = document.getElementById('product-card');
         const suggestionsEl = document.getElementById('suggestions');
         const orbProductImg = document.getElementById('orb-product-img');
         const orbProductImgPrev = document.getElementById('orb-product-img-prev');
@@ -738,6 +867,56 @@
         let autoListenEnabled = storeMode; // ON by default in store mode
         let lastInteractionTime = Date.now();
         let idleReminderSent = false;
+
+        // ===== CHAT UI HELPERS =====
+        const chatArea = document.getElementById('chat-area');
+        const typingIndicator = document.getElementById('typing-indicator');
+
+        function addChatBubble(text, sender, product) {
+            const msg = document.createElement('div');
+            msg.className = `chat-msg ${sender}`;
+
+            let html = `<div class="msg-text">${text}</div>`;
+
+            if (product && sender === 'terra') {
+                const landingUrl = `/p/${product.slug || product.sku || product.id}`;
+                html += `<a href="${landingUrl}" target="_blank" class="msg-product-card" onclick="event.stopPropagation()">
+                    <img src="${product.image_url || ''}" alt="${product.name}">
+                    <div class="msg-product-info">
+                        <div class="msg-product-name">${product.name}</div>
+                        <div class="msg-product-cat">${product.category || 'PREMIUM'}</div>
+                    </div>
+                    <div class="msg-product-cta">Ver detalles <span class="cta-arrow">→</span></div>
+                </a>`;
+            }
+
+            msg.innerHTML = html;
+            // Insert before typing indicator
+            chatArea.insertBefore(msg, typingIndicator);
+            scrollChat();
+        }
+
+        function showTyping() {
+            typingIndicator.classList.add('show');
+            scrollChat();
+        }
+
+        function hideTyping() {
+            typingIndicator.classList.remove('show');
+        }
+
+        function scrollChat() {
+            requestAnimationFrame(() => {
+                chatArea.scrollTop = chatArea.scrollHeight;
+            });
+        }
+
+        function updateWaFab() {
+            const fab = document.getElementById('wa-fab');
+            if (visitedProducts.length >= 2) {
+                fab.classList.add('show');
+            }
+        }
 
         // ===== SOUND EFFECTS =====
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -925,10 +1104,10 @@
                     for (let i = event.resultIndex; i < event.results.length; i++) {
                         transcript += event.results[i][0].transcript;
                     }
-                    transcriptEl.textContent = `"${transcript}"`;
 
                     if (event.results[event.results.length - 1].isFinal) {
                         stopListening();
+                        addChatBubble(transcript, 'user');
                         processMessage(transcript);
                     }
                 };
@@ -968,8 +1147,8 @@
                     showProduct(scannedProduct);
                     addToVisited(scannedProduct);
 
-                    speechText.textContent = 'Analizando este piso...';
-                    app.className = 'app thinking' + (storeMode ? ' store-mode' : '') + (visitedProducts.length > 0 ? ' has-scanned' : '');
+                    setAppState('thinking');
+                    showTyping();
 
                     try {
                         const introRes = await fetch('/api/terra', {
@@ -988,7 +1167,7 @@
                         });
                         const introData = await introRes.json();
                         const introSpeech = introData.speech || `${hi()}Este es ${scannedProduct.name}. Preguntame lo que quieras.`;
-                        speak(introSpeech);
+                        speak(introSpeech, scannedProduct);
 
                         updateSuggestions([
                             'Me gusta! Cuentame mas',
@@ -997,7 +1176,7 @@
                             'Que mas opciones hay?'
                         ]);
                     } catch (e) {
-                        speak(`${hi()}Este es ${scannedProduct.name}. Preguntame lo que quieras sobre este piso.`);
+                        speak(`${hi()}Este es ${scannedProduct.name}. Preguntame lo que quieras sobre este piso.`, scannedProduct);
                     }
                     return;
                 }
@@ -1006,7 +1185,6 @@
             // Greeting — warm, short introduction
             if (storeMode && !productSlug) {
                 const storeGreeting = `${hola()} Soy Terra. Escanea el QR de cualquier piso que te guste y te cuento todo sobre el.`;
-                speechText.textContent = storeGreeting;
                 setTimeout(() => speak(storeGreeting), 300);
 
                 updateSuggestions([
@@ -1016,7 +1194,6 @@
                 ]);
             } else {
                 const defaultGreeting = `${hola()} Soy Terra. Escanea el QR de cualquier piso y te cuento todo sobre el.`;
-                speechText.textContent = defaultGreeting;
                 setTimeout(() => speak(defaultGreeting), 300);
 
                 updateSuggestions([
@@ -1107,12 +1284,14 @@
         // ===== SPEAK (Gemini Kore voice — human-sounding) =====
         let ttsAudio = null;
 
-        function speak(text) {
+        function speak(text, product) {
             synth.cancel();
             if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
 
+            hideTyping();
+            addChatBubble(text, 'terra', product || null);
+
             setAppState('speaking');
-            speechText.className = 'speech-text';
             speechText.textContent = text;
             soundSpeak();
 
@@ -1203,7 +1382,7 @@
             const msg = text.trim();
             const textInput = document.getElementById('text-input');
             if (textInput) textInput.value = '';
-            transcriptEl.textContent = `"${msg}"`;
+            addChatBubble(msg, 'user');
             lastInteractionTime = Date.now();
             idleReminderSent = false;
 
@@ -1222,11 +1401,13 @@
             micLabel.textContent = 'Pensando...';
             suggestionsEl.style.display = 'none';
             soundThink();
+            showTyping();
             lastInteractionTime = Date.now();
 
             // Check for WhatsApp summary request
             const lowerMsg = message.toLowerCase();
             if ((lowerMsg.includes('whatsapp') && lowerMsg.includes('resumen')) || (lowerMsg.includes('mandame') && lowerMsg.includes('resumen')) || (lowerMsg.includes('manda') && lowerMsg.includes('whatsapp'))) {
+                hideTyping();
                 sendWhatsAppSummary();
                 return;
             }
@@ -1256,17 +1437,19 @@
 
                 chatHistory.push({ user: message, terra: data.speech });
 
+                let productForBubble = null;
                 if (data.product) {
                     showProduct(data.product);
                     currentProduct = data.product;
                     addToVisited(data.product);
+                    productForBubble = data.product;
                 }
 
                 if (data.product) {
                     updateSuggestions(getProductSuggestions(data.product));
                 }
 
-                speak(data.speech || `Disculpa${customerName ? ' ' + customerName : ''}, no entendi. Podrias repetirlo?`);
+                speak(data.speech || `Disculpa${customerName ? ' ' + customerName : ''}, no entendi. Podrias repetirlo?`, productForBubble);
 
                 // Save session to sessionStorage
                 saveSessionState();
@@ -1305,15 +1488,7 @@
                 }, 150);
             }
 
-            // Product card slide-up
-            document.getElementById('pc-img').src = p.image_url || '';
-            document.getElementById('pc-name').textContent = p.name;
-            document.getElementById('pc-cat').textContent = p.category || 'Premium';
-            document.getElementById('pc-number').textContent = p.display_number ? `#${p.display_number}` : '';
-            productCard.className = 'product-card show';
-            productCard.onclick = () => {
-                window.open(`/p/${p.slug || p.sku || p.id}`, '_blank');
-            };
+            // Product card now inline in chat bubbles — no standalone card
         }
 
         // ===== SESSION HISTORY =====
@@ -1339,6 +1514,7 @@
                 document.querySelector('.scan-btn-label').textContent = 'Escanear otro';
             }
             updateJourneyStrip();
+            updateWaFab();
             saveSessionState();
 
             // Server-side tracking (Phase 2e)
@@ -1363,11 +1539,13 @@
             }
 
             journeyStrip.classList.add('show');
+            const shortName = (name) => name.length > 10 ? name.substring(0, 10) + '…' : name;
             journeyStrip.innerHTML = visitedProducts.map((p, i) =>
-                `<img class="journey-thumb${currentProduct && currentProduct.id === p.id ? ' active' : ''}"
-                      src="${p.image_url || ''}" alt="${p.name}"
-                      onclick="focusOnProduct(${p.id})"
-                      title="${p.name}">`
+                `<div class="journey-item" onclick="focusOnProduct(${p.id})">
+                    <img class="journey-thumb${currentProduct && currentProduct.id === p.id ? ' active' : ''}"
+                         src="${p.image_url || ''}" alt="${p.name}" title="${p.name}">
+                    <span class="journey-name">${shortName(p.name)}</span>
+                </div>`
             ).join('') +
             `<button class="journey-add" onclick="openScanner()" title="Escanear otro">+</button>` +
             `<span class="journey-count">${visitedProducts.length} piso${visitedProducts.length > 1 ? 's' : ''}</span>`;
