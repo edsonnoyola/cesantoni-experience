@@ -3,7 +3,7 @@
  */
 const puppeteer = require('puppeteer');
 
-const RENDER_API = process.env.RENDER_API || 'https://cesantoni-experience.onrender.com';
+const RENDER_API = process.env.RENDER_API || 'https://cesantoni-experience-za74.onrender.com';
 
 async function getProductsFromRender() {
   const res = await fetch(`${RENDER_API}/api/products`);

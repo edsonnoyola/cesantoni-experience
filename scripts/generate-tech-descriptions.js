@@ -4,7 +4,7 @@
 require('dotenv').config();
 
 const API_KEY = process.env.GOOGLE_API_KEY;
-const API_URL = process.env.BASE_URL || 'https://cesantoni-experience.onrender.com';
+const API_URL = process.env.BASE_URL || 'https://cesantoni-experience-za74.onrender.com';
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function generateTechDescription(product, index) {

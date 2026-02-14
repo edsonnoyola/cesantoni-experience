@@ -21,11 +21,11 @@ Sistema completo para **Cesantoni Porcelanato Premium**: CRM con gestión de lan
 - **Terra Insights**: logging de conversaciones + resumen IA en dashboard
 
 **URLs:**
-- **Producción:** https://cesantoni-experience.onrender.com
+- **Producción:** https://cesantoni-experience-za74.onrender.com
 - **GitHub:** https://github.com/edsonnoyola/cesantoni-experience
-- **CRM Dashboard:** https://cesantoni-experience.onrender.com/index.html
-- **Generador QR:** https://cesantoni-experience.onrender.com/qr-tiendas.html
-- **Editor Productos:** https://cesantoni-experience.onrender.com/productos-edit.html
+- **CRM Dashboard:** https://cesantoni-experience-za74.onrender.com/index.html
+- **Generador QR:** https://cesantoni-experience-za74.onrender.com/qr-tiendas.html
+- **Editor Productos:** https://cesantoni-experience-za74.onrender.com/productos-edit.html
 
 ---
 
@@ -300,7 +300,7 @@ Al reiniciar Render, las video_url en la DB se pierden. El server tiene `syncVid
 ### Bug conocido: video_url no se guarda en DB
 A veces el video se sube a GCS exitosamente pero el UPDATE de `video_url` en la DB no persiste (Render free tier reinicia durante la generación larga). **Siempre verificar** que `video_url` no sea null después de generar. Si es null pero el video existe en GCS, actualizar manualmente via:
 ```bash
-curl -X PUT "https://cesantoni-experience.onrender.com/api/products/{id}" \
+curl -X PUT "https://cesantoni-experience-za74.onrender.com/api/products/{id}" \
   -H "Content-Type: application/json" \
   -d '{"video_url":"https://storage.googleapis.com/cesantoni-videos/videos/{slug}.mp4?v=1"}'
 ```
@@ -411,7 +411,7 @@ npm install pdfkit  # solo local
 ```
 
 ### Formato del QR
-Cada QR apunta a: `https://cesantoni-experience.onrender.com/p/{SKU}?tienda={store_slug}`
+Cada QR apunta a: `https://cesantoni-experience-za74.onrender.com/p/{SKU}?tienda={store_slug}`
 - El `?tienda=` carga info de la tienda en la landing (dirección, WhatsApp, mapa)
 - El scan se registra automáticamente en la DB al cargar la landing
 
@@ -529,7 +529,7 @@ address, city, state, whatsapp, phone, email, lat, lng
 ## Variables de Entorno (.env)
 
 ```
-BASE_URL=https://cesantoni-experience.onrender.com
+BASE_URL=https://cesantoni-experience-za74.onrender.com
 GOOGLE_API_KEY=AIza...           # Generative Language API (Gemini, Veo, TTS)
 GCS_BUCKET=cesantoni-videos      # Bucket de Google Cloud Storage
 GCS_KEY_FILE=./gcs-credentials.json  # Service account para GCS
@@ -551,7 +551,7 @@ NODE_ENV=production
 - **DB**: SQLite in-memory (sql.js) - se recarga desde archivo en cada restart
 - **Videos**: Google Cloud Storage (persistente, no se pierde en restart)
 - **Sync automático**: `syncVideosFromGCS()` al arrancar recupera video_url de GCS
-- **Dominio**: cesantoni-experience.onrender.com
+- **Dominio**: cesantoni-experience-za74.onrender.com
 - **Pipeline minutes**: El free tier tiene límite mensual de minutos de build. Si se agotan, los deploys fallan con "Build blocked - out of pipeline minutes". Se resetean al inicio del ciclo de facturación.
 
 ---
@@ -642,5 +642,5 @@ NODE_ENV=production
 ## Soporte
 
 **Repositorio:** https://github.com/edsonnoyola/cesantoni-experience
-**Producción:** https://cesantoni-experience.onrender.com
-**CRM:** https://cesantoni-experience.onrender.com/index.html
+**Producción:** https://cesantoni-experience-za74.onrender.com
+**CRM:** https://cesantoni-experience-za74.onrender.com/index.html

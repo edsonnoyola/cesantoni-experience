@@ -1,6 +1,6 @@
 const puppeteer = require('puppeteer');
 
-const RENDER_API = 'https://cesantoni-experience.onrender.com';
+const RENDER_API = 'https://cesantoni-experience-za74.onrender.com';
 
 async function scrapeProduct(browser, slug) {
   const page = await browser.newPage();

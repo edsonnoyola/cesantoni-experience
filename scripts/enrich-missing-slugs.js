@@ -76,7 +76,7 @@ async function main() {
         gallery: JSON.stringify(data.images.slice(0, 6)),
         related_products: JSON.stringify(data.related.filter(r => r !== p.slug).slice(0, 4))
       };
-      await fetch(`https://cesantoni-experience.onrender.com/api/products/${p.id}`, {
+      await fetch(`https://cesantoni-experience-za74.onrender.com/api/products/${p.id}`, {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(update)

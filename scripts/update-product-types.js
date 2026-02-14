@@ -1,4 +1,4 @@
-const RENDER_API = 'https://cesantoni-experience.onrender.com';
+const RENDER_API = 'https://cesantoni-experience-za74.onrender.com';
 
 // Mapping rules for product types based on name patterns
 function determineType(product) {

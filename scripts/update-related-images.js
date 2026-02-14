@@ -47,7 +47,7 @@ async function main() {
     args: ['--no-sandbox']
   });
 
-  const res = await fetch('https://cesantoni-experience.onrender.com/api/products');
+  const res = await fetch('https://cesantoni-experience-za74.onrender.com/api/products');
   const products = await res.json();
 
   const slugs = ['blendwood', 'denver', 'vermont', 'riverwood'];
@@ -70,7 +70,7 @@ async function main() {
         gallery: JSON.stringify(images.slice(0, 4))
       };
 
-      const updateRes = await fetch(`https://cesantoni-experience.onrender.com/api/products/${product.id}`, {
+      const updateRes = await fetch(`https://cesantoni-experience-za74.onrender.com/api/products/${product.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData)

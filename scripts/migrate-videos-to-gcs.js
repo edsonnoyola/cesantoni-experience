@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-const RENDER_API = process.env.RENDER_API || 'https://cesantoni-experience.onrender.com';
+const RENDER_API = process.env.RENDER_API || 'https://cesantoni-experience-za74.onrender.com';
 const GCS_BUCKET = process.env.GCS_BUCKET || 'cesantoni-videos';
 const VIDEOS_DIR = path.join(__dirname, '..', 'public', 'videos');
 

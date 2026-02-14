@@ -10,7 +10,7 @@ const { Storage } = require('@google-cloud/storage');
 const API_KEY = process.env.GOOGLE_API_KEY;
 const GCS_KEY_FILE = process.env.GCS_KEY_FILE || './gcs-credentials.json';
 const GCS_BUCKET = process.env.GCS_BUCKET || 'cesantoni-videos';
-const API_URL = process.env.BASE_URL || 'https://cesantoni-experience.onrender.com';
+const API_URL = process.env.BASE_URL || 'https://cesantoni-experience-za74.onrender.com';
 
 const storage = new Storage({ keyFilename: GCS_KEY_FILE });
 const bucket = storage.bucket(GCS_BUCKET);
