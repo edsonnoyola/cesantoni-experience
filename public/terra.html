@@ -1053,6 +1053,7 @@
         function toggleListening() {
             if (app.classList.contains('speaking')) {
                 synth.cancel();
+                if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
                 app.classList.remove('speaking');
             }
             if (app.classList.contains('thinking')) return;
@@ -1062,6 +1063,7 @@
         function startListening() {
             if (!recognition) return;
             synth.cancel();
+            if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
             isListening = true;
             const cls = ['app', 'listening'];
             if (storeMode) cls.push('store-mode');
@@ -1100,24 +1102,82 @@
             app.className = cls.join(' ');
         }
 
-        // ===== SPEAK (Browser TTS only) =====
+        // ===== SPEAK (Gemini Kore voice — human-sounding) =====
+        let ttsAudio = null;
+
         function speak(text) {
             synth.cancel();
+            if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
 
             setAppState('speaking');
             speechText.className = 'speech-text';
             speechText.textContent = text;
             soundSpeak();
 
+            // Fetch Gemini TTS (Kore voice)
+            fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.audioContent) {
+                    playPCMAudio(data.audioContent);
+                } else {
+                    // Fallback to browser TTS if server fails
+                    browserSpeak(text);
+                }
+            })
+            .catch(() => browserSpeak(text));
+        }
+
+        function browserSpeak(text) {
             const utter = new SpeechSynthesisUtterance(text);
             utter.lang = 'es-MX';
             utter.rate = 1.0;
-            utter.pitch = 1.05;
             utter.volume = 1.0;
             if (spanishVoice) utter.voice = spanishVoice;
             utter.onend = () => onSpeechEnd();
             utter.onerror = () => resetAppState();
             synth.speak(utter);
+        }
+
+        function playPCMAudio(base64Data) {
+            const raw = atob(base64Data);
+            const pcm = new Uint8Array(raw.length);
+            for (let i = 0; i < raw.length; i++) pcm[i] = raw.charCodeAt(i);
+
+            const wavHeader = new ArrayBuffer(44);
+            const v = new DataView(wavHeader);
+            v.setUint32(0, 0x52494646, false);
+            v.setUint32(4, 36 + pcm.length, true);
+            v.setUint32(8, 0x57415645, false);
+            v.setUint32(12, 0x666d7420, false);
+            v.setUint32(16, 16, true);
+            v.setUint16(20, 1, true);
+            v.setUint16(22, 1, true);
+            v.setUint32(24, 24000, true);
+            v.setUint32(28, 48000, true);
+            v.setUint16(32, 2, true);
+            v.setUint16(34, 16, true);
+            v.setUint32(36, 0x64617461, false);
+            v.setUint32(40, pcm.length, true);
+
+            const wav = new Blob([wavHeader, pcm], { type: 'audio/wav' });
+            const url = URL.createObjectURL(wav);
+            ttsAudio = new Audio(url);
+            ttsAudio.onended = () => {
+                URL.revokeObjectURL(url);
+                ttsAudio = null;
+                onSpeechEnd();
+            };
+            ttsAudio.onerror = () => {
+                URL.revokeObjectURL(url);
+                ttsAudio = null;
+                browserSpeak(speechText.textContent);
+            };
+            ttsAudio.play();
         }
 
         function onSpeechEnd() {
