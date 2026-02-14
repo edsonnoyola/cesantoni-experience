@@ -35,3 +35,14 @@ build/
 # Uploads
 # uploads/
 gcs-credentials.json
+
+# SSL certificates
+*.pem
+
+# Local database
+cesantoni.db
+
+# Backups & temp data
+webhook-backup.txt
+scripts/tile-images.json
+mexico_estados.svg
