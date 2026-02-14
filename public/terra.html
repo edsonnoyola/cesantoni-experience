@@ -576,6 +576,7 @@
                     <div class="header-label">Terra</div>
                     <div class="header-store" id="header-store"></div>
                 </div>
+                <button onclick="exitTerra()" style="background:none;border:1px solid var(--gray-dark);color:var(--gray-light);width:28px;height:28px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.9rem;margin-left:6px" title="Salir">&times;</button>
             </div>
         </div>
 
@@ -1603,6 +1604,26 @@
             } else {
                 speak(`No encontre ese producto. Preguntame por nombre y te ayudo.`);
             }
+        }
+
+        // ===== EXIT =====
+        function exitTerra() {
+            synth.cancel();
+            if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
+            if (isListening) stopListening();
+            sessionStorage.removeItem('terra_session');
+            window.close();
+            // If window.close doesn't work (most browsers block it), go back or show message
+            setTimeout(() => {
+                if (!window.closed) {
+                    history.back();
+                }
+            }, 300);
+            setTimeout(() => {
+                if (!window.closed) {
+                    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0A0A0A;color:#9A9A9A;font-family:Montserrat,sans-serif;text-align:center;padding:40px"><div><h2 style="color:#C9A962;font-family:Cormorant Garamond,serif;font-weight:300;margin-bottom:12px">Gracias por usar Terra</h2><p style="font-size:0.85rem">Puedes cerrar esta pestaña.</p></div></div>';
+                }
+            }, 600);
         }
 
         // ===== HELP / CALL SELLER =====
