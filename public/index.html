@@ -334,28 +334,43 @@
                 </div>
             </div>
 
-            <!-- WhatsApp Bot Leads -->
+            <!-- LEADS CRM -->
+            <div style="margin-bottom:20px">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">🎯 Leads</span>
+                        <span class="card-action" onclick="loadLeads()">Actualizar →</span>
+                    </div>
+                    <div id="leads-stats" style="display:flex;justify-content:space-around;text-align:center;padding:12px 0;border-bottom:1px solid #f0f0f0;margin-bottom:8px">
+                        <div><div style="font-size:1.4rem;font-weight:700" id="leads-total">-</div><div style="font-size:0.65rem;color:#888">Total</div></div>
+                        <div><div style="font-size:1.4rem;font-weight:700" id="leads-terra">-</div><div style="font-size:0.65rem;color:#888">Terra QR</div></div>
+                        <div><div style="font-size:1.4rem;font-weight:700" id="leads-wa">-</div><div style="font-size:0.65rem;color:#888">WhatsApp</div></div>
+                        <div><div style="font-size:1.4rem;font-weight:700" id="leads-new">-</div><div style="font-size:0.65rem;color:#888">Nuevos</div></div>
+                    </div>
+                    <div style="display:flex;gap:6px;padding:0 0 10px;flex-wrap:wrap">
+                        <button onclick="loadLeads()" style="font-size:0.65rem;padding:4px 10px;border:1px solid #ddd;background:#fff;border-radius:12px;cursor:pointer">Todos</button>
+                        <button onclick="loadLeads('terra_qr')" style="font-size:0.65rem;padding:4px 10px;border:1px solid #ddd;background:#fff;border-radius:12px;cursor:pointer">Terra QR</button>
+                        <button onclick="loadLeads('whatsapp_bot')" style="font-size:0.65rem;padding:4px 10px;border:1px solid #ddd;background:#fff;border-radius:12px;cursor:pointer">WhatsApp Bot</button>
+                        <button onclick="loadLeads(null,'new')" style="font-size:0.65rem;padding:4px 10px;border:1px solid #27ae60;color:#27ae60;background:#fff;border-radius:12px;cursor:pointer">Nuevos</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="grid-2" style="margin-bottom:20px">
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">💬 WhatsApp Bot - Leads</span>
-                        <span class="card-action" onclick="loadWALeads()">Actualizar →</span>
+                        <span class="card-title">📋 Lista de Leads</span>
                     </div>
-                    <div id="wa-stats" style="display:flex;justify-content:space-around;text-align:center;padding:12px 0;border-bottom:1px solid #f0f0f0;margin-bottom:8px">
-                        <div><div style="font-size:1.4rem;font-weight:700" id="wa-total">-</div><div style="font-size:0.65rem;color:#888">Conversaciones</div></div>
-                        <div><div style="font-size:1.4rem;font-weight:700" id="wa-today">-</div><div style="font-size:0.65rem;color:#888">Hoy</div></div>
-                        <div><div style="font-size:1.4rem;font-weight:700" id="wa-msgs">-</div><div style="font-size:0.65rem;color:#888">Mensajes total</div></div>
-                    </div>
-                    <div id="wa-leads-list" style="max-height:250px;overflow-y:auto;font-size:0.8rem">
-                        <span style="color:#aaa">Cargando leads WhatsApp...</span>
+                    <div id="leads-list" style="max-height:350px;overflow-y:auto;font-size:0.8rem">
+                        <span style="color:#aaa">Cargando leads...</span>
                     </div>
                 </div>
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">💬 Conversación</span>
+                        <span class="card-title">👤 Detalle del Lead</span>
                     </div>
-                    <div id="wa-conversation-detail" style="max-height:300px;overflow-y:auto;font-size:0.8rem">
-                        <span style="color:#aaa">Selecciona un lead para ver la conversación</span>
+                    <div id="lead-detail" style="max-height:350px;overflow-y:auto;font-size:0.8rem">
+                        <span style="color:#aaa">Selecciona un lead para ver detalle</span>
                     </div>
                 </div>
             </div>
@@ -1809,6 +1824,111 @@
             alert('Función de PDF en desarrollo. Por ahora usa "Copiar URLs" y genera los QRs con un generador externo como qr-code-generator.com');
         }
         
+        // ==================== LEADS CRM ====================
+        async function loadLeads(sourceFilter, statusFilter) {
+            try {
+                let url = '/api/leads?days=90';
+                if (sourceFilter) url += `&source=${sourceFilter}`;
+                if (statusFilter) url += `&status=${statusFilter}`;
+                const res = await fetch(url);
+                const leads = await res.json();
+
+                // Stats
+                document.getElementById('leads-total').textContent = leads.length;
+                document.getElementById('leads-terra').textContent = leads.filter(l => l.source === 'terra_qr').length;
+                document.getElementById('leads-wa').textContent = leads.filter(l => l.source === 'whatsapp_bot').length;
+                document.getElementById('leads-new').textContent = leads.filter(l => l.status === 'new').length;
+
+                const listEl = document.getElementById('leads-list');
+                if (leads.length === 0) {
+                    listEl.innerHTML = '<span style="color:#aaa">Sin leads aun.</span>';
+                    return;
+                }
+                listEl.innerHTML = leads.map(l => {
+                    const date = l.created_at ? new Date(l.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+                    const sourceIcon = l.source === 'terra_qr' ? '🏪' : '💬';
+                    const sourceLabel = l.source === 'terra_qr' ? 'Terra QR' : 'WhatsApp';
+                    const statusColor = l.status === 'new' ? '#27ae60' : l.status === 'contacted' ? '#f39c12' : l.status === 'converted' ? '#3498db' : '#888';
+                    const statusLabel = l.status === 'new' ? 'Nuevo' : l.status === 'contacted' ? 'Contactado' : l.status === 'converted' ? 'Convertido' : l.status;
+                    let products = '';
+                    try { const p = JSON.parse(l.products_interested || '[]'); products = p.join(', '); } catch(e) { products = l.products_interested || ''; }
+                    const phone = l.phone || '';
+                    const displayPhone = phone.length > 10 ? '+' + phone.slice(0,2) + ' ' + phone.slice(2,5) + ' ' + phone.slice(5,8) + ' ' + phone.slice(8) : phone;
+                    return `<div style="padding:10px 0;border-bottom:1px solid #f0f0f0;cursor:pointer" onclick="showLeadDetail(${l.id})">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <strong>${sourceIcon} ${l.name || displayPhone}</strong>
+                            <span style="font-size:0.6rem;padding:2px 8px;border-radius:10px;background:${statusColor}15;color:${statusColor};border:1px solid ${statusColor}">${statusLabel}</span>
+                        </div>
+                        <div style="font-size:0.7rem;color:#555;margin-top:3px">${displayPhone}</div>
+                        ${products ? `<div style="font-size:0.65rem;color:#888;margin-top:2px">Pisos: ${products}</div>` : ''}
+                        <div style="font-size:0.6rem;color:#aaa;margin-top:2px">${sourceLabel} · ${l.store_name || ''} · ${date}</div>
+                    </div>`;
+                }).join('');
+            } catch (e) { console.error('Leads error:', e); }
+        }
+
+        async function showLeadDetail(leadId) {
+            const detailEl = document.getElementById('lead-detail');
+            try {
+                const res = await fetch(`/api/leads/${leadId}`);
+                const lead = await res.json();
+                const phone = lead.phone || '';
+                const displayPhone = phone.length > 10 ? '+' + phone.slice(0,2) + ' ' + phone.slice(2,5) + ' ' + phone.slice(5,8) + ' ' + phone.slice(8) : phone;
+                const sourceLabel = lead.source === 'terra_qr' ? '🏪 Terra QR (Tienda)' : '💬 WhatsApp Bot';
+                let products = '';
+                try { const p = JSON.parse(lead.products_interested || '[]'); products = p.map(n => `<span style="display:inline-block;padding:2px 8px;margin:2px;background:#f0f0f0;border-radius:10px;font-size:0.7rem">${n}</span>`).join(''); } catch(e) {}
+
+                let html = `
+                    <div style="padding:8px 0;border-bottom:1px solid #f0f0f0">
+                        <h3 style="margin:0 0 4px">${lead.name || 'Sin nombre'}</h3>
+                        <div style="font-size:0.8rem;color:#25D366;font-weight:600">${displayPhone ? `<a href="https://wa.me/${phone}" target="_blank" style="color:#25D366;text-decoration:none">📱 ${displayPhone}</a>` : 'Sin telefono'}</div>
+                    </div>
+                    <div style="padding:8px 0;border-bottom:1px solid #f0f0f0">
+                        <div style="font-size:0.7rem;color:#888">Fuente</div>
+                        <div style="font-size:0.85rem">${sourceLabel}</div>
+                        ${lead.store_name ? `<div style="font-size:0.7rem;color:#888;margin-top:6px">Tienda</div><div style="font-size:0.85rem">${lead.store_name}</div>` : ''}
+                    </div>
+                    ${products ? `<div style="padding:8px 0;border-bottom:1px solid #f0f0f0"><div style="font-size:0.7rem;color:#888;margin-bottom:4px">Pisos de interes</div>${products}</div>` : ''}
+                    ${lead.notes ? `<div style="padding:8px 0;border-bottom:1px solid #f0f0f0"><div style="font-size:0.7rem;color:#888">Notas</div><div style="font-size:0.8rem">${lead.notes}</div></div>` : ''}
+                    <div style="padding:8px 0;border-bottom:1px solid #f0f0f0">
+                        <div style="font-size:0.7rem;color:#888;margin-bottom:4px">Status</div>
+                        <select onchange="updateLeadStatus(${lead.id}, this.value)" style="padding:4px 8px;border:1px solid #ddd;border-radius:4px;font-size:0.8rem">
+                            <option value="new" ${lead.status==='new'?'selected':''}>Nuevo</option>
+                            <option value="contacted" ${lead.status==='contacted'?'selected':''}>Contactado</option>
+                            <option value="converted" ${lead.status==='converted'?'selected':''}>Convertido</option>
+                            <option value="lost" ${lead.status==='lost'?'selected':''}>Perdido</option>
+                        </select>
+                    </div>`;
+
+                // Show WA conversation if exists
+                if (lead.conversation && lead.conversation.length > 0) {
+                    html += `<div style="padding:8px 0"><div style="font-size:0.7rem;color:#888;margin-bottom:6px">Conversacion WhatsApp (${lead.conversation.length} msgs)</div>`;
+                    html += lead.conversation.slice(-10).map(m => {
+                        const isUser = m.role === 'user';
+                        const time = m.created_at ? new Date(m.created_at).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '';
+                        return `<div style="padding:5px 8px;margin:3px 0;border-radius:8px;max-width:90%;font-size:0.75rem;${isUser ? 'background:#dcf8c6;margin-left:auto;text-align:right' : 'background:#f0f0f0'}">
+                            ${m.message}
+                            <div style="font-size:0.55rem;color:#888;margin-top:1px">${isUser ? '👤' : '🤖'} ${time}</div>
+                        </div>`;
+                    }).join('');
+                    html += '</div>';
+                }
+
+                detailEl.innerHTML = html;
+            } catch (e) { detailEl.innerHTML = '<span style="color:#aaa">Error cargando lead</span>'; }
+        }
+
+        async function updateLeadStatus(leadId, status) {
+            try {
+                await fetch(`/api/leads/${leadId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status })
+                });
+                loadLeads();
+            } catch (e) { console.error('Update lead error:', e); }
+        }
+
         // ==================== WHATSAPP BOT ====================
         async function loadWALeads() {
             try {
@@ -1913,7 +2033,7 @@
         }
 
         // ==================== INIT ====================
-        loadAllData().then(() => { loadDashboard(); loadWALeads(); });
+        loadAllData().then(() => { loadDashboard(); loadLeads(); loadWALeads(); });
     </script>
 </body>
 </html>

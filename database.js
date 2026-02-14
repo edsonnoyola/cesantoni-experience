@@ -206,6 +206,23 @@ async function initDB() {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS leads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      phone TEXT,
+      name TEXT,
+      source TEXT NOT NULL DEFAULT 'unknown',
+      store_name TEXT,
+      store_id INTEGER,
+      products_interested TEXT,
+      terra_session_id TEXT,
+      status TEXT DEFAULT 'new',
+      notes TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Seed data
   seedData();
   

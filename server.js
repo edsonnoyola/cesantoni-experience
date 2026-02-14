@@ -2091,6 +2091,11 @@ app.post('/webhook', async (req, res) => {
         // Save as lead conversation
         run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
 
+        // Create full lead in CRM
+        run(`INSERT INTO leads (phone, name, source, store_name, products_interested, status, notes)
+             VALUES (?, ?, 'terra_qr', ?, ?, 'new', ?)`,
+          [from, tName, tStore, JSON.stringify(tProducts), `Visita en tienda via Terra. Pisos: ${tProducts.join(', ')}`]);
+
         // Look up products from DB
         const allProds = query('SELECT id, name, slug, category, format, finish, pei, usage, image_url FROM products WHERE active = 1');
         const matchedProducts = tProducts.map(pName => {
@@ -2134,6 +2139,13 @@ app.post('/webhook', async (req, res) => {
           [from, 'assistant', `Resumen enviado: ${matchedProducts.map(p => p.name).join(', ')}`]);
 
         return; // Don't process as normal message
+      }
+
+      // Create lead if first message from this phone (WhatsApp bot lead)
+      const existingLead = queryOne('SELECT id FROM leads WHERE phone = ?', [from]);
+      if (!existingLead) {
+        run(`INSERT INTO leads (phone, name, source, status, notes) VALUES (?, ?, 'whatsapp_bot', 'new', ?)`,
+          [from, contactName || from, `Contacto directo por WhatsApp. Primer mensaje: ${text.substring(0, 100)}`]);
       }
 
       const reply = await processWhatsAppMessage(from, text, contactName);
@@ -2184,6 +2196,53 @@ app.get('/api/wa/conversation/:phone', (req, res) => {
       [req.params.phone]
     );
     res.json(messages);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =====================================================
+// LEADS API
+// =====================================================
+
+app.get('/api/leads', (req, res) => {
+  try {
+    const { status, source, days } = req.query;
+    const d = parseInt(days) || 90;
+    let sql = `SELECT * FROM leads WHERE created_at >= datetime('now', '-${d} days')`;
+    const params = [];
+    if (status) { sql += ' AND status = ?'; params.push(status); }
+    if (source) { sql += ' AND source = ?'; params.push(source); }
+    sql += ' ORDER BY created_at DESC LIMIT 200';
+    res.json(query(sql, params));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/leads/:id', (req, res) => {
+  try {
+    const lead = queryOne('SELECT * FROM leads WHERE id = ?', [req.params.id]);
+    if (!lead) return res.status(404).json({ error: 'Lead not found' });
+    // Also get WA conversation if phone exists
+    let conversation = [];
+    if (lead.phone) {
+      conversation = query('SELECT role, message, created_at FROM wa_conversations WHERE phone = ? ORDER BY created_at ASC', [lead.phone]);
+    }
+    res.json({ ...lead, conversation });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/leads/:id', (req, res) => {
+  try {
+    const { status, notes } = req.body;
+    const lead = queryOne('SELECT id FROM leads WHERE id = ?', [req.params.id]);
+    if (!lead) return res.status(404).json({ error: 'Lead not found' });
+    if (status) run('UPDATE leads SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [status, req.params.id]);
+    if (notes) run('UPDATE leads SET notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [notes, req.params.id]);
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
