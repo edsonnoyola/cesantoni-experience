@@ -1977,9 +1977,13 @@ async function processWhatsAppMessage(from, text, customerName) {
 
     // Get store info if available
     let storeInfo = null;
-    if (lead.store_name) {
-      storeInfo = queryOne('SELECT name, city, state, address, phone, whatsapp FROM stores WHERE name LIKE ? OR slug LIKE ?',
-        [`%${lead.store_name}%`, `%${lead.store_name}%`]);
+    if (lead.store_id) {
+      storeInfo = queryOne('SELECT name, city, state, address, phone, whatsapp FROM stores WHERE id = ?', [lead.store_id]);
+    }
+    if (!storeInfo && lead.store_name) {
+      const slug = lead.store_name.toLowerCase().replace(/\s+/g, '-');
+      storeInfo = queryOne('SELECT name, city, state, address, phone, whatsapp FROM stores WHERE slug = ? OR LOWER(name) = LOWER(?) OR LOWER(name) LIKE ?',
+        [slug, lead.store_name, `%${lead.store_name}%`]);
     }
 
     // Get product prices for interested products
@@ -2221,18 +2225,24 @@ app.post('/webhook', async (req, res) => {
           lProduct = queryOne('SELECT * FROM products WHERE LOWER(name) LIKE ?', [`%${lProductName.toLowerCase()}%`]);
         }
 
-        // Create lead
+        // Look up store by name (normalize: "cesantoni galerias" → match slug "cesantoni-galerias")
+        const lStoreSlug = lStore.toLowerCase().replace(/\s+/g, '-');
+        const lStoreObj = queryOne('SELECT * FROM stores WHERE slug = ? OR LOWER(name) = LOWER(?) OR LOWER(name) LIKE ?',
+          [lStoreSlug, lStore, `%${lStore}%`]);
+        const lStoreName = lStoreObj ? lStoreObj.name : lStore;
+        const lStoreId = lStoreObj ? lStoreObj.id : null;
+
+        // Create lead with proper store info
         const existingLead = queryOne('SELECT id FROM leads WHERE phone = ?', [from]);
         if (existingLead) {
-          // Update existing lead with landing info
-          run(`UPDATE leads SET source = 'landing', store_name = ?, products_interested = ?,
+          run(`UPDATE leads SET source = 'landing', store_name = ?, store_id = ?, products_interested = ?,
                notes = COALESCE(notes, '') || '\n' || ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-            [lStore, JSON.stringify([lProductName]), `Landing page: ${lProductName} (${lSku}) desde ${lStore}`, existingLead.id]);
+            [lStoreName, lStoreId, JSON.stringify([lProductName]), `Landing page: ${lProductName} (${lSku}) desde ${lStoreName}`, existingLead.id]);
         } else {
-          run(`INSERT INTO leads (phone, name, source, store_name, products_interested, status, notes)
-               VALUES (?, ?, 'landing', ?, ?, 'new', ?)`,
-            [from, contactName || from, lStore, JSON.stringify([lProductName]),
-             `Desde landing page. Piso: ${lProductName} (${lSku}). Tienda: ${lStore}`]);
+          run(`INSERT INTO leads (phone, name, source, store_name, store_id, products_interested, status, notes)
+               VALUES (?, ?, 'landing', ?, ?, ?, 'new', ?)`,
+            [from, contactName || from, lStoreName, lStoreId, JSON.stringify([lProductName]),
+             `Desde landing page. Piso: ${lProductName} (${lSku}). Tienda: ${lStoreName}`]);
         }
 
         const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
