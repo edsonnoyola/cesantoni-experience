@@ -1388,7 +1388,6 @@
 
             // WhatsApp Capture section
             const waCaptureBtn = document.getElementById('wa-capture-btn');
-            waCaptureBtn.href = document.getElementById('whatsapp-cta').href;
             waCaptureBtn.addEventListener('click', () => {
                 fetch(`${API}/track/whatsapp`, {
                     method: 'POST',
@@ -1446,6 +1445,7 @@
             const storeName = store ? store.name : (params.tienda ? decodeURIComponent(params.tienda).replace(/-/g, ' ') : 'Cesantoni');
             const waMsg = encodeURIComponent(`Hola! Vi el piso ${product.name} en ${storeName} y quiero mas info. REF:${product.sku || sku}`);
             document.getElementById('whatsapp-cta').href = `https://wa.me/${WA_BOT}?text=${waMsg}`;
+            waCaptureBtn.href = `https://wa.me/${WA_BOT}?text=${waMsg}`;
 
             // Sticky bar data
             document.getElementById('sticky-bar-name').textContent = product.name;
