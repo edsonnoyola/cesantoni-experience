@@ -1027,13 +1027,13 @@
             });
             
             const getHeatColor = (count) => {
-                if (!count || count === 0) return '#e8e8e8';
-                if (count <= 10) return '#ffcdd2';
-                if (count <= 25) return '#ef9a9a';
-                if (count <= 50) return '#e57373';
-                if (count <= 100) return '#ef5350';
-                if (count <= 200) return '#e53935';
-                return '#c41e3a';
+                if (!count || count === 0) return '#eae8e2';
+                if (count <= 10) return '#F5EED6';
+                if (count <= 25) return '#E8D9A8';
+                if (count <= 50) return '#D4C48A';
+                if (count <= 100) return '#C9A962';
+                if (count <= 200) return '#A88C42';
+                return '#8B7340';
             };
             
             // Mexico SVG paths by state
@@ -1148,10 +1148,16 @@
                     datasets: [{
                         label: 'Escaneos',
                         data,
-                        borderColor: '#c41e3a',
-                        backgroundColor: 'rgba(196,30,58,0.1)',
+                        borderColor: '#C9A962',
+                        backgroundColor: 'rgba(201,169,98,0.08)',
                         fill: true,
-                        tension: 0.4
+                        tension: 0.4,
+                        borderWidth: 2.5,
+                        pointBackgroundColor: '#C9A962',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
                     }]
                 },
                 options: {
@@ -1159,8 +1165,8 @@
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { grid: { display: false } },
-                        y: { beginAtZero: true, grid: { color: '#f0f0f0' } }
+                        x: { grid: { display: false }, ticks: { color: '#bbb', font: { size: 11 } } },
+                        y: { beginAtZero: true, grid: { color: '#f5f4f0' }, ticks: { color: '#bbb', font: { size: 11 } } }
                     }
                 }
             });
