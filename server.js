@@ -3058,20 +3058,31 @@ app.post('/webhook', async (req, res) => {
 
       } else if (btnId === 'comparar') {
         // Product comparator: show last viewed products side by side
-        const recentProducts = await query(
-          "SELECT DISTINCT message FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '[VIEWED_PRODUCT]%' ORDER BY created_at DESC LIMIT 3",
+        const recentViewed = await query(
+          "SELECT message, created_at FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '[VIEWED_PRODUCT]%' ORDER BY created_at DESC LIMIT 10",
           [from]);
 
-        if (recentProducts.length >= 2) {
-          const names = recentProducts.map(r => r.message.replace('[VIEWED_PRODUCT] ', ''));
-          const products = [];
-          for (const n of names) {
-            const p = await queryOne('SELECT name, base_price, format, finish, pei, usage, sqm_per_box FROM products WHERE name ILIKE ? OR sku ILIKE ?', [`%${n}%`, `%${n}%`]);
-            if (p) products.push(p);
+        // Deduplicate by product name, keep most recent
+        const seen = new Set();
+        const uniqueNames = [];
+        for (const r of recentViewed) {
+          const name = r.message.replace('[VIEWED_PRODUCT] ', '').trim();
+          if (!seen.has(name)) {
+            seen.add(name);
+            uniqueNames.push(name);
           }
-          if (products.length >= 2) {
+          if (uniqueNames.length >= 3) break;
+        }
+
+        if (uniqueNames.length >= 2) {
+          const compareProducts = [];
+          for (const n of uniqueNames) {
+            const p = await queryOne('SELECT name, base_price, format, finish, pei, usage, sqm_per_box FROM products WHERE name ILIKE ? OR sku ILIKE ?', [`%${n}%`, `%${n}%`]);
+            if (p) compareProducts.push(p);
+          }
+          if (compareProducts.length >= 2) {
             let comp = `⚖️ *COMPARADOR*\n${'─'.repeat(20)}\n\n`;
-            for (const p of products) {
+            for (const p of compareProducts) {
               comp += `*${p.name}*\n`;
               comp += `  💰 $${p.base_price || '?'}/m²\n`;
               comp += `  📐 ${p.format || '-'}\n`;
