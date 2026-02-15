@@ -19,7 +19,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', (req, res) => res.json({ version: 'v3.2.3', commit: '6ce560b' }));
+app.get('/api/health', (req, res) => res.json({ version: 'v3.3.0', commit: 'pending' }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
@@ -2021,12 +2021,25 @@ async function processWhatsAppMessage(from, text, customerName) {
         [slug, lead.store_name, `%${lead.store_name}%`]);
     }
 
-    // Get product prices for interested products
+    // Get FULL product details for interested products (not just prices)
     let productPrices = '';
+    let productDetails = '';
     if (prods.length > 0) {
-      const prodData = prods.map(pName => queryOne('SELECT name, base_price, format FROM products WHERE LOWER(name) LIKE ?', [`%${pName.toLowerCase()}%`])).filter(Boolean);
+      const prodData = prods.map(pName => queryOne('SELECT name, slug, sku, base_price, format, finish, type, pei, usage, description, category FROM products WHERE LOWER(name) LIKE ?', [`%${pName.toLowerCase()}%`])).filter(Boolean);
       if (prodData.length > 0) {
         productPrices = prodData.map(p => `${p.name}: $${p.base_price || 'consultar'}/m² · ${p.format || ''}`).join(', ');
+        productDetails = prodData.map(p => {
+          let detail = `PRODUCTO: ${p.name} (SKU: ${p.sku || p.slug})`;
+          detail += `\n  Precio: $${p.base_price || 'consultar'}/m²`;
+          detail += `\n  Formato: ${p.format || 'Gran formato'}`;
+          detail += `\n  Acabado: ${p.finish || 'Premium'}`;
+          detail += `\n  Tipo: ${p.type || 'Porcelánico'}`;
+          if (p.pei) detail += `\n  PEI: ${p.pei} (${p.pei >= 4 ? 'alto tráfico/comercial' : p.pei >= 3 ? 'toda la casa' : 'tráfico ligero'})`;
+          if (p.usage) detail += `\n  Uso recomendado: ${p.usage}`;
+          if (p.description) detail += `\n  Descripción: ${p.description}`;
+          detail += `\n  Link: cesantoni-experience-za74.onrender.com/p/${p.sku || p.slug}`;
+          return detail;
+        }).join('\n');
       }
     }
 
@@ -2039,6 +2052,7 @@ async function processWhatsAppMessage(from, text, customerName) {
 - Pisos que le interesan: ${prods.length > 0 ? prods.join(', ') : 'No especificados'}
 ${productPrices ? '- Precios: ' + productPrices : ''}
 - Notas: ${lead.notes || ''}
+${productDetails ? '\nDETALLES COMPLETOS DEL PRODUCTO QUE LE INTERESA:\n' + productDetails : ''}
 
 IMPORTANTE PARA ESTE LEAD:
 ${lead.source === 'landing' || lead.source === 'terra_qr' ? '- Este cliente ESTÁ EN LA TIENDA AHORA (escaneó QR ahí). NO le digas "pasa a la tienda" ni "te contactaremos" — YA ESTÁ AHÍ.' : '- Lead orgánico, puede no estar en tienda.'}
@@ -2063,23 +2077,29 @@ REGLAS ESTRICTAS:
 - MÁXIMO 2-3 oraciones por mensaje. Es WhatsApp, NO un email. Sé BREVE.
 - NUNCA hagas listas largas ni cuestionarios. Una pregunta a la vez.
 - Responde en español mexicano, cálido y directo
-- Si preguntan por un producto, menciona 1-2 beneficios clave, no todos
+- Si preguntan por un producto, usa los DATOS REALES del producto (formato, acabado, PEI, uso, descripción). NO des respuestas genéricas como "es porcelánico y resistente" — usa las especificaciones técnicas reales.
 - Si no saben qué quieren, haz UNA sola pregunta: "¿Para qué espacio lo necesitas?"
-- Si preguntan precio, di rango si existe o que varía por tienda. Ofrece cotización
+- Si preguntan precio, usa el precio real del catálogo/contexto. Ofrece cotización.
 - Para cotización solo necesitas: m² aproximados y ciudad. NO pidas nombre, teléfono, ni tipo de piso (ya lo sabes del contexto)
 - NUNCA inventes productos que no están en el catálogo
-- Si mencionan un producto, agrega link: cesantoni-experience-za74.onrender.com/p/{slug}
+- LINKS: Solo incluye el link la PRIMERA vez que mencionas un producto. NO repitas el mismo link en cada mensaje.
 - Máximo 1 emoji por mensaje
-- PROHIBIDO: listas con viñetas, formularios, preguntas múltiples, mensajes largos
+- PROHIBIDO: listas con viñetas, formularios, preguntas múltiples, mensajes largos, respuestas genéricas sin datos del producto
+
+CUANDO PREGUNTEN SOBRE UN PRODUCTO ESPECÍFICO:
+- Usa los datos reales de "DETALLES COMPLETOS DEL PRODUCTO" en el contexto
+- Ejemplo: si preguntan "¿es fácil de limpiar?" y es acabado NATURAL, di "Sí, el acabado natural del NEKK no acumula suciedad y se limpia con agua y jabón neutro, sin necesidad de ceras."
+- Ejemplo: si preguntan "¿es resistente?" y tiene PEI 4, di "Sí, tiene PEI 4 (apto para tráfico comercial), aguanta alto tráfico sin rayarse."
+- NO digas solo "es porcelánico" — eso es genérico. Usa el dato específico del producto.
 
 FLUJO DE CONVERSIÓN (una pregunta a la vez):
-1. Cliente muestra interés → "Excelente! ¿Cuántos m² necesitas?"
-2. Da m² y ya tienes precio → Calcula directo: "20 m² × $450 + 10% merma = $9,900 aprox. Pídele a un asesor ahí en la tienda que te cierre!"
+1. Cliente muestra interés → "¡Excelente! ¿Cuántos m² necesitas?"
+2. Da m² y ya tienes precio → Calcula directo: "X m² × $precio + 10% merma = $total aprox. Pídele a un asesor ahí que te ayude a cerrar!"
 3. Si NO sabes ciudad (lead orgánico) → "¿En qué ciudad estás?"
 4. Da ciudad → "Te cotizo: X m² de Y = $Z aprox. Te paso la tienda más cercana."
 ${leadContext}
-CESANTONI: Empresa mexicana premium de porcelanato. 123 productos. 407 tiendas en México. Tecnología HD, gran formato, garantía.
-TÉCNICO: PEI 3=toda la casa, PEI 4=comercios, PEI 5=industrial. Mate=no resbala. Porcelánico=el más resistente. <0.5% absorción=exterior/baño.
+CESANTONI: Empresa mexicana premium de porcelanato. ${products.length} productos. 407 tiendas en México. Tecnología HD, gran formato, garantía.
+TÉCNICO: PEI 3=toda la casa, PEI 4=comercios, PEI 5=industrial. Mate=no resbala, ideal baños/cocina. Pulido=brillo espejo, para sala/comedor. Lappato=semi-brillo elegante. Natural=fácil limpieza. Porcelánico <0.5% absorción=exterior/baño/piscina.
 
 Cliente: ${customerName || from}
 ${history.length > 0 ? 'HISTORIAL:\n' + history.map(h => `${h.role === 'user' ? 'Cliente' : 'Terra'}: ${h.message}`).join('\n') : ''}
@@ -2348,10 +2368,11 @@ app.post('/webhook', async (req, res) => {
       const reply = await processWhatsAppMessage(from, text, contactName);
       await sendWhatsApp(from, reply);
 
-      // If reply mentions a product slug, also send the product image
-      const slugMatch = reply.match(/\/landing\/([a-z0-9_-]+)/i);
+      // If reply mentions a product link, also send the product image
+      const slugMatch = reply.match(/\/p\/([A-Za-z0-9_-]+)/i);
       if (slugMatch) {
-        const product = queryOne('SELECT name, image_url, slug FROM products WHERE slug = ?', [slugMatch[1]]);
+        const pSlug = slugMatch[1];
+        const product = queryOne('SELECT name, image_url, slug FROM products WHERE slug = ? OR sku = ? OR LOWER(slug) = LOWER(?) OR LOWER(sku) = LOWER(?)', [pSlug, pSlug, pSlug, pSlug]);
         if (product?.image_url) {
           await sendWhatsAppImage(from, product.image_url, `${product.name} - Cesantoni`);
         }
@@ -2373,12 +2394,24 @@ app.post('/webhook', async (req, res) => {
       if (btnId === 'calcular_m2') {
         await sendWhatsApp(from, `¡Perfecto! ¿Cuántos m² necesitas de *${prodName || 'piso'}*? Si no sabes exacto, dime las medidas del espacio y lo calculo. 📐`);
       } else if (btnId === 'ver_similares') {
-        // Find similar products (same category or finish) with slug/sku for landing links
+        // Find similar products by format (same size = same look) then by finish
         const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
-        const similares = product ?
-          query('SELECT name, base_price, format, sku, slug, image_url FROM products WHERE active = 1 AND id != ? AND (category = ? OR finish = ?) LIMIT 3',
-            [product.id, product.category, product.finish]) :
-          query('SELECT name, base_price, format, sku, slug, image_url FROM products WHERE active = 1 LIMIT 3');
+        let similares = [];
+        if (product) {
+          // Priority 1: same format (e.g., 20x120 wood-look planks)
+          similares = query('SELECT name, base_price, format, sku, slug, image_url, finish FROM products WHERE active = 1 AND id != ? AND format = ? ORDER BY RANDOM() LIMIT 3',
+            [product.id, product.format]);
+          // Priority 2: same finish if not enough
+          if (similares.length < 3) {
+            const excludeIds = [product.id, ...similares.map(s => s.id)].join(',');
+            const more = query(`SELECT name, base_price, format, sku, slug, image_url, finish FROM products WHERE active = 1 AND id NOT IN (${excludeIds}) AND finish = ? ORDER BY RANDOM() LIMIT ?`,
+              [product.finish, 3 - similares.length]);
+            similares = [...similares, ...more];
+          }
+        }
+        if (similares.length === 0) {
+          similares = query('SELECT name, base_price, format, sku, slug, image_url, finish FROM products WHERE active = 1 ORDER BY RANDOM() LIMIT 3');
+        }
         if (similares.length > 0) {
           const lista = similares.map((s, i) => {
             const link = `${baseUrl}/p/${s.sku || s.slug || s.name}`;
