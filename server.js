@@ -2256,7 +2256,7 @@ app.post('/webhook', async (req, res) => {
       }
 
       // Detect Landing page referral: "Hola! Vi el piso X en Y y quiero mas info. REF:SKU"
-      const landingMatch = text.match(/Vi el piso\s+(.+?)\s+en\s+(.+?)\s+y quiero mas info\.?\s*REF:(\S+)/i);
+      const landingMatch = text.match(/Vi el piso\s+(.+?)\s+en\s+(.+?)\s+y quiero m[aá]s info\.?\s*REF:(\S+)/i);
       if (landingMatch) {
         const lProductName = landingMatch[1].trim();
         const lStore = landingMatch[2].trim();
