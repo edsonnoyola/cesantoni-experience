@@ -2686,14 +2686,19 @@ app.post('/webhook', async (req, res) => {
               OR description ILIKE '%madera%'
             ) ORDER BY RANDOM() LIMIT 5`);
         } else if (isMarble) {
-          // Marble-look = large format with brillante/pulido/satinado, or marble keywords in desc/name
+          // Marble-look = marble keywords in description, or known marble names
+          // Exclude wood-look formats and names
           catProducts = await query(
             `SELECT * FROM products WHERE active = 1 AND (
-              description ILIKE '%m_rmol%' OR description ILIKE '%marble%' OR description ILIKE '%veta%'
+              description ILIKE '%m_rmol%' OR description ILIKE '%marble%' OR description ILIKE '%calacatta%'
+              OR description ILIKE '%carrara%' OR description ILIKE '%venato%'
               OR name ILIKE '%calacatta%' OR name ILIKE '%bianco%' OR name ILIKE '%quarzo%'
               OR ((format ILIKE '%60x120%' OR format ILIKE '%60 x 120%' OR format ILIKE '%80x160%' OR format ILIKE '%80 x 160%')
                   AND (finish ILIKE '%BRILLANTE%' OR finish ILIKE '%PULIDO%' OR finish ILIKE '%SATINADO%'))
-            ) ORDER BY RANDOM() LIMIT 5`);
+            )
+            AND name NOT ILIKE '%wood%' AND name NOT ILIKE '%mutina%' AND name NOT ILIKE '%maple%'
+            AND format NOT ILIKE '%20 x 120%' AND format NOT ILIKE '%20 x 160%' AND format NOT ILIKE '%26 x 160%'
+            ORDER BY RANDOM() LIMIT 5`);
         } else if (isStone) {
           catProducts = await query(
             `SELECT * FROM products WHERE active = 1 AND (
