@@ -19,7 +19,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', async (req, res) => res.json({ version: 'v4.4.0', commit: 'search-tracking-followup' }));
+app.get('/api/health', async (req, res) => res.json({ version: 'v5.0.0', commit: 'voice-image-stores-promos-quotes' }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
@@ -1957,6 +1957,154 @@ async function sendWhatsAppTemplate(to, templateName, params = []) {
   }
 }
 
+// Download media from WhatsApp (audio, image)
+async function downloadWhatsAppMedia(mediaId) {
+  try {
+    // Step 1: Get media URL
+    const urlRes = await fetch(`https://graph.facebook.com/v21.0/${mediaId}`, {
+      headers: { 'Authorization': `Bearer ${WA_TOKEN}` }
+    });
+    const urlData = await urlRes.json();
+    if (!urlData.url) return null;
+
+    // Step 2: Download the actual file
+    const fileRes = await fetch(urlData.url, {
+      headers: { 'Authorization': `Bearer ${WA_TOKEN}` }
+    });
+    const buffer = Buffer.from(await fileRes.arrayBuffer());
+    return { buffer, mimeType: urlData.mime_type || 'application/octet-stream' };
+  } catch (e) {
+    console.error('Media download error:', e.message);
+    return null;
+  }
+}
+
+// Transcribe audio using Gemini
+async function transcribeAudio(audioBuffer, mimeType) {
+  try {
+    const base64 = audioBuffer.toString('base64');
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            role: 'user',
+            parts: [
+              { inlineData: { mimeType: mimeType || 'audio/ogg', data: base64 } },
+              { text: 'Transcribe este audio a texto exacto en español. Solo responde la transcripción, nada más.' }
+            ]
+          }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 500 }
+        })
+      }
+    );
+    const data = await res.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+  } catch (e) {
+    console.error('Transcription error:', e.message);
+    return null;
+  }
+}
+
+// Analyze image using Gemini Vision
+async function analyzeFloorImage(imageBuffer, mimeType) {
+  try {
+    const base64 = imageBuffer.toString('base64');
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            role: 'user',
+            parts: [
+              { inlineData: { mimeType: mimeType || 'image/jpeg', data: base64 } },
+              { text: `Analiza esta imagen de piso/azulejo. Describe brevemente:
+1. Tipo de apariencia (madera, mármol, piedra, cemento, etc.)
+2. Color predominante (claro, oscuro, gris, beige, etc.)
+3. Acabado probable (mate, pulido, texturizado)
+4. Formato estimado (grande, mediano, pequeño)
+Responde en JSON: {"look":"madera","color":"claro","finish":"mate","format":"grande"}
+Solo el JSON, nada más.` }
+            ]
+          }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 200 }
+        })
+      }
+    );
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    const jsonMatch = text.match(/\{[^}]+\}/);
+    return jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+  } catch (e) {
+    console.error('Image analysis error:', e.message);
+    return null;
+  }
+}
+
+// Generate PDF quote
+async function generateQuotePDF(product, m2, lead) {
+  const boxes = product.sqm_per_box ? Math.ceil(m2 / product.sqm_per_box) : null;
+  const totalM2 = boxes ? (boxes * product.sqm_per_box).toFixed(2) : m2;
+  const total = product.base_price ? Math.round(parseFloat(totalM2) * product.base_price) : null;
+  const piecesTotal = boxes && product.pieces_per_box ? boxes * product.pieces_per_box : null;
+
+  // Generate simple HTML quote that can be converted
+  const date = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+  const html = `
+COTIZACIÓN CESANTONI
+${date}
+${'═'.repeat(40)}
+
+Cliente: ${lead?.name || 'Cliente'}
+Producto: ${product.name}
+SKU: ${product.sku || ''}
+
+DETALLES:
+• Formato: ${product.format || 'Gran formato'}
+• Acabado: ${product.finish || 'Premium'}
+• PEI: ${product.pei || 'N/A'}
+• Uso: ${product.usage || 'Interior/Exterior'}
+
+COTIZACIÓN:
+• Área solicitada: ${m2} m²
+${boxes ? `• Cajas necesarias: ${boxes} (${totalM2} m² reales)` : ''}
+${piecesTotal ? `• Piezas totales: ${piecesTotal}` : ''}
+• Precio por m²: $${product.base_price || '?'}
+${total ? `• TOTAL ESTIMADO: $${total.toLocaleString('es-MX')} MXN` : ''}
+
+${'─'.repeat(40)}
+Precios sujetos a cambio sin previo aviso.
+Incluye material extra por cortes.
+Vigencia: 15 días.
+
+Cesantoni · cesantoni.com.mx
+  `.trim();
+
+  return html;
+}
+
+// Send WhatsApp document
+async function sendWhatsAppDocument(to, documentUrl, filename, caption) {
+  if (!WA_TOKEN) return null;
+  try {
+    const res = await fetch(`https://graph.facebook.com/v21.0/${WA_PHONE_ID}/messages`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'document', document: { link: documentUrl, filename, caption } })
+    });
+    const data = await res.json();
+    if (!data.error) try { await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [to, 'assistant', `[Documento] ${filename}`]); } catch(e) {}
+    return data;
+  } catch (err) {
+    console.error('WA document error:', err.message);
+    return null;
+  }
+}
+
 // Mark message as read
 async function markAsRead(messageId) {
   if (!WA_TOKEN) return;
@@ -2327,6 +2475,9 @@ app.post('/webhook', async (req, res) => {
           caption += `✨ ${lProduct.finish || 'Premium'}${finishTip ? ' (' + finishTip + ')' : ''}\n`;
           if (lProduct.pei) caption += `💪 PEI ${lProduct.pei} — ${peiTip}\n`;
           if (lProduct.usage) caption += `🏠 ${lProduct.usage}\n`;
+          if (lStoreObj?.promo_text || lStoreObj?.promo_discount) {
+            caption += `\n🏷️ *${lStoreObj.promo_text || 'Promoción'}*${lStoreObj.promo_discount ? ' — ' + lStoreObj.promo_discount : ''}\n`;
+          }
           caption += `\n🔗 ${baseUrl}/p/${lProduct.sku || lProduct.slug || lProduct.id}`;
 
           if (lProduct.image_url) {
@@ -2390,7 +2541,7 @@ app.post('/webhook', async (req, res) => {
               [
                 { id: 'hablar_asesor', title: '👤 Hablar c/asesor' },
                 { id: 'ver_similares', title: '🔍 Ver similares' },
-                { id: 'calcular_m2', title: '📐 Recalcular m²' }
+                { id: 'enviar_cotizacion', title: '📄 Enviar cotización' }
               ]
             );
             return;
@@ -2457,7 +2608,7 @@ app.post('/webhook', async (req, res) => {
               [
                 { id: 'hablar_asesor', title: '👤 Hablar c/asesor' },
                 { id: 'ver_similares', title: '🔍 Ver similares' },
-                { id: 'calcular_m2', title: '📐 Recalcular m²' }
+                { id: 'enviar_cotizacion', title: '📄 Enviar cotización' }
               ]
             );
             return;
@@ -2473,6 +2624,37 @@ app.post('/webhook', async (req, res) => {
             return;
           }
         }
+      }
+
+      // --- Store locator: detect "tienda en [city]", "sucursal", "dónde comprar" ---
+      const storeQuery = text.match(/(?:tienda|sucursal|donde|dónde|comprar|distribuidor).*(?:en|cerca|por)\s+(.+)/i)
+        || text.match(/(?:tienda|sucursal)s?\s+(?:en|de|cerca)\s+(.+)/i);
+      if (storeQuery) {
+        const citySearch = storeQuery[1].trim().replace(/[?.!]/g, '');
+        const stores = await query(
+          `SELECT s.name, s.city, s.state, s.address, s.whatsapp, s.phone, d.name as distributor
+           FROM stores s LEFT JOIN distributors d ON s.distributor_id = d.id
+           WHERE s.active = 1 AND (s.city ILIKE ? OR s.state ILIKE ? OR s.name ILIKE ?)
+           ORDER BY s.name LIMIT 5`,
+          [`%${citySearch}%`, `%${citySearch}%`, `%${citySearch}%`]
+        );
+
+        if (stores.length > 0) {
+          await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
+          let msg = `🏪 Tiendas Cesantoni en *${citySearch}*:\n\n`;
+          for (const s of stores) {
+            msg += `📍 *${s.name}*\n`;
+            if (s.address) msg += `   ${s.address}\n`;
+            msg += `   ${s.city}, ${s.state}\n`;
+            if (s.whatsapp) msg += `   📱 wa.me/${s.whatsapp.replace(/\D/g, '')}\n`;
+            else if (s.phone) msg += `   📞 ${s.phone}\n`;
+            msg += `\n`;
+          }
+          msg += `¿Quieres que te ayude con algo más? 😊`;
+          await sendWhatsApp(from, msg);
+          return;
+        }
+        // If no stores found, fall through to AI which might handle it differently
       }
 
       // --- Product search: detect if user types a product name ---
@@ -2664,14 +2846,128 @@ app.post('/webhook', async (req, res) => {
           await sendWhatsApp(from, `Un asesor te atiende en tienda ahora mismo. Muéstrale este chat y te ayuda. 👍`);
         }
         if (lead) await run("UPDATE leads SET status = 'contacted' WHERE id = ?", [lead.id]);
+      } else if (btnId === 'enviar_cotizacion') {
+        // Generate text quote and send
+        if (product) {
+          // Get last m² calculation from conversation
+          const lastCalc = await queryOne(
+            "SELECT message FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '%Cotización%' ORDER BY created_at DESC LIMIT 1",
+            [from]);
+
+          if (lastCalc) {
+            // Send quote text as a forwarded summary
+            const quoteText = lastCalc.message;
+            const leadName = lead?.name || contactName || 'Cliente';
+
+            // Send to lead
+            await sendWhatsApp(from, `📄 *Tu cotización de ${product.name}:*\n\n${quoteText}\n\n_Precios sujetos a cambio. Vigencia: 15 días._\n\n¿Necesitas algo más? 😊`);
+
+            // Also notify store advisor if available
+            const store = lead?.store_id ? await queryOne('SELECT * FROM stores WHERE id = ?', [lead.store_id]) : null;
+            if (store?.whatsapp) {
+              await sendWhatsAppTemplate(store.whatsapp, 'lead_nuevo', [
+                leadName, from, store.name, `Cotización enviada: ${product.name}`
+              ]);
+            }
+          } else {
+            await sendWhatsApp(from, `Primero calcula los m² que necesitas y luego te envío la cotización formal. ¿Cuántos m² necesitas? 📐`);
+          }
+        } else {
+          await sendWhatsApp(from, `¿De qué producto quieres la cotización? Escríbeme el nombre. 😊`);
+        }
       } else {
         // Unknown button, pass to AI
         const reply = await processWhatsAppMessage(from, btnTitle, contactName);
         await sendWhatsApp(from, reply);
       }
 
-    } else if (message.type === 'image' || message.type === 'document') {
-      await sendWhatsApp(from, 'Gracias por la imagen. Soy Terra, tu asesora de pisos Cesantoni. ¿En qué te puedo ayudar? 😊');
+    } else if (message.type === 'audio') {
+      // Voice note: transcribe with Gemini then process as text
+      const audioId = message.audio?.id;
+      if (audioId) {
+        await sendWhatsApp(from, 'Escuchando tu audio... 🎧');
+        const media = await downloadWhatsAppMedia(audioId);
+        if (media) {
+          const transcription = await transcribeAudio(media.buffer, media.mimeType);
+          if (transcription) {
+            console.log(`🎤 Transcription from ${from}: "${transcription}"`);
+            await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', `[Audio] ${transcription}`]);
+
+            // Process transcribed text through normal AI flow
+            const reply = await processWhatsAppMessage(from, transcription, contactName);
+            await sendWhatsApp(from, reply);
+
+            // Check if reply mentions a product
+            const slugMatch = reply.match(/\/p\/([A-Za-z0-9_-]+)/i);
+            if (slugMatch) {
+              const pSlug = slugMatch[1];
+              const product = await queryOne('SELECT name, image_url FROM products WHERE slug ILIKE ? OR sku ILIKE ?', [pSlug, pSlug]);
+              if (product?.image_url) await sendWhatsAppImage(from, product.image_url, `${product.name} - Cesantoni`);
+            }
+          } else {
+            await sendWhatsApp(from, 'No pude entender el audio. ¿Podrías escribirme tu mensaje? 🙏');
+          }
+        } else {
+          await sendWhatsApp(from, 'No pude descargar el audio. Intenta de nuevo o escríbeme tu pregunta. 🙏');
+        }
+      }
+
+    } else if (message.type === 'image') {
+      // Image: analyze with Gemini Vision and suggest similar products
+      const imageId = message.image?.id;
+      if (imageId) {
+        await sendWhatsApp(from, 'Analizando tu imagen... 🔍');
+        const media = await downloadWhatsAppMedia(imageId);
+        if (media) {
+          const analysis = await analyzeFloorImage(media.buffer, media.mimeType);
+          if (analysis) {
+            console.log(`🖼️ Image analysis from ${from}:`, analysis);
+            await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', `[Imagen] Piso tipo: ${analysis.look}, color: ${analysis.color}`]);
+
+            // Build search query based on analysis
+            const lookMap = { madera: 'MADERA', marmol: 'MÁRMOL', piedra: 'PIEDRA', cemento: 'CEMENTO', concreto: 'CEMENTO' };
+            const colorMap = { claro: 'CLARO', oscuro: 'OSCURO', gris: 'GRIS', beige: 'BEIGE', blanco: 'BLANCO', cafe: 'CAFÉ', marron: 'CAFÉ' };
+            const lookTerm = lookMap[analysis.look?.toLowerCase()] || analysis.look || '';
+            const colorTerm = colorMap[analysis.color?.toLowerCase()] || analysis.color || '';
+
+            // Search for similar products
+            let matches = await query(
+              `SELECT id, name, base_price, format, finish, sku, slug, image_url, pei, usage, category
+               FROM products WHERE active = 1 AND (
+                 category ILIKE ? OR finish ILIKE ? OR name ILIKE ? OR description ILIKE ?
+               ) ORDER BY RANDOM() LIMIT 3`,
+              [`%${lookTerm}%`, `%${analysis.finish || ''}%`, `%${lookTerm}%`, `%${lookTerm}%`]
+            );
+
+            if (matches.length === 0) {
+              matches = await query('SELECT id, name, base_price, format, finish, sku, slug, image_url, pei, usage FROM products WHERE active = 1 ORDER BY RANDOM() LIMIT 3');
+            }
+
+            const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
+            const lookDesc = `${lookTerm ? 'tipo ' + lookTerm.toLowerCase() : ''} ${colorTerm ? 'color ' + colorTerm.toLowerCase() : ''}`.trim();
+            await sendWhatsApp(from, `Veo un piso ${lookDesc || 'interesante'}. Te muestro opciones similares de Cesantoni:`);
+            await new Promise(r => setTimeout(r, 500));
+
+            for (const s of matches) {
+              const link = `${baseUrl}/p/${s.sku || s.slug}`;
+              let caption = `*${s.name}* · $${s.base_price || '?'}/m²\n`;
+              caption += `📐 ${s.format || ''} · ✨ ${s.finish || ''}\n`;
+              if (s.pei) caption += `💪 PEI ${s.pei}\n`;
+              caption += `\n🔗 ${link}`;
+              if (s.image_url) await sendWhatsAppImage(from, s.image_url, caption);
+              else await sendWhatsApp(from, caption);
+              await new Promise(r => setTimeout(r, 800));
+            }
+
+            await sendWhatsApp(from, '¿Alguno se parece a lo que buscas? 😊');
+          } else {
+            await sendWhatsApp(from, 'No pude analizar la imagen. ¿Podrías describirme qué tipo de piso buscas? (madera, mármol, piedra...) 🤔');
+          }
+        }
+      }
+
+    } else if (message.type === 'document') {
+      await sendWhatsApp(from, 'Gracias por el documento. Soy Terra, tu asesora de pisos Cesantoni. ¿En qué te puedo ayudar? 😊');
     } else {
       await sendWhatsApp(from, '¡Hola! Soy Terra, tu asesora de pisos Cesantoni. Escríbeme lo que buscas y te ayudo. 😊');
     }
