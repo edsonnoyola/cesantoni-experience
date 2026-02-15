@@ -104,7 +104,7 @@ app.get('/api/products', async (req, res) => {
       params.push(category);
     }
     if (search) {
-      sql += ' AND (name LIKE ? OR sku LIKE ?)';
+      sql += ' AND (name ILIKE ? OR sku ILIKE ?)';
       params.push(`%${search}%`, `%${search}%`);
     }
     if (active !== undefined) {
@@ -763,7 +763,7 @@ app.get('/api/landing/:identifier', async (req, res) => {
     // Buscar por SKU o por slug
     const id = req.params.identifier;
     const product = await queryOne(
-      'SELECT * FROM products WHERE LOWER(sku) = LOWER(?) OR LOWER(slug) = LOWER(?)',
+      'SELECT * FROM products WHERE sku ILIKE ? OR slug ILIKE ?',
       [id, id]
     );
     if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
@@ -781,7 +781,7 @@ app.get('/api/promotions/for-product/:identifier', async (req, res) => {
 
     // Buscar producto por SKU o por slug
     const product = await queryOne(
-      'SELECT * FROM products WHERE LOWER(sku) = LOWER(?) OR LOWER(slug) = LOWER(?)',
+      'SELECT * FROM products WHERE sku ILIKE ? OR slug ILIKE ?',
       [identifier, identifier]
     );
     if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
@@ -1443,7 +1443,7 @@ app.get('/api/terra/sessions', async (req, res) => {
     const params = [];
 
     if (store) {
-      sql += ' AND store_name LIKE ?';
+      sql += ' AND store_name ILIKE ?';
       params.push(`%${store}%`);
     }
 
@@ -1962,7 +1962,7 @@ async function processWhatsAppMessage(from, text, customerName) {
     }
     if (!storeInfo && lead.store_name) {
       const slug = lead.store_name.toLowerCase().replace(/\s+/g, '-');
-      storeInfo = await queryOne('SELECT name, city, state, address, phone, whatsapp FROM stores WHERE slug = ? OR LOWER(name) = LOWER(?) OR LOWER(name) LIKE ?',
+      storeInfo = await queryOne('SELECT name, city, state, address, phone, whatsapp FROM stores WHERE slug = ? OR name ILIKE ? OR name ILIKE ?',
         [slug, lead.store_name, `%${lead.store_name}%`]);
     }
 
@@ -1970,7 +1970,7 @@ async function processWhatsAppMessage(from, text, customerName) {
     let productPrices = '';
     let productDetails = '';
     if (prods.length > 0) {
-      const prodData = (await Promise.all(prods.map(pName => queryOne('SELECT name, slug, sku, base_price, format, finish, type, pei, usage, description, category FROM products WHERE LOWER(name) LIKE ?', [`%${pName.toLowerCase()}%`])))).filter(Boolean);
+      const prodData = (await Promise.all(prods.map(pName => queryOne('SELECT name, slug, sku, base_price, format, finish, type, pei, usage, description, category FROM products WHERE name ILIKE ?', [`%${pName.toLowerCase()}%`])))).filter(Boolean);
       if (prodData.length > 0) {
         productPrices = prodData.map(p => `${p.name}: $${p.base_price || 'consultar'}/m² · ${p.format || ''}`).join(', ');
         productDetails = prodData.map(p => {
@@ -2155,7 +2155,7 @@ app.post('/webhook', async (req, res) => {
 
         // Resolve store
         const tStoreSlug = tStore.toLowerCase().replace(/\s+/g, '-');
-        const tStoreObj = await queryOne('SELECT * FROM stores WHERE slug = ? OR LOWER(name) = LOWER(?) OR LOWER(name) LIKE ?',
+        const tStoreObj = await queryOne('SELECT * FROM stores WHERE slug = ? OR name ILIKE ? OR name ILIKE ?',
           [tStoreSlug, tStore, `%${tStore}%`]);
         const tStoreName = tStoreObj ? tStoreObj.name : tStore;
         const tStoreId = tStoreObj ? tStoreObj.id : null;
@@ -2233,14 +2233,14 @@ app.post('/webhook', async (req, res) => {
         await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
 
         // Look up product by SKU or name
-        let lProduct = await queryOne('SELECT * FROM products WHERE LOWER(sku) = LOWER(?) OR LOWER(slug) = LOWER(?)', [lSku, lSku]);
+        let lProduct = await queryOne('SELECT * FROM products WHERE sku ILIKE ? OR slug ILIKE ?', [lSku, lSku]);
         if (!lProduct) {
-          lProduct = await queryOne('SELECT * FROM products WHERE LOWER(name) LIKE ?', [`%${lProductName.toLowerCase()}%`]);
+          lProduct = await queryOne('SELECT * FROM products WHERE name ILIKE ?', [`%${lProductName.toLowerCase()}%`]);
         }
 
         // Look up store by name (normalize: "cesantoni galerias" → match slug "cesantoni-galerias")
         const lStoreSlug = lStore.toLowerCase().replace(/\s+/g, '-');
-        const lStoreObj = await queryOne('SELECT * FROM stores WHERE slug = ? OR LOWER(name) = LOWER(?) OR LOWER(name) LIKE ?',
+        const lStoreObj = await queryOne('SELECT * FROM stores WHERE slug = ? OR name ILIKE ? OR name ILIKE ?',
           [lStoreSlug, lStore, `%${lStore}%`]);
         const lStoreName = lStoreObj ? lStoreObj.name : lStore;
         const lStoreId = lStoreObj ? lStoreObj.id : null;
@@ -2317,7 +2317,7 @@ app.post('/webhook', async (req, res) => {
       const slugMatch = reply.match(/\/p\/([A-Za-z0-9_-]+)/i);
       if (slugMatch) {
         const pSlug = slugMatch[1];
-        const product = await queryOne('SELECT name, image_url, slug FROM products WHERE slug = ? OR sku = ? OR LOWER(slug) = LOWER(?) OR LOWER(sku) = LOWER(?)', [pSlug, pSlug, pSlug, pSlug]);
+        const product = await queryOne('SELECT name, image_url, slug FROM products WHERE slug = ? OR sku = ? OR slug ILIKE ? OR sku ILIKE ?', [pSlug, pSlug, pSlug, pSlug]);
         if (product?.image_url) {
           await sendWhatsAppImage(from, product.image_url, `${product.name} - Cesantoni`);
         }
@@ -2334,7 +2334,7 @@ app.post('/webhook', async (req, res) => {
       const lead = await queryOne('SELECT * FROM leads WHERE phone = ?', [from]);
       const prods = lead?.products_interested ? JSON.parse(lead.products_interested) : [];
       const prodName = prods[0] || '';
-      const product = prodName ? await queryOne('SELECT * FROM products WHERE LOWER(name) LIKE ?', [`%${prodName.toLowerCase()}%`]) : null;
+      const product = prodName ? await queryOne('SELECT * FROM products WHERE name ILIKE ?', [`%${prodName.toLowerCase()}%`]) : null;
 
       if (btnId === 'calcular_m2') {
         await sendWhatsApp(from, `¡Perfecto! ¿Cuántos m² necesitas de *${prodName || 'piso'}*? Si no sabes exacto, dime las medidas del espacio y lo calculo. 📐`);
@@ -2467,7 +2467,7 @@ app.get('/api/leads/:id', async (req, res) => {
     try {
       const prods = JSON.parse(lead.products_interested || '[]');
       products_detail = await Promise.all(prods.map(async pName => {
-        const p = await queryOne('SELECT id, name, sku, slug, base_price, format, finish, image_url, usage FROM products WHERE LOWER(name) LIKE ?', [`%${pName.toLowerCase()}%`]);
+        const p = await queryOne('SELECT id, name, sku, slug, base_price, format, finish, image_url, usage FROM products WHERE name ILIKE ?', [`%${pName.toLowerCase()}%`]);
         return p || { name: pName };
       }));
     } catch(e) {}
