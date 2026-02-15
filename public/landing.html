@@ -1717,22 +1717,25 @@
             const sqm = product.sqm_per_box;
             const pcs = product.pieces_per_box || null;
             const price = product.base_price || 0;
-            const boxes = Math.ceil(m2 / sqm);
+            const MERMA = 0.10; // 10% recomendado
+            const m2ConMerma = m2 * (1 + MERMA);
+            const boxes = Math.ceil(m2ConMerma / sqm);
             const totalM2 = (boxes * sqm).toFixed(2);
-            const extra = (((totalM2 - m2) / m2) * 100).toFixed(0);
             const totalPcs = pcs ? boxes * pcs : null;
             const totalPrice = price > 0 ? (totalM2 * price).toFixed(2) : null;
 
             let html = '<div style="text-align:center">';
             html += '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.15em;color:var(--gray-light);margin-bottom:16px">Resultado</div>';
+            // Merma note
+            html += '<div style="font-size:0.75rem;color:var(--gold);margin-bottom:14px;font-style:italic">Incluye +10% de merma recomendada por cortes</div>';
             // Main number
             html += '<div style="font-size:2.8rem;font-family:\'Cormorant Garamond\',serif;color:var(--gold);line-height:1">' + boxes + '</div>';
             html += '<div style="font-size:0.8rem;color:var(--gray-light);margin-bottom:20px">cajas necesarias</div>';
             // Stats row
             html += '<div style="display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin-bottom:16px">';
-            html += '<div><span style="font-size:1.3rem;color:var(--white);font-family:\'Cormorant Garamond\',serif">' + totalM2 + '</span><br><span style="font-size:0.65rem;color:var(--gray-light);text-transform:uppercase;letter-spacing:0.1em">m² totales</span></div>';
+            html += '<div><span style="font-size:1.3rem;color:var(--white);font-family:\'Cormorant Garamond\',serif">' + m2.toFixed(1) + '</span><br><span style="font-size:0.65rem;color:var(--gray-light);text-transform:uppercase;letter-spacing:0.1em">m² área</span></div>';
+            html += '<div><span style="font-size:1.3rem;color:var(--white);font-family:\'Cormorant Garamond\',serif">' + totalM2 + '</span><br><span style="font-size:0.65rem;color:var(--gray-light);text-transform:uppercase;letter-spacing:0.1em">m² con merma</span></div>';
             if (totalPcs) html += '<div><span style="font-size:1.3rem;color:var(--white);font-family:\'Cormorant Garamond\',serif">' + totalPcs + '</span><br><span style="font-size:0.65rem;color:var(--gray-light);text-transform:uppercase;letter-spacing:0.1em">piezas</span></div>';
-            if (extra > 0) html += '<div><span style="font-size:1.3rem;color:var(--white);font-family:\'Cormorant Garamond\',serif">+' + extra + '%</span><br><span style="font-size:0.65rem;color:var(--gray-light);text-transform:uppercase;letter-spacing:0.1em">extra cortes</span></div>';
             html += '</div>';
             // Price
             if (totalPrice) {

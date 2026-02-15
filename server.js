@@ -2518,18 +2518,19 @@ app.post('/webhook', async (req, res) => {
           const product = prodName ? await queryOne('SELECT * FROM products WHERE name ILIKE ?', [`%${prodName}%`]) : null;
 
           if (product && product.sqm_per_box && product.base_price) {
-            const boxes = Math.ceil(m2 / product.sqm_per_box);
+            const m2ConMerma = m2 * 1.10; // +10% merma recomendada
+            const boxes = Math.ceil(m2ConMerma / product.sqm_per_box);
             const totalM2 = (boxes * product.sqm_per_box).toFixed(2);
             const totalPrice = Math.round(boxes * product.sqm_per_box * product.base_price);
             const piecesTotal = boxes * (product.pieces_per_box || 0);
 
             let calc = `📐 *Cotización ${product.name}*\n\n`;
-            calc += `Área: *${m2} m²*\n`;
+            calc += `Área: *${m2} m²* + 10% merma = *${m2ConMerma.toFixed(1)} m²*\n`;
             calc += `Cajas: *${boxes}* (${totalM2} m² reales)\n`;
             if (piecesTotal) calc += `Piezas: *${piecesTotal}*\n`;
             calc += `Precio: $${product.base_price}/m²\n`;
             calc += `\n💰 *Total estimado: $${totalPrice.toLocaleString('es-MX')}*\n`;
-            calc += `\n_Incluye ${((parseFloat(totalM2) - m2) / m2 * 100).toFixed(0)}% extra por cortes_`;
+            calc += `\n_Incluye 10% de merma recomendada por cortes_`;
 
             await sendWhatsApp(from, calc);
             await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
@@ -2586,18 +2587,19 @@ app.post('/webhook', async (req, res) => {
           const product = prodName ? await queryOne('SELECT * FROM products WHERE name ILIKE ?', [`%${prodName}%`]) : null;
 
           if (product && product.sqm_per_box && product.base_price) {
-            const boxes = Math.ceil(m2 / product.sqm_per_box);
+            const m2ConMerma = m2 * 1.10; // +10% merma recomendada
+            const boxes = Math.ceil(m2ConMerma / product.sqm_per_box);
             const totalM2 = (boxes * product.sqm_per_box).toFixed(2);
             const totalPrice = Math.round(boxes * product.sqm_per_box * product.base_price);
             const piecesTotal = boxes * (product.pieces_per_box || 0);
 
             let calc = `📐 *Cotización ${product.name}*\n\n`;
-            calc += `Medidas: ${largo} × ${ancho} = *${m2.toFixed(1)} m²*\n`;
+            calc += `Medidas: ${largo} × ${ancho} = *${m2.toFixed(1)} m²* + 10% merma = *${m2ConMerma.toFixed(1)} m²*\n`;
             calc += `Cajas: *${boxes}* (${totalM2} m² reales)\n`;
             if (piecesTotal) calc += `Piezas: *${piecesTotal}*\n`;
             calc += `Precio: $${product.base_price}/m²\n`;
             calc += `\n💰 *Total estimado: $${totalPrice.toLocaleString('es-MX')}*\n`;
-            calc += `\n_Incluye ${((parseFloat(totalM2) - m2) / m2 * 100).toFixed(0)}% extra por cortes_`;
+            calc += `\n_Incluye 10% de merma recomendada por cortes_`;
 
             await sendWhatsApp(from, calc);
             await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
