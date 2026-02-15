@@ -2686,11 +2686,13 @@ app.post('/webhook', async (req, res) => {
               OR description ILIKE '%madera%'
             ) ORDER BY RANDOM() LIMIT 5`);
         } else if (isMarble) {
-          // Marble-look = typically 60x120, 80x160 with description mentioning mármol/marble
+          // Marble-look = large format with brillante/pulido/satinado, or marble keywords in desc/name
           catProducts = await query(
             `SELECT * FROM products WHERE active = 1 AND (
               description ILIKE '%m_rmol%' OR description ILIKE '%marble%' OR description ILIKE '%veta%'
               OR name ILIKE '%calacatta%' OR name ILIKE '%bianco%' OR name ILIKE '%quarzo%'
+              OR ((format ILIKE '%60x120%' OR format ILIKE '%60 x 120%' OR format ILIKE '%80x160%' OR format ILIKE '%80 x 160%')
+                  AND (finish ILIKE '%BRILLANTE%' OR finish ILIKE '%PULIDO%' OR finish ILIKE '%SATINADO%'))
             ) ORDER BY RANDOM() LIMIT 5`);
         } else if (isStone) {
           catProducts = await query(
