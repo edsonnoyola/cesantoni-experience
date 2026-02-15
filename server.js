@@ -19,7 +19,8 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', async (req, res) => res.json({ version: 'v4.2.0', commit: 'similares-images' }));
+app.get('/api/health', async (req, res) => res.json({ version: 'v4.2.1', commit: 'waba-capture' }));
+app.get('/api/debug/waba', (req, res) => res.json({ waba: global.lastWabaId || null }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
@@ -2121,6 +2122,7 @@ app.post('/webhook', async (req, res) => {
 
   try {
     const entry = req.body?.entry?.[0];
+    if (entry?.id) global.lastWabaId = entry.id;
     const changes = entry?.changes?.[0];
     const value = changes?.value;
 
