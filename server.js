@@ -19,7 +19,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', (req, res) => res.json({ version: 'v3.2.2', commit: 'a48e3de' }));
+app.get('/api/health', (req, res) => res.json({ version: 'v3.2.3', commit: '6ce560b' }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
