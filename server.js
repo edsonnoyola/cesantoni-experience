@@ -19,8 +19,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', async (req, res) => res.json({ version: 'v4.2.1', commit: 'waba-capture' }));
-app.get('/api/debug/waba', (req, res) => res.json({ waba: global.lastWabaId || null }));
+app.get('/api/health', async (req, res) => res.json({ version: 'v4.3.0', commit: 'asesor-notify' }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
@@ -1926,6 +1925,38 @@ async function sendWhatsAppButtons(to, body, buttons) {
   }
 }
 
+// Send WhatsApp template message (for contacting users outside 24hr window)
+async function sendWhatsAppTemplate(to, templateName, params = []) {
+  if (!WA_TOKEN) return null;
+  try {
+    const res = await fetch(`https://graph.facebook.com/v21.0/${WA_PHONE_ID}/messages`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp', to, type: 'template',
+        template: {
+          name: templateName,
+          language: { code: 'es_MX' },
+          components: params.length > 0 ? [{
+            type: 'body',
+            parameters: params.map(p => ({ type: 'text', text: String(p) }))
+          }] : []
+        }
+      })
+    });
+    const data = await res.json();
+    if (data.error) {
+      console.error('WA template error:', JSON.stringify(data.error));
+      return { error: data.error };
+    }
+    try { await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [to, 'assistant', `[Template: ${templateName}] ${params.join(' | ')}`]); } catch(e) {}
+    return data;
+  } catch (err) {
+    console.error('WA template error:', err.message);
+    return null;
+  }
+}
+
 // Mark message as read
 async function markAsRead(messageId) {
   if (!WA_TOKEN) return;
@@ -2506,8 +2537,57 @@ app.post('/webhook', async (req, res) => {
         }
       } else if (btnId === 'hablar_asesor') {
         const store = lead?.store_id ? await queryOne('SELECT * FROM stores WHERE id = ?', [lead.store_id]) : null;
+
+        // Notify the store advisor with lead info via template
         if (store?.whatsapp) {
-          await sendWhatsApp(from, `Te conecto con un asesor en *${store.name}*. Escríbele directo:\n\nwa.me/${store.whatsapp.replace(/\D/g, '')}\n\nDile que vienes de Terra y te atienden al momento. 😊`);
+          const leadName = lead?.name || contactName || 'Cliente';
+          const leadPhone = from;
+          const productsText = prods.length > 0 ? prods.join(', ') : 'Pisos Cesantoni';
+          const storeName = store.name || 'Tienda';
+
+          // Get last messages from the lead for context
+          const recentMsgs = await query(
+            "SELECT role, message FROM wa_conversations WHERE phone = ? ORDER BY created_at DESC LIMIT 5", [from]);
+          const conversationSummary = recentMsgs.reverse()
+            .map(m => m.role === 'user' ? `Cliente: ${m.message}` : `Bot: ${m.message}`)
+            .join('\n').substring(0, 500);
+
+          // Send template to advisor (works outside 24hr window)
+          // lead_nuevo template: {{1}}=nombre, {{2}}=telefono, {{3}}=ubicacion, {{4}}=mensaje
+          const advisorMsg = await sendWhatsAppTemplate(
+            store.whatsapp,
+            'lead_nuevo',
+            [leadName, leadPhone, storeName, `Productos: ${productsText}`]
+          );
+
+          if (advisorMsg?.error) {
+            console.error(`Failed to notify advisor at ${store.whatsapp}:`, advisorMsg.error);
+            // Try regular message as fallback (works if within 24hr window)
+            let advisorText = `🔔 *Nuevo lead de Terra*\n\n`;
+            advisorText += `👤 *${leadName}*\n`;
+            advisorText += `📱 wa.me/${leadPhone}\n`;
+            advisorText += `🏪 ${storeName}\n`;
+            advisorText += `🏠 Productos: ${productsText}\n`;
+            if (conversationSummary) advisorText += `\n💬 Conversación:\n${conversationSummary}`;
+
+            const fallback = await sendWhatsApp(store.whatsapp, advisorText);
+            if (fallback?.error) {
+              console.error(`Fallback also failed for advisor ${store.whatsapp}`);
+            }
+          } else {
+            // Template sent OK. Now send a follow-up with conversation details (within 24hr after template)
+            await new Promise(r => setTimeout(r, 1000));
+            if (conversationSummary) {
+              let details = `📋 *Detalle del lead:*\n\n`;
+              details += `👤 ${leadName} — wa.me/${leadPhone}\n`;
+              details += `🏠 Productos: ${productsText}\n\n`;
+              details += `💬 *Conversación:*\n${conversationSummary}`;
+              await sendWhatsApp(store.whatsapp, details);
+            }
+          }
+
+          // Confirm to the lead
+          await sendWhatsApp(from, `¡Listo! Un asesor en *${store.name}* ya tiene tu info y te contactará en breve. 😊\n\nSi quieres escribirle directo:\nwa.me/${store.whatsapp.replace(/\D/g, '')}`);
         } else if (store?.phone) {
           await sendWhatsApp(from, `Llama a *${store.name}*: ${store.phone}. Diles que vienes de Terra. 😊`);
         } else {
