@@ -19,7 +19,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', async (req, res) => res.json({ version: 'v4.3.0', commit: 'asesor-notify' }));
+app.get('/api/health', async (req, res) => res.json({ version: 'v4.4.0', commit: 'search-tracking-followup' }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
@@ -2157,7 +2157,25 @@ app.post('/webhook', async (req, res) => {
     const changes = entry?.changes?.[0];
     const value = changes?.value;
 
-    // Skip status updates (delivered, read, etc.)
+    // Process status updates (delivered, read, failed)
+    if (value?.statuses) {
+      for (const status of value.statuses) {
+        const { id: msgId, status: msgStatus, recipient_id, errors } = status;
+        if (msgStatus === 'failed' && errors?.length) {
+          console.error(`❌ WA message FAILED to ${recipient_id}: ${errors[0]?.title} — ${errors[0]?.message}`);
+          // Log failed delivery
+          try {
+            await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
+              [recipient_id, 'system', `[FAILED] ${errors[0]?.title}: ${errors[0]?.message}`]);
+          } catch(e) {}
+        } else if (msgStatus === 'delivered') {
+          console.log(`✅ WA delivered to ${recipient_id}`);
+        } else if (msgStatus === 'read') {
+          console.log(`👀 WA read by ${recipient_id}`);
+        }
+      }
+    }
+
     if (!value?.messages) return;
 
     const message = value.messages[0];
@@ -2454,6 +2472,58 @@ app.post('/webhook', async (req, res) => {
             await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
             return;
           }
+        }
+      }
+
+      // --- Product search: detect if user types a product name ---
+      const cleanText = text.trim().toLowerCase();
+      if (cleanText.length >= 3 && cleanText.length <= 30 && !/\s{2,}/.test(cleanText)) {
+        const matchedProduct = await queryOne(
+          'SELECT * FROM products WHERE active = 1 AND (name ILIKE ? OR sku ILIKE ? OR slug ILIKE ?)',
+          [`%${cleanText}%`, `%${cleanText}%`, `%${cleanText}%`]
+        );
+        if (matchedProduct && cleanText !== 'hola' && cleanText !== 'si' && cleanText !== 'no' && cleanText !== 'ok' && cleanText !== 'gracias') {
+          const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
+          const p = matchedProduct;
+          const pei = parseInt(p.pei) || 0;
+          const peiTip = pei >= 4 ? 'Alto tráfico' : pei >= 3 ? 'Toda la casa' : pei >= 2 ? 'Tráfico ligero' : '';
+
+          let caption = `*${p.name}*${p.base_price ? ' · $' + p.base_price + '/m²' : ''}\n\n`;
+          caption += `📐 ${p.format || 'Gran formato'}\n`;
+          caption += `✨ ${p.finish || 'Premium'}\n`;
+          if (p.pei) caption += `💪 PEI ${p.pei} — ${peiTip}\n`;
+          if (p.usage) caption += `🏠 ${p.usage}\n`;
+          caption += `\n🔗 ${baseUrl}/p/${p.sku || p.slug || p.id}`;
+
+          await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
+
+          if (p.image_url) {
+            await sendWhatsAppImage(from, p.image_url, caption);
+          } else {
+            await sendWhatsApp(from, caption);
+          }
+
+          // Update lead with this product
+          const existLead = await queryOne('SELECT * FROM leads WHERE phone = ?', [from]);
+          if (existLead) {
+            const prods = existLead.products_interested ? JSON.parse(existLead.products_interested) : [];
+            if (!prods.includes(p.name)) {
+              prods.push(p.name);
+              await run('UPDATE leads SET products_interested = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                [JSON.stringify(prods), existLead.id]);
+            }
+          }
+
+          await new Promise(r => setTimeout(r, 800));
+          await sendWhatsAppButtons(from,
+            `¿Qué quieres saber de *${p.name}*?`,
+            [
+              { id: 'calcular_m2', title: '📐 Calcular m²' },
+              { id: 'ver_similares', title: '🔍 Ver similares' },
+              { id: 'hablar_asesor', title: '👤 Hablar c/asesor' }
+            ]
+          );
+          return;
         }
       }
 
@@ -2938,6 +3008,64 @@ async function start() {
   } catch (e) {
     console.log('   (HTTPS not available - no cert files)');
   }
+
+  // CRON: Follow-up with leads that haven't been contacted (every 2 hours)
+  setInterval(async () => {
+    try {
+      // Find leads created 24+ hours ago that are still 'new' (never contacted)
+      const staleLeads = await query(`
+        SELECT l.*, s.whatsapp as store_whatsapp, s.name as store_display_name
+        FROM leads l
+        LEFT JOIN stores s ON l.store_id = s.id
+        WHERE l.status = 'new'
+          AND l.created_at < NOW() - INTERVAL '24 hours'
+          AND l.created_at > NOW() - INTERVAL '72 hours'
+          AND l.phone IS NOT NULL
+      `);
+
+      if (staleLeads.length === 0) return;
+      console.log(`⏰ CRON: ${staleLeads.length} leads pending follow-up`);
+
+      for (const lead of staleLeads) {
+        const prods = lead.products_interested ? JSON.parse(lead.products_interested) : [];
+        const prodName = prods[0] || 'pisos Cesantoni';
+
+        // Check last bot message to this lead
+        const lastMsg = await queryOne(
+          "SELECT created_at FROM wa_conversations WHERE phone = ? AND role = 'assistant' ORDER BY created_at DESC LIMIT 1",
+          [lead.phone]);
+
+        // Don't send if we already messaged within 12 hours
+        if (lastMsg) {
+          const hoursSinceLastMsg = (Date.now() - new Date(lastMsg.created_at).getTime()) / (1000 * 60 * 60);
+          if (hoursSinceLastMsg < 12) continue;
+        }
+
+        // Send follow-up via template (safe outside 24hr window)
+        const followUp = await sendWhatsAppTemplate(
+          lead.phone,
+          'lead_nuevo',
+          [
+            lead.name || 'Cliente',
+            lead.phone,
+            lead.store_name || 'Cesantoni',
+            `Seguimiento: ¿Sigues interesado en ${prodName}?`
+          ]
+        );
+
+        if (!followUp?.error) {
+          await run("UPDATE leads SET status = 'follow_up', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [lead.id]);
+          console.log(`  📩 Follow-up sent to ${lead.name || lead.phone} for ${prodName}`);
+        }
+
+        await new Promise(r => setTimeout(r, 2000)); // Rate limit
+      }
+    } catch (e) {
+      console.error('CRON follow-up error:', e.message);
+    }
+  }, 2 * 60 * 60 * 1000); // Every 2 hours
+
+  console.log('   ⏰ CRON follow-up active (every 2h)');
 }
 
 start().catch(console.error);
