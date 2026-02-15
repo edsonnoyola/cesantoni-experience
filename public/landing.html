@@ -989,6 +989,39 @@
             </div>
         </section>
 
+        <!-- Inline M² Calculator -->
+        <section class="specs" id="calc-section" style="background:var(--black);padding:60px 40px">
+            <div class="section-container" style="max-width:500px">
+                <span class="section-label">Calculadora</span>
+                <h2 class="section-title" style="margin-bottom:30px">¿Cuánto necesitas?</h2>
+                <div style="display:flex;gap:12px;margin-bottom:16px">
+                    <div style="flex:1">
+                        <label style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-light);display:block;margin-bottom:6px">Largo (m)</label>
+                        <input type="number" id="calc-largo" placeholder="ej: 5" step="0.1" min="0"
+                            style="width:100%;padding:14px;background:var(--charcoal);border:1px solid var(--gray-dark);color:var(--white);font-size:1.1rem;font-family:'Montserrat',sans-serif;border-radius:4px;outline:none;transition:border 0.3s"
+                            onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--gray-dark)'">
+                    </div>
+                    <div style="display:flex;align-items:flex-end;padding-bottom:14px;color:var(--gray-light);font-size:1.2rem">×</div>
+                    <div style="flex:1">
+                        <label style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-light);display:block;margin-bottom:6px">Ancho (m)</label>
+                        <input type="number" id="calc-ancho" placeholder="ej: 4" step="0.1" min="0"
+                            style="width:100%;padding:14px;background:var(--charcoal);border:1px solid var(--gray-dark);color:var(--white);font-size:1.1rem;font-family:'Montserrat',sans-serif;border-radius:4px;outline:none;transition:border 0.3s"
+                            onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--gray-dark)'">
+                    </div>
+                </div>
+                <div style="text-align:center;margin-bottom:12px;font-size:0.75rem;color:var(--gray-light)">ó ingresa m² directamente</div>
+                <input type="number" id="calc-m2" placeholder="m² totales" step="0.1" min="0"
+                    style="width:100%;padding:14px;background:var(--charcoal);border:1px solid var(--gray-dark);color:var(--white);font-size:1.1rem;font-family:'Montserrat',sans-serif;border-radius:4px;outline:none;margin-bottom:20px;transition:border 0.3s"
+                    onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--gray-dark)'">
+                <button id="calc-btn" onclick="calculateM2()"
+                    style="width:100%;padding:16px;background:var(--gold);color:var(--black);font-family:'Montserrat',sans-serif;font-weight:600;font-size:0.9rem;letter-spacing:0.1em;text-transform:uppercase;border:none;cursor:pointer;border-radius:4px;transition:background 0.3s">
+                    Calcular
+                </button>
+                <div id="calc-result" style="display:none;margin-top:24px;padding:24px;background:var(--charcoal);border:1px solid var(--gold-dark);border-radius:6px">
+                </div>
+            </div>
+        </section>
+
         <!-- WhatsApp Lead Capture Section -->
         <section class="wa-capture" id="wa-capture-section">
             <div class="section-container">
@@ -1648,6 +1681,74 @@
             else if (params.tienda) parts.push('store=' + encodeURIComponent(params.tienda));
             if (parts.length) url += '?' + parts.join('&');
             window.open(url, '_blank');
+        }
+
+        // M² Calculator
+        (function() {
+            const largo = document.getElementById('calc-largo');
+            const ancho = document.getElementById('calc-ancho');
+            const m2Input = document.getElementById('calc-m2');
+            // Auto-fill m² when largo × ancho change
+            function syncM2() {
+                const l = parseFloat(largo.value), a = parseFloat(ancho.value);
+                if (l > 0 && a > 0) m2Input.value = (l * a).toFixed(1);
+            }
+            largo.addEventListener('input', syncM2);
+            ancho.addEventListener('input', syncM2);
+            // Clear largo/ancho if user types m² directly
+            m2Input.addEventListener('input', function() {
+                if (this.value) { largo.value = ''; ancho.value = ''; }
+            });
+        })();
+
+        function calculateM2() {
+            const resultDiv = document.getElementById('calc-result');
+            const m2 = parseFloat(document.getElementById('calc-m2').value);
+            if (!m2 || m2 <= 0) {
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '<p style="color:var(--gold);text-align:center">Ingresa las medidas o m² para calcular</p>';
+                return;
+            }
+            if (!product || !product.sqm_per_box || product.sqm_per_box <= 0) {
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '<p style="color:var(--gold);text-align:center">Datos de empaque no disponibles para este producto</p>';
+                return;
+            }
+            const sqm = product.sqm_per_box;
+            const pcs = product.pieces_per_box || null;
+            const price = product.base_price || 0;
+            const boxes = Math.ceil(m2 / sqm);
+            const totalM2 = (boxes * sqm).toFixed(2);
+            const extra = (((totalM2 - m2) / m2) * 100).toFixed(0);
+            const totalPcs = pcs ? boxes * pcs : null;
+            const totalPrice = price > 0 ? (totalM2 * price).toFixed(2) : null;
+
+            let html = '<div style="text-align:center">';
+            html += '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.15em;color:var(--gray-light);margin-bottom:16px">Resultado</div>';
+            // Main number
+            html += '<div style="font-size:2.8rem;font-family:\'Cormorant Garamond\',serif;color:var(--gold);line-height:1">' + boxes + '</div>';
+            html += '<div style="font-size:0.8rem;color:var(--gray-light);margin-bottom:20px">cajas necesarias</div>';
+            // Stats row
+            html += '<div style="display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin-bottom:16px">';
+            html += '<div><span style="font-size:1.3rem;color:var(--white);font-family:\'Cormorant Garamond\',serif">' + totalM2 + '</span><br><span style="font-size:0.65rem;color:var(--gray-light);text-transform:uppercase;letter-spacing:0.1em">m² totales</span></div>';
+            if (totalPcs) html += '<div><span style="font-size:1.3rem;color:var(--white);font-family:\'Cormorant Garamond\',serif">' + totalPcs + '</span><br><span style="font-size:0.65rem;color:var(--gray-light);text-transform:uppercase;letter-spacing:0.1em">piezas</span></div>';
+            if (extra > 0) html += '<div><span style="font-size:1.3rem;color:var(--white);font-family:\'Cormorant Garamond\',serif">+' + extra + '%</span><br><span style="font-size:0.65rem;color:var(--gray-light);text-transform:uppercase;letter-spacing:0.1em">extra cortes</span></div>';
+            html += '</div>';
+            // Price
+            if (totalPrice) {
+                html += '<div style="margin-top:12px;padding-top:16px;border-top:1px solid var(--gray-dark)">';
+                html += '<span style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-light)">Precio estimado</span><br>';
+                html += '<span style="font-size:1.8rem;font-family:\'Cormorant Garamond\',serif;color:var(--gold)">$' + Number(totalPrice).toLocaleString('es-MX') + ' MXN</span>';
+                html += '</div>';
+            }
+            // Detail line
+            html += '<div style="margin-top:14px;font-size:0.7rem;color:var(--gray-light)">';
+            html += sqm + ' m²/caja' + (pcs ? ' · ' + pcs + ' pzas/caja' : '') + (price ? ' · $' + price + '/m²' : '');
+            html += '</div>';
+            html += '</div>';
+            resultDiv.innerHTML = html;
+            resultDiv.style.display = 'block';
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         // Init
