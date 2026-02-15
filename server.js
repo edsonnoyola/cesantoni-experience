@@ -19,7 +19,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', async (req, res) => res.json({ version: 'v5.0.0', commit: 'voice-image-stores-promos-quotes' }));
+app.get('/api/health', async (req, res) => res.json({ version: 'v6.0.0', commit: 'catalog-multiproduct-appointments-survey-compare-share' }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
@@ -2505,6 +2505,33 @@ app.post('/webhook', async (req, res) => {
         return;
       }
 
+      // --- Appointment scheduling: detect if user is answering the appointment prompt ---
+      const waitingAppt = await queryOne(
+        "SELECT id FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message = '[WAITING_APPOINTMENT]' ORDER BY created_at DESC LIMIT 1", [from]);
+      if (waitingAppt) {
+        await run('DELETE FROM wa_conversations WHERE id = ?', [waitingAppt.id]);
+        const lead = await queryOne('SELECT * FROM leads WHERE phone = ?', [from]);
+        const store = lead?.store_id ? await queryOne('SELECT * FROM stores WHERE id = ?', [lead.store_id]) : null;
+        const leadName = lead?.name || contactName || 'Cliente';
+        const storeName = store?.name || 'Tienda Cesantoni';
+        const appointmentText = text.trim();
+
+        await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
+
+        // Notify store advisor about the appointment
+        if (store?.whatsapp) {
+          await sendWhatsAppTemplate(store.whatsapp, 'lead_nuevo', [
+            leadName, from, storeName, `📅 CITA: ${appointmentText}`
+          ]);
+          await new Promise(r => setTimeout(r, 1000));
+          await sendWhatsApp(store.whatsapp, `📅 *Cita agendada*\n\n👤 ${leadName}\n📱 wa.me/${from}\n🕐 ${appointmentText}\n🏪 ${storeName}\n\nPor favor confirma la cita con el cliente.`);
+        }
+
+        await sendWhatsApp(from, `✅ *¡Cita agendada!*\n\n🏪 ${storeName}\n🕐 ${appointmentText}\n\nUn asesor confirmará tu visita. ¡Te esperamos! 😊`);
+        if (lead) await run("UPDATE leads SET status = 'appointment' WHERE id = ?", [lead.id]);
+        return;
+      }
+
       // --- M² Calculator: detect if user is answering the "¿Cuántos m²?" prompt ---
       const m2Number = text.match(/^[\s]*(\d+(?:[.,]\d+)?)\s*(m2|m²|metros?)?\s*$/i);
       if (m2Number) {
@@ -2535,14 +2562,18 @@ app.post('/webhook', async (req, res) => {
             await sendWhatsApp(from, calc);
             await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
 
+            // Save quote item to conversation for multi-product cart
+            await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
+              [from, 'assistant', `[QUOTE_ITEM] ${product.name}|${m2}|${m2ConMerma.toFixed(1)}|${boxes}|${totalM2}|${totalPrice}`]);
+
             // Follow-up buttons
             await new Promise(r => setTimeout(r, 500));
             await sendWhatsAppButtons(from,
               '¿Qué quieres hacer?',
               [
-                { id: 'hablar_asesor', title: '👤 Hablar c/asesor' },
-                { id: 'ver_similares', title: '🔍 Ver similares' },
-                { id: 'enviar_cotizacion', title: '📄 Enviar cotización' }
+                { id: 'agregar_otro', title: '➕ Agregar otro piso' },
+                { id: 'enviar_cotizacion', title: '📄 Ver cotización' },
+                { id: 'hablar_asesor', title: '👤 Hablar c/asesor' }
               ]
             );
             return;
@@ -2562,6 +2593,7 @@ app.post('/webhook', async (req, res) => {
             await sendWhatsAppButtons(from,
               '¿Qué quieres hacer?',
               [
+                { id: 'agregar_otro', title: '➕ Agregar otro piso' },
                 { id: 'hablar_asesor', title: '👤 Hablar c/asesor' },
                 { id: 'ver_similares', title: '🔍 Ver similares' }
               ]
@@ -2604,13 +2636,17 @@ app.post('/webhook', async (req, res) => {
             await sendWhatsApp(from, calc);
             await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
 
+            // Save quote item for multi-product cart
+            await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
+              [from, 'assistant', `[QUOTE_ITEM] ${product.name}|${m2.toFixed(1)}|${m2ConMerma.toFixed(1)}|${boxes}|${totalM2}|${totalPrice}`]);
+
             await new Promise(r => setTimeout(r, 500));
             await sendWhatsAppButtons(from,
               '¿Qué quieres hacer?',
               [
-                { id: 'hablar_asesor', title: '👤 Hablar c/asesor' },
-                { id: 'ver_similares', title: '🔍 Ver similares' },
-                { id: 'enviar_cotizacion', title: '📄 Enviar cotización' }
+                { id: 'agregar_otro', title: '➕ Agregar otro piso' },
+                { id: 'enviar_cotizacion', title: '📄 Ver cotización' },
+                { id: 'hablar_asesor', title: '👤 Hablar c/asesor' }
               ]
             );
             return;
@@ -2626,6 +2662,72 @@ app.post('/webhook', async (req, res) => {
             return;
           }
         }
+      }
+
+      // --- Catalog by category: detect "pisos de madera", "pisos para baño", etc. ---
+      const catMatch = text.match(/(?:pisos?|porcelanatos?|cerámicas?|losetas?)\s+(?:de|tipo|estilo|para|como|look)\s+(.+)/i)
+        || text.match(/(?:qué|que|tienen|muestrame|muéstrame|ver)\s+(?:pisos?|porcelanatos?)\s+(?:de|tipo|para)\s+(.+)/i)
+        || text.match(/^(madera|mármol|marmol|piedra|cemento|concreto|mosaico|rústico|rustico|moderno|mate|brillante|exterior|baño|cocina|sala|terraza)s?$/i);
+      if (catMatch) {
+        const catSearch = (catMatch[1] || catMatch[0]).trim().toLowerCase().replace(/[?.!]/g, '');
+        await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
+
+        // Map common category keywords to DB search terms
+        const catMap = {
+          'madera': { col: 'finish', val: '%madera%', alt: '%wood%' },
+          'wood': { col: 'finish', val: '%madera%', alt: '%wood%' },
+          'mármol': { col: 'finish', val: '%mármol%', alt: '%marble%' },
+          'marmol': { col: 'finish', val: '%mármol%', alt: '%marmol%' },
+          'piedra': { col: 'finish', val: '%piedra%', alt: '%stone%' },
+          'cemento': { col: 'finish', val: '%cemento%', alt: '%concrete%' },
+          'concreto': { col: 'finish', val: '%cemento%', alt: '%concreto%' },
+          'mosaico': { col: 'finish', val: '%mosaico%', alt: '%mosaic%' },
+          'mate': { col: 'finish', val: '%mate%', alt: '%matte%' },
+          'brillante': { col: 'finish', val: '%brillante%', alt: '%brillo%' },
+          'rústico': { col: 'finish', val: '%rústic%', alt: '%rustic%' },
+          'rustico': { col: 'finish', val: '%rústic%', alt: '%rustic%' },
+          'moderno': { col: 'finish', val: '%moderno%', alt: '%modern%' },
+          'exterior': { col: 'usage', val: '%exterior%', alt: '%outdoor%' },
+          'baño': { col: 'usage', val: '%baño%', alt: '%bath%' },
+          'cocina': { col: 'usage', val: '%cocina%', alt: '%kitchen%' },
+          'sala': { col: 'usage', val: '%sala%', alt: '%living%' },
+          'terraza': { col: 'usage', val: '%terraza%', alt: '%terrace%' },
+        };
+
+        let catProducts = [];
+        const mapped = catMap[catSearch];
+        if (mapped) {
+          catProducts = await query(
+            `SELECT * FROM products WHERE active = 1 AND (${mapped.col} ILIKE ? OR ${mapped.col} ILIKE ? OR name ILIKE ?) ORDER BY RANDOM() LIMIT 5`,
+            [mapped.val, mapped.alt, `%${catSearch}%`]);
+        }
+        if (catProducts.length === 0) {
+          catProducts = await query(
+            'SELECT * FROM products WHERE active = 1 AND (name ILIKE ? OR finish ILIKE ? OR usage ILIKE ? OR description ILIKE ?) ORDER BY RANDOM() LIMIT 5',
+            [`%${catSearch}%`, `%${catSearch}%`, `%${catSearch}%`, `%${catSearch}%`]);
+        }
+
+        if (catProducts.length > 0) {
+          const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
+          await sendWhatsApp(from, `🏠 *Pisos estilo ${catSearch}* — ${catProducts.length} opciones:`);
+          await new Promise(r => setTimeout(r, 500));
+          for (const s of catProducts) {
+            let caption = `*${s.name}* · $${s.base_price || '?'}/m²\n`;
+            caption += `📐 ${s.format || ''} · ✨ ${s.finish || ''}\n`;
+            if (s.pei) caption += `💪 PEI ${s.pei}\n`;
+            caption += `\n🔗 ${baseUrl}/p/${s.sku || s.slug || s.name}`;
+            if (s.image_url) {
+              await sendWhatsAppImage(from, s.image_url, caption);
+            } else {
+              await sendWhatsApp(from, caption);
+            }
+            await new Promise(r => setTimeout(r, 800));
+          }
+          await new Promise(r => setTimeout(r, 500));
+          await sendWhatsApp(from, '¿Cuál te gusta? Escríbeme el nombre para más info, calcular m² o comparar. 😊');
+          return;
+        }
+        // Fall through if no products found for this category
       }
 
       // --- Store locator: detect "tienda en [city]", "sucursal", "dónde comprar" ---
@@ -2698,12 +2800,16 @@ app.post('/webhook', async (req, res) => {
             }
           }
 
+          // Track viewed product for comparator
+          await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
+            [from, 'assistant', `[VIEWED_PRODUCT] ${p.name}`]);
+
           await new Promise(r => setTimeout(r, 800));
           await sendWhatsAppButtons(from,
             `¿Qué quieres saber de *${p.name}*?`,
             [
               { id: 'calcular_m2', title: '📐 Calcular m²' },
-              { id: 'ver_similares', title: '🔍 Ver similares' },
+              { id: 'comparar', title: '⚖️ Comparar' },
               { id: 'hablar_asesor', title: '👤 Hablar c/asesor' }
             ]
           );
@@ -2847,36 +2953,125 @@ app.post('/webhook', async (req, res) => {
         } else {
           await sendWhatsApp(from, `Un asesor te atiende en tienda ahora mismo. Muéstrale este chat y te ayuda. 👍`);
         }
-        if (lead) await run("UPDATE leads SET status = 'contacted' WHERE id = ?", [lead.id]);
+        if (lead) {
+          await run("UPDATE leads SET status = 'contacted' WHERE id = ?", [lead.id]);
+          // Schedule satisfaction survey for 24h later
+          await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
+            [from, 'system', `[SURVEY_DUE] ${new Date(Date.now() + 24*60*60*1000).toISOString()}`]);
+        }
+      } else if (btnId === 'agregar_otro') {
+        // Multi-product: ask for next product
+        await sendWhatsApp(from, '¡Perfecto! Escríbeme el nombre del siguiente piso que necesitas y te cotizo los m². 😊');
+
       } else if (btnId === 'enviar_cotizacion') {
-        // Generate text quote and send
-        if (product) {
-          // Get last m² calculation from conversation
-          const lastCalc = await queryOne(
-            "SELECT message FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '%Cotización%' ORDER BY created_at DESC LIMIT 1",
-            [from]);
+        // Multi-product quote: gather all QUOTE_ITEM entries
+        const quoteItems = await query(
+          "SELECT message FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '[QUOTE_ITEM]%' ORDER BY created_at ASC",
+          [from]);
 
-          if (lastCalc) {
-            // Send quote text as a forwarded summary
-            const quoteText = lastCalc.message;
-            const leadName = lead?.name || contactName || 'Cliente';
+        if (quoteItems.length > 0) {
+          const leadName = lead?.name || contactName || 'Cliente';
+          let quote = `📄 *COTIZACIÓN CESANTONI*\n`;
+          quote += `👤 ${leadName}\n`;
+          quote += `📅 ${new Date().toLocaleDateString('es-MX')}\n`;
+          quote += `${'─'.repeat(20)}\n\n`;
 
-            // Send to lead
-            await sendWhatsApp(from, `📄 *Tu cotización de ${product.name}:*\n\n${quoteText}\n\n_Precios sujetos a cambio. Vigencia: 15 días._\n\n¿Necesitas algo más? 😊`);
+          let grandTotal = 0;
+          let grandM2 = 0;
+          for (let i = 0; i < quoteItems.length; i++) {
+            const parts = quoteItems[i].message.replace('[QUOTE_ITEM] ', '').split('|');
+            const [pName, pM2, pM2Merma, pBoxes, pTotalM2, pPrice] = parts;
+            const price = parseFloat(pPrice) || 0;
+            grandTotal += price;
+            grandM2 += parseFloat(pTotalM2) || 0;
 
-            // Also notify store advisor if available
-            const store = lead?.store_id ? await queryOne('SELECT * FROM stores WHERE id = ?', [lead.store_id]) : null;
-            if (store?.whatsapp) {
-              await sendWhatsAppTemplate(store.whatsapp, 'lead_nuevo', [
-                leadName, from, store.name, `Cotización enviada: ${product.name}`
-              ]);
+            quote += `*${i + 1}. ${pName}*\n`;
+            quote += `   Área: ${pM2} m² + 10% = ${pM2Merma} m²\n`;
+            quote += `   Cajas: ${pBoxes} (${pTotalM2} m²)\n`;
+            if (price) quote += `   Subtotal: $${Number(price).toLocaleString('es-MX')}\n`;
+            quote += `\n`;
+          }
+          quote += `${'─'.repeat(20)}\n`;
+          quote += `📦 *Total: ${grandM2.toFixed(1)} m²*\n`;
+          if (grandTotal > 0) quote += `💰 *TOTAL: $${Math.round(grandTotal).toLocaleString('es-MX')} MXN*\n`;
+          quote += `\n_Precios sujetos a cambio. Vigencia: 15 días._`;
+
+          await sendWhatsApp(from, quote);
+
+          // Notify store advisor
+          const store = lead?.store_id ? await queryOne('SELECT * FROM stores WHERE id = ?', [lead.store_id]) : null;
+          if (store?.whatsapp) {
+            await sendWhatsAppTemplate(store.whatsapp, 'lead_nuevo', [
+              leadName, from, store?.name || 'Tienda', `Cotización ${quoteItems.length} productos: $${Math.round(grandTotal).toLocaleString('es-MX')}`
+            ]);
+          }
+
+          // Clear quote items for next session
+          await run("DELETE FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '[QUOTE_ITEM]%'", [from]);
+
+          await new Promise(r => setTimeout(r, 500));
+          await sendWhatsAppButtons(from, '¿Qué quieres hacer?', [
+            { id: 'hablar_asesor', title: '👤 Hablar c/asesor' },
+            { id: 'agendar_visita', title: '📅 Agendar visita' },
+            { id: 'agregar_otro', title: '➕ Nuevo cálculo' }
+          ]);
+        } else {
+          await sendWhatsApp(from, `Primero calcula los m² que necesitas y luego te envío la cotización. ¿Cuántos m² necesitas? 📐`);
+        }
+
+      } else if (btnId === 'agendar_visita') {
+        // Store visit scheduling
+        const store = lead?.store_id ? await queryOne('SELECT * FROM stores WHERE id = ?', [lead.store_id]) : null;
+        const storeName = store?.name || 'la tienda';
+        await sendWhatsApp(from, `📅 ¡Genial! ¿Cuándo quieres visitar *${storeName}*?\n\nDime fecha y hora aproximada, ej:\n• _Mañana a las 11am_\n• _Sábado por la tarde_\n• _Lunes 20 de febrero a las 3pm_`);
+        // Mark conversation state for appointment
+        await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
+          [from, 'assistant', '[WAITING_APPOINTMENT]']);
+
+      } else if (btnId === 'comparar') {
+        // Product comparator: show last viewed products side by side
+        const recentProducts = await query(
+          "SELECT DISTINCT message FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '[VIEWED_PRODUCT]%' ORDER BY created_at DESC LIMIT 3",
+          [from]);
+
+        if (recentProducts.length >= 2) {
+          const names = recentProducts.map(r => r.message.replace('[VIEWED_PRODUCT] ', ''));
+          const products = [];
+          for (const n of names) {
+            const p = await queryOne('SELECT name, base_price, format, finish, pei, usage, sqm_per_box FROM products WHERE name ILIKE ? OR sku ILIKE ?', [`%${n}%`, `%${n}%`]);
+            if (p) products.push(p);
+          }
+          if (products.length >= 2) {
+            let comp = `⚖️ *COMPARADOR*\n${'─'.repeat(20)}\n\n`;
+            for (const p of products) {
+              comp += `*${p.name}*\n`;
+              comp += `  💰 $${p.base_price || '?'}/m²\n`;
+              comp += `  📐 ${p.format || '-'}\n`;
+              comp += `  ✨ ${p.finish || '-'}\n`;
+              comp += `  💪 PEI ${p.pei || '-'}\n`;
+              comp += `  🏠 ${p.usage || '-'}\n`;
+              comp += `  📦 ${p.sqm_per_box || '-'} m²/caja\n\n`;
             }
+            comp += `¿Cuál prefieres? Escríbeme el nombre para cotizar. 😊`;
+            await sendWhatsApp(from, comp);
           } else {
-            await sendWhatsApp(from, `Primero calcula los m² que necesitas y luego te envío la cotización formal. ¿Cuántos m² necesitas? 📐`);
+            await sendWhatsApp(from, 'Necesito al menos 2 productos para comparar. Escríbeme el nombre de un piso para empezar. 😊');
           }
         } else {
-          await sendWhatsApp(from, `¿De qué producto quieres la cotización? Escríbeme el nombre. 😊`);
+          await sendWhatsApp(from, 'Necesito al menos 2 productos para comparar. Escríbeme el nombre de un piso que te interese. 😊');
         }
+
+      } else if (btnId.startsWith('survey_')) {
+        // Satisfaction survey response
+        const rating = parseInt(btnId.replace('survey_', '')) || 3;
+        const ratingLabel = rating >= 5 ? 'Excelente' : rating >= 3 ? 'Regular' : 'Necesita mejorar';
+        const lead = await queryOne('SELECT * FROM leads WHERE phone = ?', [from]);
+        if (lead) {
+          await run("UPDATE leads SET notes = COALESCE(notes, '') || ? WHERE id = ?",
+            [`\n⭐ Encuesta: ${rating}/5 (${ratingLabel}) - ${new Date().toLocaleDateString('es-MX')}`, lead.id]);
+        }
+        await sendWhatsApp(from, `¡Gracias por tu calificación! ${rating >= 4 ? '😊' : 'Tomaremos en cuenta tu opinión para mejorar. 🙏'}\n\n¿Te puedo ayudar con algo más?`);
+
       } else {
         // Unknown button, pass to AI
         const reply = await processWhatsAppMessage(from, btnTitle, contactName);
@@ -3364,6 +3559,36 @@ async function start() {
   }, 2 * 60 * 60 * 1000); // Every 2 hours
 
   console.log('   ⏰ CRON follow-up active (every 2h)');
+
+  // CRON: Satisfaction survey (every 1 hour, sends survey to leads contacted 24h+ ago)
+  setInterval(async () => {
+    try {
+      const dueSurveys = await query(
+        "SELECT DISTINCT phone, message FROM wa_conversations WHERE role = 'system' AND message LIKE '[SURVEY_DUE]%'");
+
+      for (const row of dueSurveys) {
+        const dueDate = row.message.replace('[SURVEY_DUE] ', '');
+        if (new Date(dueDate) > new Date()) continue; // Not due yet
+
+        // Delete the marker first (mark-before-send)
+        await run("DELETE FROM wa_conversations WHERE phone = ? AND role = 'system' AND message LIKE '[SURVEY_DUE]%'", [row.phone]);
+
+        await sendWhatsAppButtons(row.phone,
+          '⭐ ¿Cómo fue tu experiencia con nuestro asesor? Tu opinión nos ayuda a mejorar.',
+          [
+            { id: 'survey_5', title: '⭐⭐⭐⭐⭐ Excelente' },
+            { id: 'survey_3', title: '⭐⭐⭐ Regular' },
+            { id: 'survey_1', title: '⭐ Mala' }
+          ]
+        );
+        console.log(`📊 Survey sent to ${row.phone}`);
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    } catch (e) {
+      console.error('CRON survey error:', e.message);
+    }
+  }, 60 * 60 * 1000); // Every 1 hour
+  console.log('   📊 CRON survey active (every 1h)');
 }
 
 start().catch(console.error);
