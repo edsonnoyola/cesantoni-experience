@@ -19,7 +19,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', async (req, res) => res.json({ version: 'v4.0.0-pg', commit: 'pg-migration' }));
+app.get('/api/health', async (req, res) => res.json({ version: 'v4.1.0', commit: 'm2-calculator' }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
@@ -2301,6 +2301,127 @@ app.post('/webhook', async (req, res) => {
         }
 
         return;
+      }
+
+      // --- M² Calculator: detect if user is answering the "¿Cuántos m²?" prompt ---
+      const m2Number = text.match(/^[\s]*(\d+(?:[.,]\d+)?)\s*(m2|m²|metros?)?\s*$/i);
+      if (m2Number) {
+        const lastBotMsg = await queryOne(
+          "SELECT message FROM wa_conversations WHERE phone = ? AND role = 'assistant' ORDER BY created_at DESC LIMIT 1", [from]);
+        if (lastBotMsg && lastBotMsg.message && lastBotMsg.message.includes('Cuántos m²')) {
+          const m2 = parseFloat(m2Number[1].replace(',', '.'));
+          const lead = await queryOne('SELECT * FROM leads WHERE phone = ?', [from]);
+          const prods = lead?.products_interested ? JSON.parse(lead.products_interested) : [];
+          const prodName = prods[0] || '';
+          const product = prodName ? await queryOne('SELECT * FROM products WHERE name ILIKE ?', [`%${prodName}%`]) : null;
+
+          if (product && product.sqm_per_box && product.base_price) {
+            const boxes = Math.ceil(m2 / product.sqm_per_box);
+            const totalM2 = (boxes * product.sqm_per_box).toFixed(2);
+            const totalPrice = Math.round(boxes * product.sqm_per_box * product.base_price);
+            const piecesTotal = boxes * (product.pieces_per_box || 0);
+
+            let calc = `📐 *Cotización ${product.name}*\n\n`;
+            calc += `Área: *${m2} m²*\n`;
+            calc += `Cajas: *${boxes}* (${totalM2} m² reales)\n`;
+            if (piecesTotal) calc += `Piezas: *${piecesTotal}*\n`;
+            calc += `Precio: $${product.base_price}/m²\n`;
+            calc += `\n💰 *Total estimado: $${totalPrice.toLocaleString('es-MX')}*\n`;
+            calc += `\n_Incluye ${((parseFloat(totalM2) - m2) / m2 * 100).toFixed(0)}% extra por cortes_`;
+
+            await sendWhatsApp(from, calc);
+            await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
+
+            // Follow-up buttons
+            await new Promise(r => setTimeout(r, 500));
+            await sendWhatsAppButtons(from,
+              '¿Qué quieres hacer?',
+              [
+                { id: 'hablar_asesor', title: '👤 Hablar c/asesor' },
+                { id: 'ver_similares', title: '🔍 Ver similares' },
+                { id: 'calcular_m2', title: '📐 Recalcular m²' }
+              ]
+            );
+            return;
+          } else if (product) {
+            // Product found but no sqm_per_box data
+            const totalPrice = product.base_price ? Math.round(m2 * product.base_price) : null;
+            let calc = `📐 *Cotización ${product.name}*\n\n`;
+            calc += `Área: *${m2} m²*\n`;
+            calc += `Precio: $${product.base_price || '?'}/m²\n`;
+            if (totalPrice) calc += `\n💰 *Total estimado: $${totalPrice.toLocaleString('es-MX')}*\n`;
+            calc += `\nPara el número exacto de cajas, consulta con un asesor en tienda.`;
+
+            await sendWhatsApp(from, calc);
+            await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
+
+            await new Promise(r => setTimeout(r, 500));
+            await sendWhatsAppButtons(from,
+              '¿Qué quieres hacer?',
+              [
+                { id: 'hablar_asesor', title: '👤 Hablar c/asesor' },
+                { id: 'ver_similares', title: '🔍 Ver similares' }
+              ]
+            );
+            return;
+          }
+        }
+      }
+
+      // --- Dimension calculator: detect "3x4", "3 x 4", "3m x 4m" etc. ---
+      const dimMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(?:m(?:ts?|etros?)?)?\s*[x×X]\s*(\d+(?:[.,]\d+)?)\s*(?:m(?:ts?|etros?)?)?/i);
+      if (dimMatch) {
+        const lastBotMsg = await queryOne(
+          "SELECT message FROM wa_conversations WHERE phone = ? AND role = 'assistant' ORDER BY created_at DESC LIMIT 1", [from]);
+        if (lastBotMsg && lastBotMsg.message && lastBotMsg.message.includes('Cuántos m²')) {
+          const largo = parseFloat(dimMatch[1].replace(',', '.'));
+          const ancho = parseFloat(dimMatch[2].replace(',', '.'));
+          const m2 = largo * ancho;
+
+          const lead = await queryOne('SELECT * FROM leads WHERE phone = ?', [from]);
+          const prods = lead?.products_interested ? JSON.parse(lead.products_interested) : [];
+          const prodName = prods[0] || '';
+          const product = prodName ? await queryOne('SELECT * FROM products WHERE name ILIKE ?', [`%${prodName}%`]) : null;
+
+          if (product && product.sqm_per_box && product.base_price) {
+            const boxes = Math.ceil(m2 / product.sqm_per_box);
+            const totalM2 = (boxes * product.sqm_per_box).toFixed(2);
+            const totalPrice = Math.round(boxes * product.sqm_per_box * product.base_price);
+            const piecesTotal = boxes * (product.pieces_per_box || 0);
+
+            let calc = `📐 *Cotización ${product.name}*\n\n`;
+            calc += `Medidas: ${largo} × ${ancho} = *${m2.toFixed(1)} m²*\n`;
+            calc += `Cajas: *${boxes}* (${totalM2} m² reales)\n`;
+            if (piecesTotal) calc += `Piezas: *${piecesTotal}*\n`;
+            calc += `Precio: $${product.base_price}/m²\n`;
+            calc += `\n💰 *Total estimado: $${totalPrice.toLocaleString('es-MX')}*\n`;
+            calc += `\n_Incluye ${((parseFloat(totalM2) - m2) / m2 * 100).toFixed(0)}% extra por cortes_`;
+
+            await sendWhatsApp(from, calc);
+            await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
+
+            await new Promise(r => setTimeout(r, 500));
+            await sendWhatsAppButtons(from,
+              '¿Qué quieres hacer?',
+              [
+                { id: 'hablar_asesor', title: '👤 Hablar c/asesor' },
+                { id: 'ver_similares', title: '🔍 Ver similares' },
+                { id: 'calcular_m2', title: '📐 Recalcular m²' }
+              ]
+            );
+            return;
+          } else {
+            const totalPrice = product?.base_price ? Math.round(m2 * product.base_price) : null;
+            let calc = `📐 *Cotización ${prodName || 'Piso'}*\n\n`;
+            calc += `Medidas: ${largo} × ${ancho} = *${m2.toFixed(1)} m²*\n`;
+            if (product?.base_price) calc += `Precio: $${product.base_price}/m²\n`;
+            if (totalPrice) calc += `\n💰 *Total estimado: $${totalPrice.toLocaleString('es-MX')}*\n`;
+
+            await sendWhatsApp(from, calc);
+            await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
+            return;
+          }
+        }
       }
 
       // Create lead if first message from this phone (WhatsApp bot lead)
