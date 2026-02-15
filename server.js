@@ -2672,34 +2672,55 @@ app.post('/webhook', async (req, res) => {
         const catSearch = (catMatch[1] || catMatch[0]).trim().toLowerCase().replace(/[?.!]/g, '');
         await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
 
-        // Map common category keywords to DB search terms
-        const catMap = {
-          'madera': { col: 'finish', val: '%madera%', alt: '%wood%' },
-          'wood': { col: 'finish', val: '%madera%', alt: '%wood%' },
-          'mármol': { col: 'finish', val: '%mármol%', alt: '%marble%' },
-          'marmol': { col: 'finish', val: '%mármol%', alt: '%marmol%' },
-          'piedra': { col: 'finish', val: '%piedra%', alt: '%stone%' },
-          'cemento': { col: 'finish', val: '%cemento%', alt: '%concrete%' },
-          'concreto': { col: 'finish', val: '%cemento%', alt: '%concreto%' },
-          'mosaico': { col: 'finish', val: '%mosaico%', alt: '%mosaic%' },
-          'mate': { col: 'finish', val: '%mate%', alt: '%matte%' },
-          'brillante': { col: 'finish', val: '%brillante%', alt: '%brillo%' },
-          'rústico': { col: 'finish', val: '%rústic%', alt: '%rustic%' },
-          'rustico': { col: 'finish', val: '%rústic%', alt: '%rustic%' },
-          'moderno': { col: 'finish', val: '%moderno%', alt: '%modern%' },
-          'exterior': { col: 'usage', val: '%exterior%', alt: '%outdoor%' },
-          'baño': { col: 'usage', val: '%baño%', alt: '%bath%' },
-          'cocina': { col: 'usage', val: '%cocina%', alt: '%kitchen%' },
-          'sala': { col: 'usage', val: '%sala%', alt: '%living%' },
-          'terraza': { col: 'usage', val: '%terraza%', alt: '%terrace%' },
-        };
-
+        // Special queries for categories that need custom logic
         let catProducts = [];
-        const mapped = catMap[catSearch];
-        if (mapped) {
+        const isWood = /madera|wood/i.test(catSearch);
+        const isMarble = /m[aá]rmol|marble/i.test(catSearch);
+        const isStone = /piedra|stone/i.test(catSearch);
+
+        if (isWood) {
+          // Wood-look = format 20x120, 20x160, 26x160 or "wood" in name
           catProducts = await query(
-            `SELECT * FROM products WHERE active = 1 AND (${mapped.col} ILIKE ? OR ${mapped.col} ILIKE ? OR name ILIKE ?) ORDER BY RANDOM() LIMIT 5`,
-            [mapped.val, mapped.alt, `%${catSearch}%`]);
+            `SELECT * FROM products WHERE active = 1 AND (
+              name ILIKE '%wood%' OR format ILIKE '%20 x 120%' OR format ILIKE '%20 x 160%' OR format ILIKE '%26 x 160%'
+              OR description ILIKE '%madera%'
+            ) ORDER BY RANDOM() LIMIT 5`);
+        } else if (isMarble) {
+          // Marble-look = typically 60x120, 80x160 with description mentioning mármol/marble
+          catProducts = await query(
+            `SELECT * FROM products WHERE active = 1 AND (
+              description ILIKE '%m_rmol%' OR description ILIKE '%marble%' OR description ILIKE '%veta%'
+              OR name ILIKE '%calacatta%' OR name ILIKE '%bianco%' OR name ILIKE '%quarzo%'
+            ) ORDER BY RANDOM() LIMIT 5`);
+        } else if (isStone) {
+          catProducts = await query(
+            `SELECT * FROM products WHERE active = 1 AND (
+              description ILIKE '%piedra%' OR description ILIKE '%stone%' OR description ILIKE '%roca%'
+              OR name ILIKE '%piatra%' OR name ILIKE '%coral%'
+            ) ORDER BY RANDOM() LIMIT 5`);
+        } else {
+          // Generic: search by finish, usage, name, description
+          const catMap = {
+            'cemento': { col: 'description', val: '%cemento%', alt: '%concrete%' },
+            'concreto': { col: 'description', val: '%cemento%', alt: '%concreto%' },
+            'mosaico': { col: 'description', val: '%mosaico%', alt: '%mosaic%' },
+            'mate': { col: 'finish', val: '%MATE%', alt: '%matte%' },
+            'brillante': { col: 'finish', val: '%BRILLANTE%', alt: '%PULIDO%' },
+            'rústico': { col: 'description', val: '%r_stic%', alt: '%rustic%' },
+            'rustico': { col: 'description', val: '%r_stic%', alt: '%rustic%' },
+            'moderno': { col: 'description', val: '%moderno%', alt: '%modern%' },
+            'exterior': { col: 'usage', val: '%Exterior%', alt: '%outdoor%' },
+            'baño': { col: 'usage', val: '%Baño%', alt: '%bath%' },
+            'cocina': { col: 'usage', val: '%Cocina%', alt: '%kitchen%' },
+            'sala': { col: 'usage', val: '%Interior%', alt: '%sala%' },
+            'terraza': { col: 'usage', val: '%Exterior%', alt: '%terraza%' },
+          };
+          const mapped = catMap[catSearch];
+          if (mapped) {
+            catProducts = await query(
+              `SELECT * FROM products WHERE active = 1 AND (${mapped.col} ILIKE ? OR ${mapped.col} ILIKE ? OR name ILIKE ?) ORDER BY RANDOM() LIMIT 5`,
+              [mapped.val, mapped.alt, `%${catSearch}%`]);
+          }
         }
         if (catProducts.length === 0) {
           catProducts = await query(
