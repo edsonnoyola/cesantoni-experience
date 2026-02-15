@@ -19,7 +19,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', (req, res) => res.json({ version: 'v3.3.0', commit: 'pending' }));
+app.get('/api/health', async (req, res) => res.json({ version: 'v4.0.0-pg', commit: 'pg-migration' }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
@@ -93,7 +93,7 @@ async function uploadToGCS(localPath, filename) {
 // API: PRODUCTOS
 // =====================================================
 
-app.get('/api/products', (req, res) => {
+app.get('/api/products', async (req, res) => {
   try {
     const { category, search, active } = req.query;
     let sql = 'SELECT * FROM products WHERE 1=1';
@@ -113,16 +113,16 @@ app.get('/api/products', (req, res) => {
     }
 
     sql += ' ORDER BY name';
-    const products = query(sql, params);
+    const products = await query(sql, params);
     res.json(products);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/products/:id', (req, res) => {
+app.get('/api/products/:id', async (req, res) => {
   try {
-    const product = queryOne('SELECT * FROM products WHERE id = ?', [parseInt(req.params.id)]);
+    const product = await queryOne('SELECT * FROM products WHERE id = ?', [parseInt(req.params.id)]);
     if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
     res.json(product);
   } catch (err) {
@@ -130,9 +130,9 @@ app.get('/api/products/:id', (req, res) => {
   }
 });
 
-app.get('/api/products/sku/:sku', (req, res) => {
+app.get('/api/products/sku/:sku', async (req, res) => {
   try {
-    const product = queryOne('SELECT * FROM products WHERE sku = ?', [req.params.sku]);
+    const product = await queryOne('SELECT * FROM products WHERE sku = ?', [req.params.sku]);
     if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
     res.json(product);
   } catch (err) {
@@ -140,22 +140,22 @@ app.get('/api/products/sku/:sku', (req, res) => {
   }
 });
 
-app.post('/api/products', (req, res) => {
+app.post('/api/products', async (req, res) => {
   try {
     const { sku, name, category, format, finish, type, resistance, water_absorption, mohs, usage, pieces_per_box, sqm_per_box, weight_per_box, base_price } = req.body;
     
-    const result = run(`
+    const result = await run(`
       INSERT INTO products (sku, name, category, format, finish, type, resistance, water_absorption, mohs, usage, pieces_per_box, sqm_per_box, weight_per_box, base_price)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [sku, name, category, format, finish, type, resistance, water_absorption, mohs, usage, pieces_per_box, sqm_per_box, weight_per_box, base_price]);
+     RETURNING id`, [sku, name, category, format, finish, type, resistance, water_absorption, mohs, usage, pieces_per_box, sqm_per_box, weight_per_box, base_price]);
 
-    res.json({ id: result.lastInsertRowid, message: 'Producto creado' });
+    res.json({ id: result.rows?.[0]?.id, message: 'Producto creado' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put('/api/products/:id', (req, res) => {
+app.put('/api/products/:id', async (req, res) => {
   try {
     const fields = [];
     const values = [];
@@ -170,7 +170,7 @@ app.put('/api/products/:id', (req, res) => {
     if (fields.length === 0) return res.status(400).json({ error: 'No hay campos para actualizar' });
     
     values.push(parseInt(req.params.id));
-    run(`UPDATE products SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, values);
+    await run(`UPDATE products SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, values);
     
     res.json({ message: 'Producto actualizado' });
   } catch (err) {
@@ -179,10 +179,10 @@ app.put('/api/products/:id', (req, res) => {
 });
 
 // Borrar video de un producto
-app.delete('/api/products/:id/video', (req, res) => {
+app.delete('/api/products/:id/video', async (req, res) => {
   try {
     const productId = parseInt(req.params.id);
-    const product = queryOne('SELECT * FROM products WHERE id = ?', [productId]);
+    const product = await queryOne('SELECT * FROM products WHERE id = ?', [productId]);
     
     if (!product) {
       return res.status(404).json({ error: 'Producto no encontrado' });
@@ -198,7 +198,7 @@ app.delete('/api/products/:id/video', (req, res) => {
     }
     
     // Actualizar DB
-    run('UPDATE products SET video_url = NULL WHERE id = ?', [productId]);
+    await run('UPDATE products SET video_url = NULL WHERE id = ?', [productId]);
     
     res.json({ message: 'Video eliminado' });
   } catch (err) {
@@ -210,42 +210,42 @@ app.delete('/api/products/:id/video', (req, res) => {
 // API: DISTRIBUIDORES
 // =====================================================
 
-app.get('/api/distributors', (req, res) => {
+app.get('/api/distributors', async (req, res) => {
   try {
-    const distributors = query('SELECT * FROM distributors WHERE active = 1 ORDER BY name');
+    const distributors = await query('SELECT * FROM distributors WHERE active = 1 ORDER BY name');
     res.json(distributors);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/distributors/:id', (req, res) => {
+app.get('/api/distributors/:id', async (req, res) => {
   try {
-    const distributor = queryOne('SELECT * FROM distributors WHERE id = ?', [parseInt(req.params.id)]);
+    const distributor = await queryOne('SELECT * FROM distributors WHERE id = ?', [parseInt(req.params.id)]);
     if (!distributor) return res.status(404).json({ error: 'Distribuidor no encontrado' });
     
-    const stores = query('SELECT * FROM stores WHERE distributor_id = ? AND active = 1', [parseInt(req.params.id)]);
+    const stores = await query('SELECT * FROM stores WHERE distributor_id = ? AND active = 1', [parseInt(req.params.id)]);
     res.json({ ...distributor, stores });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/distributors', (req, res) => {
+app.post('/api/distributors', async (req, res) => {
   try {
     const { name, slug, logo_url, website, contact_email, contact_phone } = req.body;
-    const result = run(`
+    const result = await run(`
       INSERT INTO distributors (name, slug, logo_url, website, contact_email, contact_phone)
       VALUES (?, ?, ?, ?, ?, ?)
-    `, [name, slug, logo_url, website, contact_email, contact_phone]);
+     RETURNING id`, [name, slug, logo_url, website, contact_email, contact_phone]);
     
-    res.json({ id: result.lastInsertRowid, message: 'Distribuidor creado' });
+    res.json({ id: result.rows?.[0]?.id, message: 'Distribuidor creado' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put('/api/distributors/:id', (req, res) => {
+app.put('/api/distributors/:id', async (req, res) => {
   try {
     const fields = [];
     const values = [];
@@ -262,7 +262,7 @@ app.put('/api/distributors/:id', (req, res) => {
     }
 
     values.push(req.params.id);
-    run(`UPDATE distributors SET ${fields.join(', ')} WHERE id = ?`, values);
+    await run(`UPDATE distributors SET ${fields.join(', ')} WHERE id = ?`, values);
     res.json({ message: 'Distribuidor actualizado' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -273,7 +273,7 @@ app.put('/api/distributors/:id', (req, res) => {
 // API: TIENDAS
 // =====================================================
 
-app.get('/api/stores', (req, res) => {
+app.get('/api/stores', async (req, res) => {
   try {
     const { state, distributor_id, slug } = req.query;
     let sql = `
@@ -298,16 +298,16 @@ app.get('/api/stores', (req, res) => {
     }
 
     sql += ' ORDER BY s.state, s.city, s.name';
-    const stores = query(sql, params);
+    const stores = await query(sql, params);
     res.json(stores);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/stores/:id', (req, res) => {
+app.get('/api/stores/:id', async (req, res) => {
   try {
-    const store = queryOne(`
+    const store = await queryOne(`
       SELECT s.*, d.name as distributor_name, d.slug as distributor_slug
       FROM stores s 
       JOIN distributors d ON s.distributor_id = d.id 
@@ -320,22 +320,22 @@ app.get('/api/stores/:id', (req, res) => {
   }
 });
 
-app.post('/api/stores', (req, res) => {
+app.post('/api/stores', async (req, res) => {
   try {
     const { distributor_id, name, slug, state, city, address, postal_code, lat, lng, whatsapp, phone, email, manager_name, promo_text, promo_discount } = req.body;
     
-    const result = run(`
+    const result = await run(`
       INSERT INTO stores (distributor_id, name, slug, state, city, address, postal_code, lat, lng, whatsapp, phone, email, manager_name, promo_text, promo_discount)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [distributor_id, name, slug, state, city, address, postal_code, lat, lng, whatsapp, phone, email, manager_name, promo_text, promo_discount]);
+     RETURNING id`, [distributor_id, name, slug, state, city, address, postal_code, lat, lng, whatsapp, phone, email, manager_name, promo_text, promo_discount]);
 
-    res.json({ id: result.lastInsertRowid, message: 'Tienda creada' });
+    res.json({ id: result.rows?.[0]?.id, message: 'Tienda creada' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put('/api/stores/:id', (req, res) => {
+app.put('/api/stores/:id', async (req, res) => {
   try {
     const fields = [];
     const values = [];
@@ -352,7 +352,7 @@ app.put('/api/stores/:id', (req, res) => {
     }
 
     values.push(req.params.id);
-    run(`UPDATE stores SET ${fields.join(', ')} WHERE id = ?`, values);
+    await run(`UPDATE stores SET ${fields.join(', ')} WHERE id = ?`, values);
     res.json({ message: 'Tienda actualizada' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -363,7 +363,7 @@ app.put('/api/stores/:id', (req, res) => {
 // API: TRACKING
 // =====================================================
 
-app.post('/api/track/scan', (req, res) => {
+app.post('/api/track/scan', async (req, res) => {
   try {
     const { product_id, store_id, session_id, utm_source, utm_medium, utm_campaign, source } = req.body;
     const ip_address = req.ip || req.connection.remoteAddress;
@@ -373,19 +373,19 @@ app.post('/api/track/scan', (req, res) => {
     // source puede ser 'qr' o 'nfc'
     const scan_source = source || 'qr';
 
-    const result = run(`
+    const result = await run(`
       INSERT INTO scans (product_id, store_id, session_id, ip_address, user_agent, referrer, utm_source, utm_medium, utm_campaign, source)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [product_id, store_id || null, session_id, ip_address, user_agent, referrer, utm_source || null, utm_medium || null, utm_campaign || null, scan_source]);
+     RETURNING id`, [product_id, store_id || null, session_id, ip_address, user_agent, referrer, utm_source || null, utm_medium || null, utm_campaign || null, scan_source]);
 
-    res.json({ scan_id: result.lastInsertRowid, message: 'Escaneo registrado', source: scan_source });
+    res.json({ scan_id: result.rows?.[0]?.id, message: 'Escaneo registrado', source: scan_source });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // Registrar escaneo QR/NFC
-app.post('/api/scans', (req, res) => {
+app.post('/api/scans', async (req, res) => {
   try {
     const { product_id, store_id, session_id, source, user_agent: ua, referrer: ref, utm_source, utm_medium, utm_campaign } = req.body;
     const ip_address = req.ip || req.connection?.remoteAddress || '';
@@ -400,7 +400,7 @@ app.post('/api/scans', (req, res) => {
       return res.status(400).json({ error: 'product_id is required' });
     }
 
-    const result = run(`
+    const result = await run(`
       INSERT INTO scans (product_id, store_id, session_id, ip_address, user_agent, referrer, utm_source, utm_medium, utm_campaign, source)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [product_id, store_id || null, session_id || null, ip_address, user_agent, referrer, utm_source || null, utm_medium || null, utm_campaign || null, scan_source]);
@@ -414,26 +414,26 @@ app.post('/api/scans', (req, res) => {
 });
 
 // Admin: borrar todos los scans (solo para testing)
-app.delete('/api/admin/scans', (req, res) => {
+app.delete('/api/admin/scans', async (req, res) => {
   try {
-    run('DELETE FROM scans');
-    run('DELETE FROM whatsapp_clicks');
+    await run('DELETE FROM scans');
+    await run('DELETE FROM whatsapp_clicks');
     res.json({ message: 'Todos los scans y clicks borrados', success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/track/whatsapp', (req, res) => {
+app.post('/api/track/whatsapp', async (req, res) => {
   try {
     const { scan_id, product_id, store_id, session_id, whatsapp_number } = req.body;
 
-    const result = run(`
+    const result = await run(`
       INSERT INTO whatsapp_clicks (scan_id, product_id, store_id, session_id, whatsapp_number)
       VALUES (?, ?, ?, ?, ?)
-    `, [scan_id || null, product_id, store_id || null, session_id, whatsapp_number || null]);
+     RETURNING id`, [scan_id || null, product_id, store_id || null, session_id, whatsapp_number || null]);
 
-    res.json({ click_id: result.lastInsertRowid, message: 'Click registrado' });
+    res.json({ click_id: result.rows?.[0]?.id, message: 'Click registrado' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -443,58 +443,58 @@ app.post('/api/track/whatsapp', (req, res) => {
 // API: ANALYTICS
 // =====================================================
 
-app.get('/api/analytics/overview', (req, res) => {
+app.get('/api/analytics/overview', async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 30;
 
     // KPIs básicos
-    const total_scans = scalar(`SELECT COUNT(*) FROM scans WHERE created_at >= datetime('now', '-${days} days')`) || 0;
-    const total_stores = scalar('SELECT COUNT(*) FROM stores WHERE active = 1') || 0;
-    const total_products = scalar('SELECT COUNT(*) FROM products WHERE active = 1') || 0;
-    const total_wa_clicks = scalar(`SELECT COUNT(*) FROM whatsapp_clicks WHERE created_at >= datetime('now', '-${days} days')`) || 0;
-    const active_promos = scalar('SELECT COUNT(*) FROM promotions WHERE active = 1') || 0;
+    const total_scans = await scalar(`SELECT COUNT(*) FROM scans WHERE created_at >= NOW() - INTERVAL 'days days'`) || 0;
+    const total_stores = await scalar('SELECT COUNT(*) FROM stores WHERE active = 1') || 0;
+    const total_products = await scalar('SELECT COUNT(*) FROM products WHERE active = 1') || 0;
+    const total_wa_clicks = await scalar(`SELECT COUNT(*) FROM whatsapp_clicks WHERE created_at >= NOW() - INTERVAL 'days days'`) || 0;
+    const active_promos = await scalar('SELECT COUNT(*) FROM promotions WHERE active = 1') || 0;
 
     const conversion_rate = total_scans > 0
       ? ((total_wa_clicks / total_scans) * 100).toFixed(1)
       : 0;
 
     // Top productos
-    const top_products = query(`
+    const top_products = await query(`
       SELECT p.name as product_name, COUNT(s.id) as scans
       FROM scans s
       JOIN products p ON s.product_id = p.id
-      WHERE s.created_at >= datetime('now', '-${days} days')
+      WHERE s.created_at >= NOW() - INTERVAL 'days days'
       GROUP BY s.product_id
       ORDER BY scans DESC
       LIMIT 10
     `);
 
     // Top tiendas
-    const top_stores = query(`
+    const top_stores = await query(`
       SELECT st.name as store_name, st.state, COUNT(s.id) as scans
       FROM scans s
       JOIN stores st ON s.store_id = st.id
-      WHERE s.created_at >= datetime('now', '-${days} days')
+      WHERE s.created_at >= NOW() - INTERVAL 'days days'
       GROUP BY s.store_id
       ORDER BY scans DESC
       LIMIT 10
     `);
 
     // Por estado (para el mapa heat)
-    const by_state = query(`
+    const by_state = await query(`
       SELECT st.state, COUNT(s.id) as scans
       FROM stores st
-      LEFT JOIN scans s ON s.store_id = st.id AND s.created_at >= datetime('now', '-${days} days')
+      LEFT JOIN scans s ON s.store_id = st.id AND s.created_at >= NOW() - INTERVAL 'days days'
       WHERE st.active = 1 AND st.state IS NOT NULL AND st.state != ''
       GROUP BY st.state
       ORDER BY scans DESC
     `);
 
     // Tendencia diaria (últimos 30 días)
-    const daily = query(`
+    const daily = await query(`
       SELECT DATE(created_at) as date, COUNT(*) as count
       FROM scans
-      WHERE created_at >= datetime('now', '-30 days')
+      WHERE created_at >= NOW() - INTERVAL '30 days'
       GROUP BY DATE(created_at)
       ORDER BY date ASC
     `);
@@ -520,11 +520,11 @@ app.get('/api/analytics/overview', (req, res) => {
   }
 });
 
-app.get('/api/analytics/by-state', (req, res) => {
+app.get('/api/analytics/by-state', async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 30;
     
-    const data = query(`
+    const data = await query(`
       SELECT 
         st.state,
         COUNT(DISTINCT st.id) as stores,
@@ -532,8 +532,8 @@ app.get('/api/analytics/by-state', (req, res) => {
         COUNT(w.id) as clicks,
         ROUND(CAST(COUNT(w.id) AS FLOAT) / MAX(COUNT(s.id), 1) * 100, 1) as conversion_rate
       FROM stores st
-      LEFT JOIN scans s ON s.store_id = st.id AND s.created_at >= datetime('now', '-${days} days')
-      LEFT JOIN whatsapp_clicks w ON w.store_id = st.id AND w.created_at >= datetime('now', '-${days} days')
+      LEFT JOIN scans s ON s.store_id = st.id AND s.created_at >= NOW() - INTERVAL 'days days'
+      LEFT JOIN whatsapp_clicks w ON w.store_id = st.id AND w.created_at >= NOW() - INTERVAL 'days days'
       WHERE st.active = 1
       GROUP BY st.state
       ORDER BY scans DESC
@@ -545,7 +545,7 @@ app.get('/api/analytics/by-state', (req, res) => {
   }
 });
 
-app.get('/api/analytics/by-store', (req, res) => {
+app.get('/api/analytics/by-store', async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 30;
     const state = req.query.state;
@@ -559,8 +559,8 @@ app.get('/api/analytics/by-store', (req, res) => {
         COUNT(w.id) as clicks
       FROM stores st
       JOIN distributors d ON st.distributor_id = d.id
-      LEFT JOIN scans s ON s.store_id = st.id AND s.created_at >= datetime('now', '-${days} days')
-      LEFT JOIN whatsapp_clicks w ON w.store_id = st.id AND w.created_at >= datetime('now', '-${days} days')
+      LEFT JOIN scans s ON s.store_id = st.id AND s.created_at >= NOW() - INTERVAL 'days days'
+      LEFT JOIN whatsapp_clicks w ON w.store_id = st.id AND w.created_at >= NOW() - INTERVAL 'days days'
       WHERE st.active = 1
     `;
     const params = [];
@@ -573,18 +573,18 @@ app.get('/api/analytics/by-store', (req, res) => {
     sql += ` GROUP BY st.id ORDER BY scans DESC LIMIT ?`;
     params.push(limit);
 
-    res.json(query(sql, params));
+    res.json(await query(sql, params));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // Analytics NFC vs QR
-app.get('/api/analytics/by-source', (req, res) => {
+app.get('/api/analytics/by-source', async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 30;
 
-    const data = query(`
+    const data = await query(`
       SELECT
         COALESCE(source, 'qr') as source,
         COUNT(*) as scans,
@@ -592,7 +592,7 @@ app.get('/api/analytics/by-source', (req, res) => {
         COUNT(DISTINCT store_id) as unique_stores,
         COUNT(DISTINCT session_id) as unique_sessions
       FROM scans
-      WHERE created_at >= datetime('now', '-${days} days')
+      WHERE created_at >= NOW() - INTERVAL 'days days'
       GROUP BY source
       ORDER BY scans DESC
     `);
@@ -625,8 +625,8 @@ app.post('/api/qr/generate', async (req, res) => {
   try {
     const { product_id, store_id } = req.body;
 
-    const product = queryOne('SELECT * FROM products WHERE id = ?', [parseInt(product_id)]);
-    const store = queryOne(`
+    const product = await queryOne('SELECT * FROM products WHERE id = ?', [parseInt(product_id)]);
+    const store = await queryOne(`
       SELECT s.*, d.slug as distributor_slug 
       FROM stores s 
       JOIN distributors d ON s.distributor_id = d.id 
@@ -654,7 +654,7 @@ app.post('/api/qr/generate', async (req, res) => {
       color: { dark: '#1a1a1a', light: '#ffffff' }
     });
 
-    run(`
+    await run(`
       INSERT OR REPLACE INTO qr_codes (product_id, store_id, url, qr_data)
       VALUES (?, ?, ?, ?)
     `, [product_id, store_id, url, qrDataUrl]);
@@ -682,7 +682,7 @@ app.get('/api/qr/img', async (req, res) => {
   }
 });
 
-app.get('/api/qr/list', (req, res) => {
+app.get('/api/qr/list', async (req, res) => {
   try {
     const { product_id, store_id } = req.query;
     let sql = `
@@ -698,7 +698,7 @@ app.get('/api/qr/list', (req, res) => {
     if (store_id) { sql += ' AND qr.store_id = ?'; params.push(parseInt(store_id)); }
 
     sql += ' ORDER BY qr.created_at DESC';
-    res.json(query(sql, params));
+    res.json(await query(sql, params));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -708,29 +708,29 @@ app.get('/api/qr/list', (req, res) => {
 // API: UTILIDADES
 // =====================================================
 
-app.get('/api/states', (req, res) => {
+app.get('/api/states', async (req, res) => {
   try {
-    res.json(query(`SELECT DISTINCT state, COUNT(*) as store_count FROM stores WHERE active = 1 GROUP BY state ORDER BY state`));
+    res.json(await query(`SELECT DISTINCT state, COUNT(*) as store_count FROM stores WHERE active = 1 GROUP BY state ORDER BY state`));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/categories', (req, res) => {
+app.get('/api/categories', async (req, res) => {
   try {
-    res.json(query(`SELECT DISTINCT category, COUNT(*) as product_count FROM products WHERE active = 1 AND category IS NOT NULL GROUP BY category ORDER BY category`));
+    res.json(await query(`SELECT DISTINCT category, COUNT(*) as product_count FROM products WHERE active = 1 AND category IS NOT NULL GROUP BY category ORDER BY category`));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // API: PROMOTIONS
-app.get('/api/promotions', (req, res) => {
+app.get('/api/promotions', async (req, res) => {
   try {
     // Intentar obtener promociones si existe la tabla
     let promotions = [];
     try {
-      promotions = query(`
+      promotions = await query(`
         SELECT p.*, pr.name as product_name, pr.sku as product_sku
         FROM promotions p
         LEFT JOIN products pr ON p.product_id = pr.id
@@ -750,19 +750,19 @@ app.get('/api/promotions', (req, res) => {
 // LANDING PAGE DINÁMICO
 // =====================================================
 
-app.get('/p/:sku', (req, res) => {
+app.get('/p/:sku', async (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'landing.html'));
 });
 
-app.get('/landing/:slug', (req, res) => {
+app.get('/landing/:slug', async (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'landing.html'));
 });
 
-app.get('/api/landing/:identifier', (req, res) => {
+app.get('/api/landing/:identifier', async (req, res) => {
   try {
     // Buscar por SKU o por slug
     const id = req.params.identifier;
-    const product = queryOne(
+    const product = await queryOne(
       'SELECT * FROM products WHERE LOWER(sku) = LOWER(?) OR LOWER(slug) = LOWER(?)',
       [id, id]
     );
@@ -774,13 +774,13 @@ app.get('/api/landing/:identifier', (req, res) => {
 });
 
 // Endpoint para el landing - obtiene producto + promoción
-app.get('/api/promotions/for-product/:identifier', (req, res) => {
+app.get('/api/promotions/for-product/:identifier', async (req, res) => {
   try {
     const identifier = req.params.identifier;
     const { store_slug, state, distributor } = req.query;
 
     // Buscar producto por SKU o por slug
-    const product = queryOne(
+    const product = await queryOne(
       'SELECT * FROM products WHERE LOWER(sku) = LOWER(?) OR LOWER(slug) = LOWER(?)',
       [identifier, identifier]
     );
@@ -793,7 +793,7 @@ app.get('/api/promotions/for-product/:identifier', (req, res) => {
     
     // Intentar encontrar promoción (si existe tabla promotions)
     try {
-      promotion = queryOne(`
+      promotion = await queryOne(`
         SELECT * FROM promotions 
         WHERE product_id = ? 
         AND active = 1 
@@ -837,7 +837,7 @@ app.post('/api/video/generate', async (req, res) => {
   // Buscar datos completos del producto en DB
   let dbProduct = null;
   if (product_id) {
-    dbProduct = queryOne('SELECT * FROM products WHERE id = ?', [product_id]);
+    dbProduct = await queryOne('SELECT * FROM products WHERE id = ?', [product_id]);
     if (dbProduct && dbProduct.description && !product_description) {
       product_description = dbProduct.description;
       console.log('📝 Descripción obtenida de DB');
@@ -1021,7 +1021,7 @@ app.post('/api/video/generate', async (req, res) => {
     }
 
     if (product_id) {
-      run('UPDATE products SET video_url = ? WHERE id = ?', [finalVideoUrl, product_id]);
+      await run('UPDATE products SET video_url = ? WHERE id = ?', [finalVideoUrl, product_id]);
     }
 
     console.log('✅ Video listo:', finalVideoUrl);
@@ -1030,7 +1030,7 @@ app.post('/api/video/generate', async (req, res) => {
   }
 });
 
-app.get('/api/videos', (req, res) => {
+app.get('/api/videos', async (req, res) => {
   try {
     const videosDir = path.join(__dirname, 'public', 'videos');
     if (!fs.existsSync(videosDir)) return res.json([]);
@@ -1043,27 +1043,13 @@ app.get('/api/videos', (req, res) => {
   }
 });
 
-// Crear tabla landings si no existe (definir antes de usar)
-const createLandingsTable = () => {
-  run(`CREATE TABLE IF NOT EXISTS landings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    product_id INTEGER NOT NULL,
-    title TEXT NOT NULL,
-    description TEXT,
-    promo_text TEXT,
-    video_url TEXT,
-    image_url TEXT,
-    active INTEGER DEFAULT 1,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (product_id) REFERENCES products(id)
-  )`);
-};
+// Tables are created in database.js initDB()
+const createLandingsTable = () => {};
 
-app.get('/api/landings', (req, res) => {
+app.get('/api/landings', async (req, res) => {
   try {
     createLandingsTable();
-    const landings = query(`
+    const landings = await query(`
       SELECT l.*, p.name as product_name, p.sku as product_sku, p.image_url as product_image
       FROM landings l
       JOIN products p ON l.product_id = p.id
@@ -1080,10 +1066,10 @@ app.get('/api/landings', (req, res) => {
 // =====================================================
 
 // GET all landings
-app.get('/api/landings/db', (req, res) => {
+app.get('/api/landings/db', async (req, res) => {
   try {
     createLandingsTable();
-    const landings = query(`
+    const landings = await query(`
       SELECT l.*, p.name as product_name, p.sku as product_sku, p.image_url as product_image
       FROM landings l
       JOIN products p ON l.product_id = p.id
@@ -1096,9 +1082,9 @@ app.get('/api/landings/db', (req, res) => {
 });
 
 // GET single landing
-app.get('/api/landings/db/:id', (req, res) => {
+app.get('/api/landings/db/:id', async (req, res) => {
   try {
-    const landing = queryOne(`
+    const landing = await queryOne(`
       SELECT l.*, p.name as product_name, p.sku as product_sku, p.image_url as product_image
       FROM landings l
       JOIN products p ON l.product_id = p.id
@@ -1112,10 +1098,10 @@ app.get('/api/landings/db/:id', (req, res) => {
 });
 
 // GET landing by product SKU (for landing.html)
-app.get('/api/landings/by-product/:sku', (req, res) => {
+app.get('/api/landings/by-product/:sku', async (req, res) => {
   try {
     createLandingsTable();
-    const landing = queryOne(`
+    const landing = await queryOne(`
       SELECT l.*, p.name as product_name, p.sku as product_sku, p.image_url as product_image
       FROM landings l
       JOIN products p ON l.product_id = p.id
@@ -1129,24 +1115,24 @@ app.get('/api/landings/by-product/:sku', (req, res) => {
 });
 
 // POST create landing
-app.post('/api/landings', (req, res) => {
+app.post('/api/landings', async (req, res) => {
   try {
     createLandingsTable();
     const { product_id, title, description, promo_text, video_url, image_url } = req.body;
     
     // Check if landing already exists for this product
-    const existing = queryOne('SELECT id FROM landings WHERE product_id = ?', [product_id]);
+    const existing = await queryOne('SELECT id FROM landings WHERE product_id = ?', [product_id]);
     
     if (existing) {
       // Update existing
-      run(`UPDATE landings SET title=?, description=?, promo_text=?, video_url=?, image_url=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
+      await run(`UPDATE landings SET title=?, description=?, promo_text=?, video_url=?, image_url=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
         [title, description, promo_text, video_url, image_url, existing.id]);
       res.json({ success: true, id: existing.id, updated: true });
     } else {
       // Create new
-      run(`INSERT INTO landings (product_id, title, description, promo_text, video_url, image_url) VALUES (?, ?, ?, ?, ?, ?)`,
+      const insertResult = await run(`INSERT INTO landings (product_id, title, description, promo_text, video_url, image_url) VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
         [product_id, title, description, promo_text, video_url, image_url]);
-      const newId = scalar('SELECT last_insert_rowid()');
+      const newId = insertResult.rows?.[0]?.id;
       res.json({ success: true, id: newId, created: true });
     }
   } catch (err) {
@@ -1155,10 +1141,10 @@ app.post('/api/landings', (req, res) => {
 });
 
 // PUT update landing
-app.put('/api/landings/:id', (req, res) => {
+app.put('/api/landings/:id', async (req, res) => {
   try {
     const { title, description, promo_text, video_url, image_url, active } = req.body;
-    run(`UPDATE landings SET title=?, description=?, promo_text=?, video_url=?, image_url=?, active=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
+    await run(`UPDATE landings SET title=?, description=?, promo_text=?, video_url=?, image_url=?, active=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
       [title, description, promo_text, video_url, image_url, active ?? 1, req.params.id]);
     res.json({ success: true });
   } catch (err) {
@@ -1167,9 +1153,9 @@ app.put('/api/landings/:id', (req, res) => {
 });
 
 // DELETE landing
-app.delete('/api/landings/:id', (req, res) => {
+app.delete('/api/landings/:id', async (req, res) => {
   try {
-    run('DELETE FROM landings WHERE id = ?', [req.params.id]);
+    await run('DELETE FROM landings WHERE id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1181,32 +1167,18 @@ app.delete('/api/landings/:id', (req, res) => {
 // =====================================================
 
 // Create sample request
-app.post('/api/samples', (req, res) => {
+app.post('/api/samples', async (req, res) => {
   try {
     const { product_id, product_name, store_id, store_name, customer_name, customer_phone, customer_email, address } = req.body;
 
-    // Create table if not exists
-    run(`CREATE TABLE IF NOT EXISTS sample_requests (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      product_id INTEGER,
-      product_name TEXT,
-      store_id INTEGER,
-      store_name TEXT,
-      customer_name TEXT NOT NULL,
-      customer_phone TEXT NOT NULL,
-      customer_email TEXT,
-      address TEXT NOT NULL,
-      status TEXT DEFAULT 'pending',
-      notes TEXT,
-      created_at TEXT DEFAULT (datetime('now'))
-    )`);
+    // Table created in database.js initDB()
 
-    const result = run(`INSERT INTO sample_requests (product_id, product_name, store_id, store_name, customer_name, customer_phone, customer_email, address)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    const result = await run(`INSERT INTO sample_requests (product_id, product_name, store_id, store_name, customer_name, customer_phone, customer_email, address)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
       [product_id, product_name, store_id, store_name, customer_name, customer_phone, customer_email, address]
     );
 
-    res.json({ success: true, id: result.lastInsertRowid });
+    res.json({ success: true, id: result.rows?.[0]?.id });
   } catch (err) {
     console.error('Sample request error:', err);
     res.status(500).json({ error: err.message });
@@ -1214,9 +1186,9 @@ app.post('/api/samples', (req, res) => {
 });
 
 // List sample requests (admin)
-app.get('/api/samples', (req, res) => {
+app.get('/api/samples', async (req, res) => {
   try {
-    const samples = query(`SELECT * FROM sample_requests ORDER BY created_at DESC`);
+    const samples = await query(`SELECT * FROM sample_requests ORDER BY created_at DESC`);
     res.json(samples);
   } catch (err) {
     res.json([]); // Table might not exist yet
@@ -1224,10 +1196,10 @@ app.get('/api/samples', (req, res) => {
 });
 
 // Update sample request status
-app.put('/api/samples/:id', (req, res) => {
+app.put('/api/samples/:id', async (req, res) => {
   try {
     const { status, notes } = req.body;
-    run(`UPDATE sample_requests SET status = ?, notes = ? WHERE id = ?`, [status, notes, req.params.id]);
+    await run(`UPDATE sample_requests SET status = ?, notes = ? WHERE id = ?`, [status, notes, req.params.id]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1239,29 +1211,13 @@ app.put('/api/samples/:id', (req, res) => {
 // =====================================================
 
 // Create quote
-app.post('/api/quotes', (req, res) => {
+app.post('/api/quotes', async (req, res) => {
   try {
     const { product_id, product_name, product_sku, m2, price_per_m2, total, store_id, store_name, customer_name, customer_email, customer_phone } = req.body;
 
-    // Create table if not exists
-    run(`CREATE TABLE IF NOT EXISTS quotes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      product_id INTEGER,
-      product_name TEXT,
-      product_sku TEXT,
-      m2 REAL,
-      price_per_m2 REAL,
-      total REAL,
-      store_id INTEGER,
-      store_name TEXT,
-      customer_name TEXT NOT NULL,
-      customer_email TEXT NOT NULL,
-      customer_phone TEXT,
-      status TEXT DEFAULT 'sent',
-      created_at TEXT DEFAULT (datetime('now'))
-    )`);
+    // Table created in database.js initDB()
 
-    const result = run(`INSERT INTO quotes (product_id, product_name, product_sku, m2, price_per_m2, total, store_id, store_name, customer_name, customer_email, customer_phone)
+    const result = await run(`INSERT INTO quotes (product_id, product_name, product_sku, m2, price_per_m2, total, store_id, store_name, customer_name, customer_email, customer_phone)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [product_id, product_name, product_sku, m2, price_per_m2, total, store_id, store_name, customer_name, customer_email, customer_phone]
     );
@@ -1269,7 +1225,7 @@ app.post('/api/quotes', (req, res) => {
     // In a real implementation, you would send an email here
     // For now, just store the quote
 
-    res.json({ success: true, id: result.lastInsertRowid });
+    res.json({ success: true, id: result.rows?.[0]?.id });
   } catch (err) {
     console.error('Quote error:', err);
     res.status(500).json({ error: err.message });
@@ -1277,9 +1233,9 @@ app.post('/api/quotes', (req, res) => {
 });
 
 // List quotes (admin)
-app.get('/api/quotes', (req, res) => {
+app.get('/api/quotes', async (req, res) => {
   try {
-    const quotes = query(`SELECT * FROM quotes ORDER BY created_at DESC`);
+    const quotes = await query(`SELECT * FROM quotes ORDER BY created_at DESC`);
     res.json(quotes);
   } catch (err) {
     res.json([]); // Table might not exist yet
@@ -1291,29 +1247,18 @@ app.get('/api/quotes', (req, res) => {
 // =====================================================
 
 // Create review
-app.post('/api/reviews', (req, res) => {
+app.post('/api/reviews', async (req, res) => {
   try {
     const { product_id, store_id, rating, comment, customer_name } = req.body;
 
-    // Create table if not exists
-    run(`CREATE TABLE IF NOT EXISTS reviews (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      product_id INTEGER NOT NULL,
-      store_id INTEGER,
-      rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
-      comment TEXT,
-      customer_name TEXT,
-      verified_purchase INTEGER DEFAULT 0,
-      approved INTEGER DEFAULT 1,
-      created_at TEXT DEFAULT (datetime('now'))
-    )`);
+    // Table created in database.js initDB()
 
-    const result = run(`INSERT INTO reviews (product_id, store_id, rating, comment, customer_name)
-      VALUES (?, ?, ?, ?, ?)`,
+    const result = await run(`INSERT INTO reviews (product_id, store_id, rating, comment, customer_name)
+      VALUES (?, ?, ?, ?, ?) RETURNING id`,
       [product_id, store_id, rating, comment, customer_name]
     );
 
-    res.json({ success: true, id: result.lastInsertRowid });
+    res.json({ success: true, id: result.rows?.[0]?.id });
   } catch (err) {
     console.error('Review error:', err);
     res.status(500).json({ error: err.message });
@@ -1321,12 +1266,12 @@ app.post('/api/reviews', (req, res) => {
 });
 
 // Get reviews for product
-app.get('/api/products/:id/reviews', (req, res) => {
+app.get('/api/products/:id/reviews', async (req, res) => {
   try {
-    const reviews = query(`SELECT * FROM reviews WHERE product_id = ? AND approved = 1 ORDER BY created_at DESC`, [req.params.id]);
+    const reviews = await query(`SELECT * FROM reviews WHERE product_id = ? AND approved = 1 ORDER BY created_at DESC`, [req.params.id]);
 
     // Calculate average
-    const avgResult = queryOne(`SELECT AVG(rating) as avg_rating, COUNT(*) as count FROM reviews WHERE product_id = ? AND approved = 1`, [req.params.id]);
+    const avgResult = await queryOne(`SELECT AVG(rating) as avg_rating, COUNT(*) as count FROM reviews WHERE product_id = ? AND approved = 1`, [req.params.id]);
 
     res.json({
       reviews,
@@ -1342,18 +1287,18 @@ app.get('/api/products/:id/reviews', (req, res) => {
 // TERRA - Asistente de Voz Figital
 // =====================================================
 
-app.get('/terra', (req, res) => {
+app.get('/terra', async (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'terra.html'));
 });
 
 // Terra conversations - MUST be before POST /api/terra
-app.get('/api/terra/conversations', (req, res) => {
+app.get('/api/terra/conversations', async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 30;
-    const rows = query(`
+    const rows = await query(`
       SELECT id, session_id, customer_name, store_name, product_name, question, answer, intent, created_at
       FROM terra_conversations
-      WHERE created_at >= datetime('now', '-' || ? || ' days')
+      WHERE created_at >= NOW() - (? || ' days')::INTERVAL
       ORDER BY created_at DESC
       LIMIT 500
     `, [days]);
@@ -1366,10 +1311,10 @@ app.get('/api/terra/conversations', (req, res) => {
 app.get('/api/terra/summary', async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 7;
-    const rows = query(`
+    const rows = await query(`
       SELECT customer_name, store_name, product_name, question, intent, created_at
       FROM terra_conversations
-      WHERE created_at >= datetime('now', '-' || ? || ' days')
+      WHERE created_at >= NOW() - (? || ' days')::INTERVAL
       ORDER BY created_at DESC
       LIMIT 200
     `, [days]);
@@ -1416,7 +1361,7 @@ app.get('/api/terra/summary', async (req, res) => {
 // TERRA SESSIONS - Store Mode Tracking
 // =====================================================
 
-app.post('/api/terra/session', (req, res) => {
+app.post('/api/terra/session', async (req, res) => {
   try {
     const { action, session_id, customer_name, store_id, store_name, product } = req.body;
 
@@ -1424,19 +1369,19 @@ app.post('/api/terra/session', (req, res) => {
 
     if (action === 'start') {
       // Create or update session
-      const existing = queryOne('SELECT id FROM terra_sessions WHERE session_id = ?', [session_id]);
+      const existing = await queryOne('SELECT id FROM terra_sessions WHERE session_id = ?', [session_id]);
       if (existing) {
-        run('UPDATE terra_sessions SET customer_name = ?, store_id = ?, store_name = ? WHERE session_id = ?',
+        await run('UPDATE terra_sessions SET customer_name = ?, store_id = ?, store_name = ? WHERE session_id = ?',
           [customer_name, store_id || null, store_name || null, session_id]);
       } else {
-        run('INSERT INTO terra_sessions (session_id, customer_name, store_id, store_name, products_visited) VALUES (?, ?, ?, ?, ?)',
+        await run('INSERT INTO terra_sessions (session_id, customer_name, store_id, store_name, products_visited) VALUES (?, ?, ?, ?, ?)',
           [session_id, customer_name, store_id || null, store_name || null, '[]']);
       }
       return res.json({ success: true });
     }
 
     if (action === 'scan_product') {
-      const session = queryOne('SELECT * FROM terra_sessions WHERE session_id = ?', [session_id]);
+      const session = await queryOne('SELECT * FROM terra_sessions WHERE session_id = ?', [session_id]);
       if (!session) return res.status(404).json({ error: 'Session not found' });
 
       let visited = [];
@@ -1449,26 +1394,26 @@ app.post('/api/terra/session', (req, res) => {
           category: product.category,
           scanned_at: new Date().toISOString()
         });
-        run('UPDATE terra_sessions SET products_visited = ?, conversation_count = conversation_count + 1 WHERE session_id = ?',
+        await run('UPDATE terra_sessions SET products_visited = ?, conversation_count = conversation_count + 1 WHERE session_id = ?',
           [JSON.stringify(visited), session_id]);
       }
       return res.json({ success: true, products_count: visited.length });
     }
 
     if (action === 'end') {
-      const session = queryOne('SELECT * FROM terra_sessions WHERE session_id = ?', [session_id]);
+      const session = await queryOne('SELECT * FROM terra_sessions WHERE session_id = ?', [session_id]);
       if (!session) return res.status(404).json({ error: 'Session not found' });
 
       const startedAt = new Date(session.started_at);
       const durationMin = (Date.now() - startedAt.getTime()) / 60000;
 
-      run('UPDATE terra_sessions SET ended_at = CURRENT_TIMESTAMP, duration_minutes = ? WHERE session_id = ?',
+      await run('UPDATE terra_sessions SET ended_at = CURRENT_TIMESTAMP, duration_minutes = ? WHERE session_id = ?',
         [Math.round(durationMin * 10) / 10, session_id]);
       return res.json({ success: true, duration_minutes: durationMin });
     }
 
     if (action === 'whatsapp_sent') {
-      run('UPDATE terra_sessions SET whatsapp_sent = 1 WHERE session_id = ?', [session_id]);
+      await run('UPDATE terra_sessions SET whatsapp_sent = 1 WHERE session_id = ?', [session_id]);
       return res.json({ success: true });
     }
 
@@ -1479,22 +1424,22 @@ app.post('/api/terra/session', (req, res) => {
   }
 });
 
-app.delete('/api/terra/sessions', (req, res) => {
+app.delete('/api/terra/sessions', async (req, res) => {
   try {
-    run('DELETE FROM terra_sessions');
+    await run('DELETE FROM terra_sessions');
     res.json({ success: true, message: 'All sessions deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/terra/sessions', (req, res) => {
+app.get('/api/terra/sessions', async (req, res) => {
   try {
     const { store, days, limit: lim } = req.query;
     const d = parseInt(days) || 30;
     const l = parseInt(lim) || 100;
 
-    let sql = `SELECT * FROM terra_sessions WHERE started_at >= datetime('now', '-${d} days')`;
+    let sql = `SELECT * FROM terra_sessions WHERE started_at >= NOW() - INTERVAL 'd days'`;
     const params = [];
 
     if (store) {
@@ -1505,7 +1450,7 @@ app.get('/api/terra/sessions', (req, res) => {
     sql += ' ORDER BY started_at DESC LIMIT ?';
     params.push(l);
 
-    const sessions = query(sql, params);
+    const sessions = await query(sql, params);
 
     // Summary stats
     const total = sessions.length;
@@ -1586,7 +1531,7 @@ app.post('/api/terra/whatsapp-summary', async (req, res) => {
     // Mark session as WhatsApp sent
     if (session_id) {
       try {
-        run('UPDATE terra_sessions SET whatsapp_sent = 1, recommendation = ? WHERE session_id = ?',
+        await run('UPDATE terra_sessions SET whatsapp_sent = 1, recommendation = ? WHERE session_id = ?',
           [recommendation, session_id]);
       } catch (e) {}
     }
@@ -1609,7 +1554,7 @@ app.post('/api/terra', async (req, res) => {
     // Get current product context if viewing one
     let currentProduct = null;
     if (current_product_id) {
-      currentProduct = queryOne('SELECT * FROM products WHERE id = ?', [parseInt(current_product_id)]);
+      currentProduct = await queryOne('SELECT * FROM products WHERE id = ?', [parseInt(current_product_id)]);
     }
 
     const clientName = customer_name || 'cliente';
@@ -1618,7 +1563,7 @@ app.post('/api/terra', async (req, res) => {
     // Smart catalog: only send relevant products to reduce tokens
     let catalogText = '';
     if (currentProduct) {
-      const related = query(`
+      const related = await query(`
         SELECT id, name, category, format, finish, pei, usage
         FROM products WHERE active = 1 AND category = ? AND id != ? LIMIT 15
       `, [currentProduct.category, currentProduct.id]);
@@ -1626,7 +1571,7 @@ app.post('/api/terra', async (req, res) => {
         `ID:${p.id}|${p.name}|${p.category}|F:${p.format||''}|PEI:${p.pei||''}|A:${p.finish||''}|U:${p.usage||''}`
       ).join('\n');
     } else {
-      const products = query(`
+      const products = await query(`
         SELECT id, name, category, format, finish, pei, usage
         FROM products WHERE active = 1 ORDER BY name
       `);
@@ -1773,12 +1718,12 @@ Formato EXACTO: {"intent":"recommend|lookup|question|greeting","speech":"MAXIMO 
     // If there's a product_id, fetch the full product
     let productData = null;
     if (parsed.product_id) {
-      productData = queryOne('SELECT id, name, slug, sku, category, type, format, finish, image_url FROM products WHERE id = ?', [parseInt(parsed.product_id)]);
+      productData = await queryOne('SELECT id, name, slug, sku, category, type, format, finish, image_url FROM products WHERE id = ?', [parseInt(parsed.product_id)]);
     }
 
     // Log conversation to terra_conversations
     try {
-      run(`INSERT INTO terra_conversations (session_id, customer_name, store_name, product_id, product_name, question, answer, intent)
+      await run(`INSERT INTO terra_conversations (session_id, customer_name, store_name, product_id, product_name, question, answer, intent)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [req.body.session_id || null, customer_name || null, store_name || null,
          current_product_id || null, currentProduct?.name || null,
@@ -1922,7 +1867,7 @@ async function sendWhatsApp(to, text) {
     });
     const data = await res.json();
     if (data.error) console.error('WA send error:', data.error);
-    else try { run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [to, 'assistant', text]); } catch(e) {}
+    else try { await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [to, 'assistant', text]); } catch(e) {}
     return data;
   } catch (err) {
     console.error('WA send error:', err.message);
@@ -1940,7 +1885,7 @@ async function sendWhatsAppImage(to, imageUrl, caption) {
       body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'image', image: { link: imageUrl, caption } })
     });
     const data = await res.json();
-    if (!data.error) try { run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [to, 'assistant', `[Imagen] ${caption || ''}`]); } catch(e) {}
+    if (!data.error) try { await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [to, 'assistant', `[Imagen] ${caption || ''}`]); } catch(e) {}
     return data;
   } catch (err) {
     console.error('WA image error:', err.message);
@@ -1972,7 +1917,7 @@ async function sendWhatsAppButtons(to, body, buttons) {
     });
     const data = await res.json();
     if (data.error) console.error('WA buttons error:', data.error);
-    else try { run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [to, 'assistant', `${body}\n[Botones: ${btnLabels}]`]); } catch(e) {}
+    else try { await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [to, 'assistant', `${body}\n[Botones: ${btnLabels}]`]); } catch(e) {}
     return data;
   } catch (err) {
     console.error('WA buttons error:', err.message);
@@ -1995,16 +1940,16 @@ async function markAsRead(messageId) {
 // WhatsApp bot - process incoming message with Gemini
 async function processWhatsAppMessage(from, text, customerName) {
   // Get conversation history
-  const history = query(
+  const history = await query(
     'SELECT role, message FROM wa_conversations WHERE phone = ? ORDER BY created_at DESC LIMIT 10',
     [from]
   ).reverse();
 
   // Save incoming message
-  run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
+  await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
 
   // Get lead info for context
-  const lead = queryOne('SELECT * FROM leads WHERE phone = ?', [from]);
+  const lead = await queryOne('SELECT * FROM leads WHERE phone = ?', [from]);
   let leadContext = '';
   if (lead) {
     let prods = [];
@@ -2013,11 +1958,11 @@ async function processWhatsAppMessage(from, text, customerName) {
     // Get store info if available
     let storeInfo = null;
     if (lead.store_id) {
-      storeInfo = queryOne('SELECT name, city, state, address, phone, whatsapp FROM stores WHERE id = ?', [lead.store_id]);
+      storeInfo = await queryOne('SELECT name, city, state, address, phone, whatsapp FROM stores WHERE id = ?', [lead.store_id]);
     }
     if (!storeInfo && lead.store_name) {
       const slug = lead.store_name.toLowerCase().replace(/\s+/g, '-');
-      storeInfo = queryOne('SELECT name, city, state, address, phone, whatsapp FROM stores WHERE slug = ? OR LOWER(name) = LOWER(?) OR LOWER(name) LIKE ?',
+      storeInfo = await queryOne('SELECT name, city, state, address, phone, whatsapp FROM stores WHERE slug = ? OR LOWER(name) = LOWER(?) OR LOWER(name) LIKE ?',
         [slug, lead.store_name, `%${lead.store_name}%`]);
     }
 
@@ -2025,7 +1970,7 @@ async function processWhatsAppMessage(from, text, customerName) {
     let productPrices = '';
     let productDetails = '';
     if (prods.length > 0) {
-      const prodData = prods.map(pName => queryOne('SELECT name, slug, sku, base_price, format, finish, type, pei, usage, description, category FROM products WHERE LOWER(name) LIKE ?', [`%${pName.toLowerCase()}%`])).filter(Boolean);
+      const prodData = (await Promise.all(prods.map(pName => queryOne('SELECT name, slug, sku, base_price, format, finish, type, pei, usage, description, category FROM products WHERE LOWER(name) LIKE ?', [`%${pName.toLowerCase()}%`])))).filter(Boolean);
       if (prodData.length > 0) {
         productPrices = prodData.map(p => `${p.name}: $${p.base_price || 'consultar'}/m² · ${p.format || ''}`).join(', ');
         productDetails = prodData.map(p => {
@@ -2066,7 +2011,7 @@ ${productPrices ? '- YA TIENES precios — dáselos DIRECTO cuando pregunte.' : 
   }
 
   // Get product catalog (compact)
-  const products = query('SELECT id, name, slug, category, format, finish, pei, usage, base_price FROM products WHERE active = 1 ORDER BY name');
+  const products = await query('SELECT id, name, slug, category, format, finish, pei, usage, base_price FROM products WHERE active = 1 ORDER BY name');
   const catalogText = products.map(p =>
     `${p.name}|${p.slug}|${p.category||'PREMIUM'}|${p.format||''}|PEI:${p.pei||''}|${p.finish||''}|${p.usage||''}${p.base_price ? '|$'+p.base_price : ''}`
   ).join('\n');
@@ -2134,7 +2079,7 @@ Responde SOLO el texto del mensaje, nada más. No uses JSON ni markdown.`;
       const allMsgs = history.map(h => h.message).join(' ') + ' ' + text;
       const hasCotizacion = /cotiza|metros|m2|m²|cuant.*cuest|precio/i.test(allMsgs);
       if (hasCotizacion) {
-        run('UPDATE leads SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', ['contacted', lead.id]);
+        await run('UPDATE leads SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', ['contacted', lead.id]);
         console.log(`📊 Lead ${lead.id} auto-updated to 'contacted'`);
       }
     }
@@ -2147,7 +2092,7 @@ Responde SOLO el texto del mensaje, nada más. No uses JSON ni markdown.`;
 }
 
 // Webhook verification (Meta sends GET to verify)
-app.get('/webhook', (req, res) => {
+app.get('/webhook', async (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
@@ -2206,29 +2151,29 @@ app.post('/webhook', async (req, res) => {
         console.log(`🏪 Terra lead: ${tName} from ${tStore}, products: ${tProducts.join(', ')}`);
 
         // Save as lead conversation
-        run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
+        await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
 
         // Resolve store
         const tStoreSlug = tStore.toLowerCase().replace(/\s+/g, '-');
-        const tStoreObj = queryOne('SELECT * FROM stores WHERE slug = ? OR LOWER(name) = LOWER(?) OR LOWER(name) LIKE ?',
+        const tStoreObj = await queryOne('SELECT * FROM stores WHERE slug = ? OR LOWER(name) = LOWER(?) OR LOWER(name) LIKE ?',
           [tStoreSlug, tStore, `%${tStore}%`]);
         const tStoreName = tStoreObj ? tStoreObj.name : tStore;
         const tStoreId = tStoreObj ? tStoreObj.id : null;
 
         // Create or update lead in CRM
-        const tExisting = queryOne('SELECT id FROM leads WHERE phone = ?', [from]);
+        const tExisting = await queryOne('SELECT id FROM leads WHERE phone = ?', [from]);
         if (tExisting) {
-          run(`UPDATE leads SET source = 'terra_qr', name = ?, store_name = ?, store_id = ?, products_interested = ?,
+          await run(`UPDATE leads SET source = 'terra_qr', name = ?, store_name = ?, store_id = ?, products_interested = ?,
                notes = COALESCE(notes, '') || '\n' || ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
             [tName, tStoreName, tStoreId, JSON.stringify(tProducts), `Visita en tienda via Terra. Pisos: ${tProducts.join(', ')}`, tExisting.id]);
         } else {
-          run(`INSERT INTO leads (phone, name, source, store_name, store_id, products_interested, status, notes)
+          await run(`INSERT INTO leads (phone, name, source, store_name, store_id, products_interested, status, notes)
                VALUES (?, ?, 'terra_qr', ?, ?, ?, 'new', ?)`,
             [from, tName, tStoreName, tStoreId, JSON.stringify(tProducts), `Visita en tienda via Terra. Pisos: ${tProducts.join(', ')}`]);
         }
 
         // Look up products from DB
-        const allProds = query('SELECT id, name, slug, category, format, finish, pei, usage, image_url FROM products WHERE active = 1');
+        const allProds = await query('SELECT id, name, slug, category, format, finish, pei, usage, image_url FROM products WHERE active = 1');
         const matchedProducts = tProducts.map(pName => {
           return allProds.find(p => p.name.toLowerCase() === pName.toLowerCase()) ||
                  allProds.find(p => p.name.toLowerCase().includes(pName.toLowerCase())) ||
@@ -2269,7 +2214,7 @@ app.post('/webhook', async (req, res) => {
         await sendWhatsApp(from, closing);
 
         // Save bot reply
-        run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
+        await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
           [from, 'assistant', `Resumen enviado: ${matchedProducts.map(p => p.name).join(', ')}`]);
 
         return; // Don't process as normal message
@@ -2285,30 +2230,30 @@ app.post('/webhook', async (req, res) => {
         console.log(`🌐 Landing lead: product=${lProductName}, store=${lStore}, sku=${lSku}`);
 
         // Save conversation
-        run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
+        await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
 
         // Look up product by SKU or name
-        let lProduct = queryOne('SELECT * FROM products WHERE LOWER(sku) = LOWER(?) OR LOWER(slug) = LOWER(?)', [lSku, lSku]);
+        let lProduct = await queryOne('SELECT * FROM products WHERE LOWER(sku) = LOWER(?) OR LOWER(slug) = LOWER(?)', [lSku, lSku]);
         if (!lProduct) {
-          lProduct = queryOne('SELECT * FROM products WHERE LOWER(name) LIKE ?', [`%${lProductName.toLowerCase()}%`]);
+          lProduct = await queryOne('SELECT * FROM products WHERE LOWER(name) LIKE ?', [`%${lProductName.toLowerCase()}%`]);
         }
 
         // Look up store by name (normalize: "cesantoni galerias" → match slug "cesantoni-galerias")
         const lStoreSlug = lStore.toLowerCase().replace(/\s+/g, '-');
-        const lStoreObj = queryOne('SELECT * FROM stores WHERE slug = ? OR LOWER(name) = LOWER(?) OR LOWER(name) LIKE ?',
+        const lStoreObj = await queryOne('SELECT * FROM stores WHERE slug = ? OR LOWER(name) = LOWER(?) OR LOWER(name) LIKE ?',
           [lStoreSlug, lStore, `%${lStore}%`]);
         const lStoreName = lStoreObj ? lStoreObj.name : lStore;
         const lStoreId = lStoreObj ? lStoreObj.id : null;
 
         // Create lead with proper store info
-        const existingLead = queryOne('SELECT id FROM leads WHERE phone = ?', [from]);
+        const existingLead = await queryOne('SELECT id FROM leads WHERE phone = ?', [from]);
         if (existingLead) {
-          run(`UPDATE leads SET source = 'landing', store_name = ?, store_id = ?, products_interested = ?,
+          await run(`UPDATE leads SET source = 'landing', store_name = ?, store_id = ?, products_interested = ?,
                name = CASE WHEN name IS NULL OR name = phone THEN ? ELSE name END,
                notes = COALESCE(notes, '') || '\n' || ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
             [lStoreName, lStoreId, JSON.stringify([lProductName]), contactName || from, `Landing page: ${lProductName} (${lSku}) desde ${lStoreName}`, existingLead.id]);
         } else {
-          run(`INSERT INTO leads (phone, name, source, store_name, store_id, products_interested, status, notes)
+          await run(`INSERT INTO leads (phone, name, source, store_name, store_id, products_interested, status, notes)
                VALUES (?, ?, 'landing', ?, ?, ?, 'new', ?)`,
             [from, contactName || from, lStoreName, lStoreId, JSON.stringify([lProductName]),
              `Desde landing page. Piso: ${lProductName} (${lSku}). Tienda: ${lStoreName}`]);
@@ -2359,9 +2304,9 @@ app.post('/webhook', async (req, res) => {
       }
 
       // Create lead if first message from this phone (WhatsApp bot lead)
-      const existingLead = queryOne('SELECT id FROM leads WHERE phone = ?', [from]);
+      const existingLead = await queryOne('SELECT id FROM leads WHERE phone = ?', [from]);
       if (!existingLead) {
-        run(`INSERT INTO leads (phone, name, source, status, notes) VALUES (?, ?, 'whatsapp_bot', 'new', ?)`,
+        await run(`INSERT INTO leads (phone, name, source, status, notes) VALUES (?, ?, 'whatsapp_bot', 'new', ?)`,
           [from, contactName || from, `Contacto directo por WhatsApp. Primer mensaje: ${text.substring(0, 100)}`]);
       }
 
@@ -2372,7 +2317,7 @@ app.post('/webhook', async (req, res) => {
       const slugMatch = reply.match(/\/p\/([A-Za-z0-9_-]+)/i);
       if (slugMatch) {
         const pSlug = slugMatch[1];
-        const product = queryOne('SELECT name, image_url, slug FROM products WHERE slug = ? OR sku = ? OR LOWER(slug) = LOWER(?) OR LOWER(sku) = LOWER(?)', [pSlug, pSlug, pSlug, pSlug]);
+        const product = await queryOne('SELECT name, image_url, slug FROM products WHERE slug = ? OR sku = ? OR LOWER(slug) = LOWER(?) OR LOWER(sku) = LOWER(?)', [pSlug, pSlug, pSlug, pSlug]);
         if (product?.image_url) {
           await sendWhatsAppImage(from, product.image_url, `${product.name} - Cesantoni`);
         }
@@ -2383,13 +2328,13 @@ app.post('/webhook', async (req, res) => {
       const btnTitle = message.interactive?.button_reply?.title || '';
       console.log(`   🔘 Button: ${btnId} "${btnTitle}"`);
 
-      run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', `[Botón] ${btnTitle}`]);
+      await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', `[Botón] ${btnTitle}`]);
 
       // Get lead context
-      const lead = queryOne('SELECT * FROM leads WHERE phone = ?', [from]);
+      const lead = await queryOne('SELECT * FROM leads WHERE phone = ?', [from]);
       const prods = lead?.products_interested ? JSON.parse(lead.products_interested) : [];
       const prodName = prods[0] || '';
-      const product = prodName ? queryOne('SELECT * FROM products WHERE LOWER(name) LIKE ?', [`%${prodName.toLowerCase()}%`]) : null;
+      const product = prodName ? await queryOne('SELECT * FROM products WHERE LOWER(name) LIKE ?', [`%${prodName.toLowerCase()}%`]) : null;
 
       if (btnId === 'calcular_m2') {
         await sendWhatsApp(from, `¡Perfecto! ¿Cuántos m² necesitas de *${prodName || 'piso'}*? Si no sabes exacto, dime las medidas del espacio y lo calculo. 📐`);
@@ -2399,18 +2344,18 @@ app.post('/webhook', async (req, res) => {
         let similares = [];
         if (product) {
           // Priority 1: same format (e.g., 20x120 wood-look planks)
-          similares = query('SELECT name, base_price, format, sku, slug, image_url, finish FROM products WHERE active = 1 AND id != ? AND format = ? ORDER BY RANDOM() LIMIT 3',
+          similares = await query('SELECT name, base_price, format, sku, slug, image_url, finish FROM products WHERE active = 1 AND id != ? AND format = ? ORDER BY RANDOM() LIMIT 3',
             [product.id, product.format]);
           // Priority 2: same finish if not enough
           if (similares.length < 3) {
             const excludeIds = [product.id, ...similares.map(s => s.id)].join(',');
-            const more = query(`SELECT name, base_price, format, sku, slug, image_url, finish FROM products WHERE active = 1 AND id NOT IN (${excludeIds}) AND finish = ? ORDER BY RANDOM() LIMIT ?`,
+            const more = await query(`SELECT name, base_price, format, sku, slug, image_url, finish FROM products WHERE active = 1 AND id NOT IN (${excludeIds}) AND finish = ? ORDER BY RANDOM() LIMIT ?`,
               [product.finish, 3 - similares.length]);
             similares = [...similares, ...more];
           }
         }
         if (similares.length === 0) {
-          similares = query('SELECT name, base_price, format, sku, slug, image_url, finish FROM products WHERE active = 1 ORDER BY RANDOM() LIMIT 3');
+          similares = await query('SELECT name, base_price, format, sku, slug, image_url, finish FROM products WHERE active = 1 ORDER BY RANDOM() LIMIT 3');
         }
         if (similares.length > 0) {
           const lista = similares.map((s, i) => {
@@ -2422,7 +2367,7 @@ app.post('/webhook', async (req, res) => {
           await sendWhatsApp(from, `Deja busco opciones similares. ¿Qué estilo buscas? ¿Madera, mármol, piedra? 🤔`);
         }
       } else if (btnId === 'hablar_asesor') {
-        const store = lead?.store_id ? queryOne('SELECT * FROM stores WHERE id = ?', [lead.store_id]) : null;
+        const store = lead?.store_id ? await queryOne('SELECT * FROM stores WHERE id = ?', [lead.store_id]) : null;
         if (store?.whatsapp) {
           await sendWhatsApp(from, `Te conecto con un asesor en *${store.name}*. Escríbele directo:\n\nwa.me/${store.whatsapp.replace(/\D/g, '')}\n\nDile que vienes de Terra y te atienden al momento. 😊`);
         } else if (store?.phone) {
@@ -2430,7 +2375,7 @@ app.post('/webhook', async (req, res) => {
         } else {
           await sendWhatsApp(from, `Un asesor te atiende en tienda ahora mismo. Muéstrale este chat y te ayuda. 👍`);
         }
-        if (lead) run("UPDATE leads SET status = 'contacted' WHERE id = ?", [lead.id]);
+        if (lead) await run("UPDATE leads SET status = 'contacted' WHERE id = ?", [lead.id]);
       } else {
         // Unknown button, pass to AI
         const reply = await processWhatsAppMessage(from, btnTitle, contactName);
@@ -2448,9 +2393,9 @@ app.post('/webhook', async (req, res) => {
 });
 
 // WhatsApp conversations API (for CRM dashboard)
-app.get('/api/wa/conversations', (req, res) => {
+app.get('/api/wa/conversations', async (req, res) => {
   try {
-    const conversations = query(`
+    const conversations = await query(`
       SELECT phone,
              MAX(CASE WHEN role='user' THEN message END) as last_message,
              COUNT(*) as total_messages,
@@ -2467,9 +2412,9 @@ app.get('/api/wa/conversations', (req, res) => {
   }
 });
 
-app.get('/api/wa/conversation/:phone', (req, res) => {
+app.get('/api/wa/conversation/:phone', async (req, res) => {
   try {
-    const messages = query(
+    const messages = await query(
       'SELECT role, message, created_at FROM wa_conversations WHERE phone = ? ORDER BY created_at ASC',
       [req.params.phone]
     );
@@ -2483,7 +2428,7 @@ app.get('/api/wa/conversation/:phone', (req, res) => {
 // LEADS API
 // =====================================================
 
-app.get('/api/leads', (req, res) => {
+app.get('/api/leads', async (req, res) => {
   try {
     const { status, source, days } = req.query;
     const d = parseInt(days) || 90;
@@ -2494,20 +2439,20 @@ app.get('/api/leads', (req, res) => {
       FROM leads l
       LEFT JOIN stores s ON l.store_id = s.id
       LEFT JOIN distributors d ON s.distributor_id = d.id
-      WHERE l.created_at >= datetime('now', '-${d} days')`;
+      WHERE l.created_at >= NOW() - INTERVAL 'd days'`;
     const params = [];
     if (status) { sql += ' AND l.status = ?'; params.push(status); }
     if (source) { sql += ' AND l.source = ?'; params.push(source); }
     sql += ' ORDER BY l.created_at DESC LIMIT 200';
-    res.json(query(sql, params));
+    res.json(await query(sql, params));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/leads/:id', (req, res) => {
+app.get('/api/leads/:id', async (req, res) => {
   try {
-    const lead = queryOne(`SELECT l.*,
+    const lead = await queryOne(`SELECT l.*,
       s.name as store_full_name, s.city as store_city, s.state as store_state, s.address as store_address,
       s.whatsapp as store_whatsapp, s.phone as store_phone, s.manager_name as store_manager, s.slug as store_slug,
       d.name as distributor_name
@@ -2521,16 +2466,16 @@ app.get('/api/leads/:id', (req, res) => {
     let products_detail = [];
     try {
       const prods = JSON.parse(lead.products_interested || '[]');
-      products_detail = prods.map(pName => {
-        const p = queryOne('SELECT id, name, sku, slug, base_price, format, finish, image_url, usage FROM products WHERE LOWER(name) LIKE ?', [`%${pName.toLowerCase()}%`]);
+      products_detail = await Promise.all(prods.map(async pName => {
+        const p = await queryOne('SELECT id, name, sku, slug, base_price, format, finish, image_url, usage FROM products WHERE LOWER(name) LIKE ?', [`%${pName.toLowerCase()}%`]);
         return p || { name: pName };
-      });
+      }));
     } catch(e) {}
 
     // WA conversation
     let conversation = [];
     if (lead.phone) {
-      conversation = query('SELECT role, message, created_at FROM wa_conversations WHERE phone = ? ORDER BY created_at ASC', [lead.phone]);
+      conversation = await query('SELECT role, message, created_at FROM wa_conversations WHERE phone = ? ORDER BY created_at ASC', [lead.phone]);
     }
     res.json({ ...lead, products_detail, conversation });
   } catch (err) {
@@ -2538,13 +2483,13 @@ app.get('/api/leads/:id', (req, res) => {
   }
 });
 
-app.put('/api/leads/:id', (req, res) => {
+app.put('/api/leads/:id', async (req, res) => {
   try {
     const { status, notes } = req.body;
-    const lead = queryOne('SELECT id FROM leads WHERE id = ?', [req.params.id]);
+    const lead = await queryOne('SELECT id FROM leads WHERE id = ?', [req.params.id]);
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
-    if (status) run('UPDATE leads SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [status, req.params.id]);
-    if (notes) run('UPDATE leads SET notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [notes, req.params.id]);
+    if (status) await run('UPDATE leads SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [status, req.params.id]);
+    if (notes) await run('UPDATE leads SET notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [notes, req.params.id]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -2555,34 +2500,34 @@ app.put('/api/leads/:id', (req, res) => {
 // FUNNEL ANALYTICS
 // =====================================================
 
-app.get('/api/funnel', (req, res) => {
+app.get('/api/funnel', async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 30;
-    const dateFilter = `datetime('now', '-${days} days')`;
+    const dateFilter = `NOW() - INTERVAL 'days days'`;
 
-    const scans = scalar(`SELECT COUNT(*) FROM scans WHERE created_at >= ${dateFilter}`) || 0;
-    const waClicks = scalar(`SELECT COUNT(*) FROM whatsapp_clicks WHERE created_at >= ${dateFilter}`) || 0;
-    const totalLeads = scalar(`SELECT COUNT(*) FROM leads WHERE created_at >= ${dateFilter}`) || 0;
-    const landingLeads = scalar(`SELECT COUNT(*) FROM leads WHERE source = 'landing' AND created_at >= ${dateFilter}`) || 0;
-    const terraLeads = scalar(`SELECT COUNT(*) FROM leads WHERE source = 'terra_qr' AND created_at >= ${dateFilter}`) || 0;
-    const waLeads = scalar(`SELECT COUNT(*) FROM leads WHERE source = 'whatsapp_bot' AND created_at >= ${dateFilter}`) || 0;
-    const contacted = scalar(`SELECT COUNT(*) FROM leads WHERE status = 'contacted' AND created_at >= ${dateFilter}`) || 0;
-    const converted = scalar(`SELECT COUNT(*) FROM leads WHERE status = 'converted' AND created_at >= ${dateFilter}`) || 0;
+    const scans = await scalar(`SELECT COUNT(*) FROM scans WHERE created_at >= ${dateFilter}`) || 0;
+    const waClicks = await scalar(`SELECT COUNT(*) FROM whatsapp_clicks WHERE created_at >= ${dateFilter}`) || 0;
+    const totalLeads = await scalar(`SELECT COUNT(*) FROM leads WHERE created_at >= ${dateFilter}`) || 0;
+    const landingLeads = await scalar(`SELECT COUNT(*) FROM leads WHERE source = 'landing' AND created_at >= ${dateFilter}`) || 0;
+    const terraLeads = await scalar(`SELECT COUNT(*) FROM leads WHERE source = 'terra_qr' AND created_at >= ${dateFilter}`) || 0;
+    const waLeads = await scalar(`SELECT COUNT(*) FROM leads WHERE source = 'whatsapp_bot' AND created_at >= ${dateFilter}`) || 0;
+    const contacted = await scalar(`SELECT COUNT(*) FROM leads WHERE status = 'contacted' AND created_at >= ${dateFilter}`) || 0;
+    const converted = await scalar(`SELECT COUNT(*) FROM leads WHERE status = 'converted' AND created_at >= ${dateFilter}`) || 0;
 
     // Daily breakdown for chart
-    const daily = query(`
+    const daily = await query(`
       SELECT date(created_at) as day, COUNT(*) as count
       FROM scans WHERE created_at >= ${dateFilter}
       GROUP BY date(created_at) ORDER BY day
     `);
-    const dailyLeads = query(`
+    const dailyLeads = await query(`
       SELECT date(created_at) as day, COUNT(*) as count
       FROM leads WHERE created_at >= ${dateFilter}
       GROUP BY date(created_at) ORDER BY day
     `);
 
     // Top products scanned
-    const topProducts = query(`
+    const topProducts = await query(`
       SELECT p.name, COUNT(s.id) as scans
       FROM scans s JOIN products p ON s.product_id = p.id
       WHERE s.created_at >= ${dateFilter}
@@ -2721,7 +2666,7 @@ async function syncVideosFromGCS() {
     const videoFiles = files.filter(f => f.name.endsWith('.mp4'));
     console.log(`📦 ${videoFiles.length} videos encontrados en GCS`);
 
-    const products = query('SELECT id, name, slug, video_url FROM products');
+    const products = await query('SELECT id, name, slug, video_url FROM products');
     let updated = 0;
 
     for (const file of videoFiles) {
@@ -2736,7 +2681,7 @@ async function syncVideosFromGCS() {
       });
 
       if (product && !product.video_url) {
-        run('UPDATE products SET video_url = ? WHERE id = ?', [gcsUrl, product.id]);
+        await run('UPDATE products SET video_url = ? WHERE id = ?', [gcsUrl, product.id]);
         updated++;
       }
     }

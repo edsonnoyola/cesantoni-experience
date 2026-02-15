@@ -1,38 +1,44 @@
-const initSqlJs = require('sql.js');
-const fs = require('fs');
-const path = require('path');
+const { Pool } = require('pg');
 
-let db = null;
-const DB_PATH = path.join(__dirname, 'data', 'cesantoni.db');
+let pool = null;
 
-// Ensure data directory exists
-if (!fs.existsSync(path.join(__dirname, 'data'))) {
-  fs.mkdirSync(path.join(__dirname, 'data'));
+// Convert SQLite ? placeholders to PostgreSQL $1, $2, $3...
+function convertPlaceholders(sql) {
+  let idx = 0;
+  return sql.replace(/\?/g, () => `$${++idx}`);
 }
 
 // Initialize database
 async function initDB() {
-  const SQL = await initSqlJs();
-  
-  // Try to load existing database
-  try {
-    if (fs.existsSync(DB_PATH)) {
-      const fileBuffer = fs.readFileSync(DB_PATH);
-      db = new SQL.Database(fileBuffer);
-      console.log('Database loaded from file');
-    } else {
-      db = new SQL.Database();
-      console.log('New database created');
-    }
-  } catch (e) {
-    db = new SQL.Database();
-    console.log('New database created (error loading):', e.message);
+  const connectionString = process.env.DATABASE_URL;
+
+  if (!connectionString) {
+    console.error('ERROR: DATABASE_URL not set!');
+    process.exit(1);
   }
-  
+
+  pool = new Pool({
+    connectionString,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
+  });
+
+  // Test connection
+  try {
+    const client = await pool.connect();
+    console.log('PostgreSQL connected');
+    client.release();
+  } catch (e) {
+    console.error('PostgreSQL connection error:', e.message);
+    process.exit(1);
+  }
+
   // Create tables
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS products (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       sku TEXT UNIQUE NOT NULL,
       name TEXT NOT NULL,
       category TEXT,
@@ -52,14 +58,23 @@ async function initDB() {
       pdf_url TEXT,
       base_price REAL,
       active INTEGER DEFAULT 1,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      related_products TEXT,
+      tech_description TEXT,
+      url TEXT,
+      slug TEXT,
+      description TEXT,
+      pei INTEGER,
+      gallery TEXT,
+      official_url TEXT,
+      uses TEXT
     )
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS distributors (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
       slug TEXT UNIQUE NOT NULL,
       logo_url TEXT,
@@ -67,14 +82,14 @@ async function initDB() {
       contact_email TEXT,
       contact_phone TEXT,
       active INTEGER DEFAULT 1,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT NOW()
     )
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS stores (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      distributor_id INTEGER NOT NULL,
+      id SERIAL PRIMARY KEY,
+      distributor_id INTEGER NOT NULL REFERENCES distributors(id),
       name TEXT NOT NULL,
       slug TEXT NOT NULL,
       state TEXT NOT NULL,
@@ -90,15 +105,14 @@ async function initDB() {
       promo_text TEXT,
       promo_discount TEXT,
       active INTEGER DEFAULT 1,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (distributor_id) REFERENCES distributors(id)
+      created_at TIMESTAMP DEFAULT NOW()
     )
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS scans (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      product_id INTEGER NOT NULL,
+      id SERIAL PRIMARY KEY,
+      product_id INTEGER NOT NULL REFERENCES products(id),
       store_id INTEGER,
       session_id TEXT,
       ip_address TEXT,
@@ -108,65 +122,37 @@ async function initDB() {
       utm_medium TEXT,
       utm_campaign TEXT,
       source TEXT DEFAULT 'qr',
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (product_id) REFERENCES products(id),
-      FOREIGN KEY (store_id) REFERENCES stores(id)
+      created_at TIMESTAMP DEFAULT NOW()
     )
   `);
 
-  // Agregar columna source si no existe (para bases de datos existentes)
-  try {
-    db.run(`ALTER TABLE scans ADD COLUMN source TEXT DEFAULT 'qr'`);
-  } catch (e) {
-    // Columna ya existe
-  }
-
-  // Agregar columna related_products para productos similares
-  try {
-    db.run(`ALTER TABLE products ADD COLUMN related_products TEXT`);
-  } catch (e) {
-    // Columna ya existe
-  }
-
-  // Agregar columna tech_description para descripción técnica única generada con IA
-  try {
-    db.run(`ALTER TABLE products ADD COLUMN tech_description TEXT`);
-  } catch (e) {
-    // Columna ya existe
-  }
-
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS whatsapp_clicks (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       scan_id INTEGER,
-      product_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL REFERENCES products(id),
       store_id INTEGER,
       session_id TEXT,
       whatsapp_number TEXT,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (scan_id) REFERENCES scans(id),
-      FOREIGN KEY (product_id) REFERENCES products(id),
-      FOREIGN KEY (store_id) REFERENCES stores(id)
+      created_at TIMESTAMP DEFAULT NOW()
     )
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS qr_codes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      product_id INTEGER NOT NULL,
-      store_id INTEGER NOT NULL,
+      id SERIAL PRIMARY KEY,
+      product_id INTEGER NOT NULL REFERENCES products(id),
+      store_id INTEGER NOT NULL REFERENCES stores(id),
       url TEXT NOT NULL,
       qr_data TEXT,
       downloads INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (product_id) REFERENCES products(id),
-      FOREIGN KEY (store_id) REFERENCES stores(id)
+      created_at TIMESTAMP DEFAULT NOW()
     )
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS terra_conversations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       session_id TEXT,
       customer_name TEXT,
       store_name TEXT,
@@ -175,13 +161,13 @@ async function initDB() {
       question TEXT NOT NULL,
       answer TEXT,
       intent TEXT,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT NOW()
     )
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS terra_sessions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       session_id TEXT UNIQUE NOT NULL,
       customer_name TEXT,
       store_id INTEGER,
@@ -191,24 +177,24 @@ async function initDB() {
       recommendation TEXT,
       whatsapp_sent INTEGER DEFAULT 0,
       duration_minutes REAL,
-      started_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      ended_at TEXT
+      started_at TIMESTAMP DEFAULT NOW(),
+      ended_at TIMESTAMP
     )
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS wa_conversations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       phone TEXT NOT NULL,
       role TEXT NOT NULL,
       message TEXT NOT NULL,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT NOW()
     )
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS leads (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       phone TEXT,
       name TEXT,
       source TEXT NOT NULL DEFAULT 'unknown',
@@ -218,175 +204,198 @@ async function initDB() {
       terra_session_id TEXT,
       status TEXT DEFAULT 'new',
       notes TEXT,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
     )
   `);
 
-  // Seed data
-  seedData();
-  
-  // Save to file
-  saveDB();
-  
-  return db;
+  // Additional tables that may exist in server.js
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS landings (
+      id SERIAL PRIMARY KEY,
+      product_id INTEGER REFERENCES products(id),
+      title TEXT,
+      description TEXT,
+      promo_text TEXT,
+      video_url TEXT,
+      image_url TEXT,
+      active INTEGER DEFAULT 1,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sample_requests (
+      id SERIAL PRIMARY KEY,
+      lead_id INTEGER,
+      product_id INTEGER,
+      store_id INTEGER,
+      name TEXT,
+      phone TEXT,
+      email TEXT,
+      address TEXT,
+      status TEXT DEFAULT 'pending',
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS quotes (
+      id SERIAL PRIMARY KEY,
+      product_id INTEGER,
+      product_name TEXT,
+      product_sku TEXT,
+      m2 REAL,
+      price_per_m2 REAL,
+      total REAL,
+      store_id INTEGER,
+      store_name TEXT,
+      customer_name TEXT NOT NULL,
+      customer_email TEXT NOT NULL,
+      customer_phone TEXT,
+      status TEXT DEFAULT 'sent',
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS reviews (
+      id SERIAL PRIMARY KEY,
+      product_id INTEGER REFERENCES products(id),
+      customer_name TEXT,
+      rating INTEGER,
+      comment TEXT,
+      source TEXT,
+      approved INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  // Create indexes for common lookups
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_phone ON leads(phone)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_wa_conversations_phone ON wa_conversations(phone)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_scans_created ON scans(created_at)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_stores_slug ON stores(slug)`);
+
+  console.log('PostgreSQL tables ready');
+
+  // Seed data if empty
+  await seedData();
+
+  return pool;
 }
 
-function saveDB() {
-  if (db) {
-    const data = db.export();
-    const buffer = Buffer.from(data);
-    fs.writeFileSync(DB_PATH, buffer);
-  }
-}
-
-function seedData() {
-  // Check if already seeded
-  const result = db.exec('SELECT COUNT(*) as c FROM products');
-  if (result.length > 0 && result[0].values[0][0] > 0) {
-    console.log('Database already seeded');
-    return;
-  }
-
-  console.log('Seeding database...');
-
-  // Products
-  const products = [
-    ['VOL-3060-EST', 'Volterra', 'Muro', '30x60cm', 'Piedra Estructurado', 'Pasta Blanca', '≥120 kg', '15-20%', '5-8', 'Interior, Baños, Cocina', 8, 1.44, 24.55, 385],
-    ['CAR-6060-PUL', 'Carrara Blanco', 'Piso', '60x60cm', 'Mármol Pulido', 'Porcelanato', '≥200 kg', '<0.5%', '6-7', 'Interior, Salas', 4, 1.44, 28.5, 520],
-    ['NER-6060-PUL', 'Nero Marquina', 'Piso', '60x60cm', 'Mármol Pulido', 'Porcelanato', '≥200 kg', '<0.5%', '6-7', 'Interior, Salas', 4, 1.44, 28.5, 580],
-    ['TRA-6060-MAT', 'Travertino Gold', 'Piso', '60x60cm', 'Piedra Mate', 'Porcelanato', '≥180 kg', '<1%', '5-6', 'Interior, Exterior', 4, 1.44, 27.8, 495],
-    ['ONX-3060-BRI', 'Onyx Honey', 'Muro', '30x60cm', 'Brillante', 'Pasta Blanca', '≥120 kg', '15-20%', '5-8', 'Interior, Baños', 8, 1.44, 24.55, 420],
-    ['EMP-6060-PUL', 'Emperador Dark', 'Piso', '60x60cm', 'Mármol Pulido', 'Porcelanato', '≥200 kg', '<0.5%', '6-7', 'Interior, Salas', 4, 1.44, 28.5, 545],
-    ['CAL-4545-MAT', 'Calacatta', 'Piso', '45x45cm', 'Mate', 'Porcelanato', '≥180 kg', '<1%', '6-7', 'Interior', 6, 1.22, 22.3, 465],
-    ['STA-3060-EST', 'Statuario', 'Muro', '30x60cm', 'Estructurado', 'Pasta Blanca', '≥120 kg', '15-20%', '5-8', 'Interior, Baños', 8, 1.44, 24.55, 410],
-    ['GRI-6060-MAT', 'Grigio Carnico', 'Piso', '60x60cm', 'Mate', 'Porcelanato', '≥200 kg', '<0.5%', '6-7', 'Interior, Comercial', 4, 1.44, 28.5, 510],
-    ['BEI-4590-NAT', 'Beige Crema', 'Piso', '45x90cm', 'Natural', 'Porcelanato', '≥180 kg', '<1%', '5-6', 'Interior, Exterior', 3, 1.22, 26.4, 475],
-    ['WOO-2012-MAT', 'Wood Roble', 'Piso', '20x120cm', 'Madera Mate', 'Porcelanato', '≥180 kg', '<1%', '5-6', 'Interior, Salas', 5, 1.20, 24.8, 445],
-    ['CEM-6060-RUS', 'Cemento Gris', 'Piso', '60x60cm', 'Rústico', 'Porcelanato', '≥200 kg', '<0.5%', '7-8', 'Interior, Exterior', 4, 1.44, 29.2, 390],
-  ];
-
-  products.forEach(p => {
-    db.run(`INSERT INTO products (sku, name, category, format, finish, type, resistance, water_absorption, mohs, usage, pieces_per_box, sqm_per_box, weight_per_box, base_price)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, p);
-  });
-
-  // Distributors
-  const distributors = [
-    ['Interceramic', 'interceramic', 'https://interceramic.com', '800-123-4567'],
-    ['Home Depot', 'homedepot', 'https://homedepot.com.mx', '800-004-6633'],
-    ['Porcelanite', 'porcelanite', 'https://porcelanite.com.mx', '800-890-1234'],
-    ['Lamosa', 'lamosa', 'https://lamosa.com.mx', '800-505-0000'],
-    ['Vitromex', 'vitromex', 'https://vitromex.com.mx', '800-712-0033'],
-    ['Daltile', 'daltile', 'https://daltile.com.mx', '800-343-4433'],
-  ];
-
-  distributors.forEach(d => {
-    db.run(`INSERT INTO distributors (name, slug, website, contact_phone) VALUES (?, ?, ?, ?)`, d);
-  });
-
-  // Stores
-  const stores = [
-    [1, 'Interceramic Polanco', 'polanco', 'CDMX', 'Ciudad de México', 'Av. Presidente Masaryk 340, Polanco', '5215512345678', 'Instalación gratis', '15%'],
-    [1, 'Interceramic Santa Fe', 'santafe', 'CDMX', 'Ciudad de México', 'Centro Santa Fe Local 234', '5215512345679', 'Diseño 3D gratis', '10%'],
-    [1, 'Interceramic Zapopan', 'zapopan', 'Jalisco', 'Zapopan', 'Av. Patria 1234, Zapopan', '5213312345678', 'Envío gratis GDL', '12%'],
-    [1, 'Interceramic Valle', 'valle', 'Nuevo León', 'San Pedro Garza García', 'Calzada del Valle 500', '5218112345678', 'Asesoría premium', '20%'],
-    [1, 'Interceramic Cancún', 'cancun', 'Quintana Roo', 'Cancún', 'Blvd. Kukulcán Km 12', '5219981234567', 'Para hoteles -25%', '25%'],
-    [2, 'Home Depot Pedregal', 'pedregal', 'CDMX', 'Ciudad de México', 'Periférico Sur 4020, Pedregal', '5215598765432', 'Meses sin intereses', ''],
-    [2, 'Home Depot Satélite', 'satelite', 'Estado de México', 'Naucalpan', 'Periférico Norte, Ciudad Satélite', '5215598765433', '18 MSI', ''],
-    [2, 'Home Depot Guadalajara', 'guadalajara', 'Jalisco', 'Guadalajara', 'Av. Vallarta 5555', '5213398765432', '12 MSI + envío', ''],
-    [2, 'Home Depot Monterrey', 'monterrey', 'Nuevo León', 'Monterrey', 'Av. Constitución 2000', '5218198765432', 'Instalación $99/m²', ''],
-    [3, 'Porcelanite GDL Centro', 'gdl-centro', 'Jalisco', 'Guadalajara', 'Av. Juárez 890, Centro', '5213387654321', 'Liquidación 30%', '30%'],
-    [3, 'Porcelanite Cumbres', 'cumbres', 'Nuevo León', 'Monterrey', 'Av. Cumbres 456', '5218187654321', 'Precio de fábrica', '18%'],
-    [3, 'Porcelanite Metepec', 'metepec', 'Estado de México', 'Metepec', 'Av. Tecnológico 234', '5217287654321', 'Outlet -40%', '40%'],
-    [4, 'Lamosa San Pedro', 'sanpedro', 'Nuevo León', 'San Pedro Garza García', 'Av. Vasconcelos 1000', '5218176543210', 'Arquitectos 25% off', '25%'],
-    [4, 'Lamosa Insurgentes', 'insurgentes', 'CDMX', 'Ciudad de México', 'Av. Insurgentes Sur 1800', '5215576543210', 'Proyecto completo', '15%'],
-    [4, 'Lamosa Querétaro', 'queretaro', 'Querétaro', 'Querétaro', 'Blvd. Bernardo Quintana 500', '5214476543210', 'Envío gratis Bajío', ''],
-    [5, 'Vitromex Plaza del Sol', 'plazadelsol', 'Jalisco', 'Guadalajara', 'Plaza del Sol Local 45', '5213365432109', 'Temporada -20%', '20%'],
-    [5, 'Vitromex Puebla', 'puebla', 'Puebla', 'Puebla', 'Blvd. 5 de Mayo 234', '5222265432109', 'Instalación incluida', ''],
-    [6, 'Daltile Design Studio', 'designstudio', 'CDMX', 'Ciudad de México', 'Av. Palmas 100, Lomas', '5215554321098', 'Diseño premium', ''],
-    [6, 'Daltile Cancún', 'cancun-daltile', 'Quintana Roo', 'Cancún', 'Av. Tulum 234', '5219984321098', 'Hoteles boutique', '22%'],
-  ];
-
-  stores.forEach(s => {
-    db.run(`INSERT INTO stores (distributor_id, name, slug, state, city, address, whatsapp, promo_text, promo_discount)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, s);
-  });
-
-  // Generate random scans
-  const now = new Date();
-  for (let i = 0; i < 500; i++) {
-    const productId = Math.floor(Math.random() * 12) + 1;
-    const storeId = Math.floor(Math.random() * 19) + 1;
-    const sessionId = 'sess_' + Math.random().toString(36).substr(2, 9);
-    const daysAgo = Math.floor(Math.random() * 30);
-    const hoursAgo = Math.floor(Math.random() * 24);
-    const date = new Date(now - daysAgo * 24 * 60 * 60 * 1000 - hoursAgo * 60 * 60 * 1000);
-    const dateStr = date.toISOString().replace('T', ' ').substr(0, 19);
-    
-    db.run(`INSERT INTO scans (product_id, store_id, session_id, created_at) VALUES (?, ?, ?, ?)`,
-           [productId, storeId, sessionId, dateStr]);
-    
-    // 20% result in WhatsApp click
-    if (Math.random() < 0.2) {
-      db.run(`INSERT INTO whatsapp_clicks (product_id, store_id, session_id, created_at) VALUES (?, ?, ?, ?)`,
-             [productId, storeId, sessionId, dateStr]);
-    }
-  }
-
-  console.log('Database seeded successfully!');
-}
-
-// Helper functions
-function getDB() {
-  return db;
-}
-
+// Helper: run query and return rows (replaces sql.js query)
 function query(sql, params = []) {
   try {
-    const stmt = db.prepare(sql);
-    if (params.length > 0) stmt.bind(params);
-    
-    const results = [];
-    while (stmt.step()) {
-      results.push(stmt.getAsObject());
-    }
-    stmt.free();
-    return results;
+    const pgSql = convertPlaceholders(sql);
+    const result = pool.query(pgSql, params);
+    // Return a promise-like that also works synchronously via .then()
+    // But since we need sync behavior for backward compat, we use a sync wrapper
+    // Actually, we need to make this async-compatible
+    return result.then(r => r.rows);
   } catch (e) {
     console.error('Query error:', e.message, sql);
-    return [];
+    return Promise.resolve([]);
   }
 }
 
 function queryOne(sql, params = []) {
-  const results = query(sql, params);
-  return results.length > 0 ? results[0] : null;
+  const pgSql = convertPlaceholders(sql);
+  return pool.query(pgSql, params)
+    .then(r => r.rows.length > 0 ? r.rows[0] : null)
+    .catch(e => {
+      console.error('QueryOne error:', e.message, sql);
+      return null;
+    });
 }
 
 function run(sql, params = []) {
-  try {
-    db.run(sql, params);
-    saveDB();
-    return { lastInsertRowid: db.exec('SELECT last_insert_rowid()')[0]?.values[0][0] || 0 };
-  } catch (e) {
-    console.error('Run error:', e.message, sql);
-    throw e;
-  }
+  const pgSql = convertPlaceholders(sql);
+  return pool.query(pgSql, params)
+    .then(r => ({ rowCount: r.rowCount, rows: r.rows }))
+    .catch(e => {
+      console.error('Run error:', e.message, sql);
+      throw e;
+    });
 }
 
 function scalar(sql, params = []) {
-  try {
-    const stmt = db.prepare(sql);
-    if (params.length > 0) stmt.bind(params);
-    stmt.step();
-    const result = stmt.get();
-    stmt.free();
-    return result ? result[0] : null;
-  } catch (e) {
-    console.error('Scalar error:', e.message, sql);
-    return null;
+  const pgSql = convertPlaceholders(sql);
+  return pool.query(pgSql, params)
+    .then(r => r.rows.length > 0 ? Object.values(r.rows[0])[0] : null)
+    .catch(e => {
+      console.error('Scalar error:', e.message, sql);
+      return null;
+    });
+}
+
+// No-op for backward compat (SQLite used to save to file)
+function saveDB() {}
+
+function getDB() { return pool; }
+
+async function seedData() {
+  const result = await pool.query('SELECT COUNT(*) as c FROM products');
+  if (parseInt(result.rows[0].c) > 0) {
+    console.log(`Database already has ${result.rows[0].c} products`);
+    return;
   }
+
+  console.log('Seeding database from JSON files...');
+  const fs = require('fs');
+  const path = require('path');
+  const seedDir = path.join(__dirname, 'data', 'seed');
+
+  // Seed distributors first (stores depend on them)
+  try {
+    const distributors = JSON.parse(fs.readFileSync(path.join(seedDir, 'distributors.json'), 'utf8'));
+    for (const d of distributors) {
+      await pool.query(`INSERT INTO distributors (id, name, slug, logo_url, website, contact_email, contact_phone, active)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (slug) DO NOTHING`,
+        [d.id, d.name, d.slug, d.logo_url, d.website, d.contact_email, d.contact_phone, d.active ?? 1]);
+    }
+    await pool.query(`SELECT setval('distributors_id_seq', COALESCE((SELECT MAX(id) FROM distributors), 1))`);
+    console.log(`  Seeded ${distributors.length} distributors`);
+  } catch (e) { console.error('Distributor seed error:', e.message); }
+
+  // Seed stores
+  try {
+    const stores = JSON.parse(fs.readFileSync(path.join(seedDir, 'stores.json'), 'utf8'));
+    for (const s of stores) {
+      await pool.query(`INSERT INTO stores (id, distributor_id, name, slug, state, city, address, postal_code,
+        lat, lng, whatsapp, phone, email, manager_name, promo_text, promo_discount, active)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) ON CONFLICT DO NOTHING`,
+        [s.id, s.distributor_id, s.name, s.slug, s.state, s.city, s.address, s.postal_code,
+         s.lat, s.lng, s.whatsapp, s.phone, s.email, s.manager_name, s.promo_text, s.promo_discount, s.active ?? 1]);
+    }
+    await pool.query(`SELECT setval('stores_id_seq', COALESCE((SELECT MAX(id) FROM stores), 1))`);
+    console.log(`  Seeded ${stores.length} stores`);
+  } catch (e) { console.error('Store seed error:', e.message); }
+
+  // Seed products
+  try {
+    const products = JSON.parse(fs.readFileSync(path.join(seedDir, 'products.json'), 'utf8'));
+    for (const p of products) {
+      await pool.query(`INSERT INTO products (id, sku, name, category, subcategory, format, finish, type, resistance,
+        water_absorption, mohs, usage, pieces_per_box, sqm_per_box, weight_per_box, image_url,
+        video_url, pdf_url, base_price, active, url, slug, description, pei, gallery, official_url, uses)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
+        ON CONFLICT (sku) DO NOTHING`,
+        [p.id, p.sku, p.name, p.category, p.subcategory, p.format, p.finish, p.type, p.resistance,
+         p.water_absorption, p.mohs, p.usage, p.pieces_per_box, p.sqm_per_box, p.weight_per_box,
+         p.image_url, p.video_url, p.pdf_url, p.base_price, p.active ?? 1,
+         p.url, p.slug, p.description, p.pei, p.gallery, p.official_url, p.uses]);
+    }
+    await pool.query(`SELECT setval('products_id_seq', COALESCE((SELECT MAX(id) FROM products), 1))`);
+    console.log(`  Seeded ${products.length} products`);
+  } catch (e) { console.error('Product seed error:', e.message); }
+
+  console.log('Database seeding complete!');
 }
 
 module.exports = { initDB, getDB, query, queryOne, run, scalar, saveDB };
