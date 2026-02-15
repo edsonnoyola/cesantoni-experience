@@ -19,7 +19,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', async (req, res) => res.json({ version: 'v4.1.0', commit: 'm2-calculator' }));
+app.get('/api/health', async (req, res) => res.json({ version: 'v4.2.0', commit: 'similares-images' }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
@@ -2464,26 +2464,41 @@ app.post('/webhook', async (req, res) => {
         const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
         let similares = [];
         if (product) {
-          // Priority 1: same format (e.g., 20x120 wood-look planks)
-          similares = await query('SELECT name, base_price, format, sku, slug, image_url, finish FROM products WHERE active = 1 AND id != ? AND format = ? ORDER BY RANDOM() LIMIT 3',
+          similares = await query('SELECT id, name, base_price, format, sku, slug, image_url, finish, pei, usage FROM products WHERE active = 1 AND id != ? AND format = ? ORDER BY RANDOM() LIMIT 3',
             [product.id, product.format]);
-          // Priority 2: same finish if not enough
           if (similares.length < 3) {
             const excludeIds = [product.id, ...similares.map(s => s.id)].join(',');
-            const more = await query(`SELECT name, base_price, format, sku, slug, image_url, finish FROM products WHERE active = 1 AND id NOT IN (${excludeIds}) AND finish = ? ORDER BY RANDOM() LIMIT ?`,
+            const more = await query(`SELECT id, name, base_price, format, sku, slug, image_url, finish, pei, usage FROM products WHERE active = 1 AND id NOT IN (${excludeIds}) AND finish = ? ORDER BY RANDOM() LIMIT ?`,
               [product.finish, 3 - similares.length]);
             similares = [...similares, ...more];
           }
         }
         if (similares.length === 0) {
-          similares = await query('SELECT name, base_price, format, sku, slug, image_url, finish FROM products WHERE active = 1 ORDER BY RANDOM() LIMIT 3');
+          similares = await query('SELECT id, name, base_price, format, sku, slug, image_url, finish, pei, usage FROM products WHERE active = 1 ORDER BY RANDOM() LIMIT 3');
         }
         if (similares.length > 0) {
-          const lista = similares.map((s, i) => {
+          await sendWhatsApp(from, `Pisos similares a *${prodName}*:`);
+          await new Promise(r => setTimeout(r, 500));
+
+          for (const s of similares) {
             const link = `${baseUrl}/p/${s.sku || s.slug || s.name}`;
-            return `${i+1}. *${s.name}* — $${s.base_price || '?'}/m² · ${s.format || ''}\n   👁 ${link}`;
-          }).join('\n\n');
-          await sendWhatsApp(from, `Pisos similares a *${prodName}*:\n\n${lista}\n\n¿Cuál te interesa?`);
+            const pei = parseInt(s.pei) || 0;
+            const peiTip = pei >= 4 ? 'Alto tráfico' : pei >= 3 ? 'Toda la casa' : pei >= 2 ? 'Tráfico ligero' : '';
+            let caption = `*${s.name}* · $${s.base_price || '?'}/m²\n`;
+            caption += `📐 ${s.format || ''} · ✨ ${s.finish || ''}\n`;
+            if (s.pei) caption += `💪 PEI ${s.pei} — ${peiTip}\n`;
+            caption += `\n🔗 ${link}`;
+
+            if (s.image_url) {
+              await sendWhatsAppImage(from, s.image_url, caption);
+            } else {
+              await sendWhatsApp(from, caption);
+            }
+            await new Promise(r => setTimeout(r, 800));
+          }
+
+          await new Promise(r => setTimeout(r, 500));
+          await sendWhatsApp(from, `¿Cuál te interesa? Escríbeme el nombre y te doy más info. 😊`);
         } else {
           await sendWhatsApp(from, `Deja busco opciones similares. ¿Qué estilo buscas? ¿Madera, mármol, piedra? 🤔`);
         }
