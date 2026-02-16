@@ -3127,14 +3127,19 @@ ${storeCity ? '- Ciudad conocida: ' + storeCity + ' — NO preguntes ciudad' : '
     ? '\nSUGERENCIAS PARA ESTE CLIENTE:\n' + useCases.map(u => `- ${u.tip}`).join('\n')
     : '';
 
-  // Conversation summary for long chats
+  // Conversation summary for long chats (truncate individual messages to avoid prompt bloat)
+  const cleanHistory = history.map(h => ({
+    role: h.role,
+    message: (h.message || '').substring(0, 150).replace(/https?:\/\/\S+/g, '[link]')
+  })).filter(h => !h.message.startsWith('[VIEWED_PRODUCT]') && !h.message.startsWith('[FAILED]'));
+
   let historyText;
-  if (history.length > 8) {
-    const older = history.slice(0, -6).map(h => h.message).join(' ').substring(0, 200);
-    const recent = history.slice(-6).map(h => `${h.role === 'user' ? 'Cliente' : 'Terra'}: ${h.message}`).join('\n');
+  if (cleanHistory.length > 8) {
+    const older = cleanHistory.slice(0, -6).map(h => h.message).join(' ').substring(0, 200);
+    const recent = cleanHistory.slice(-6).map(h => `${h.role === 'user' ? 'Cliente' : 'Terra'}: ${h.message}`).join('\n');
     historyText = `RESUMEN CONVERSACIÓN ANTERIOR: ${older}...\n\nÚLTIMOS MENSAJES:\n${recent}`;
   } else {
-    historyText = history.map(h => `${h.role === 'user' ? 'Cliente' : 'Terra'}: ${h.message}`).join('\n');
+    historyText = cleanHistory.map(h => `${h.role === 'user' ? 'Cliente' : 'Terra'}: ${h.message}`).join('\n');
   }
 
   const systemPrompt = `Eres Terra, asesora de pisos de Cesantoni por WhatsApp. Amable, experta, directa. Meta: convertir en cotización o visita.
@@ -3188,6 +3193,9 @@ Responde SOLO el texto del mensaje.`;
     );
 
     const data = await response.json();
+    if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+      console.error('WA Gemini empty response:', JSON.stringify({ blockReason: data.promptFeedback?.blockReason, finishReason: data.candidates?.[0]?.finishReason, error: data.error }));
+    }
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Disculpa, tuve un problema. ¿Puedes repetir tu mensaje?';
 
     if (lead && lead.status === 'new') {
