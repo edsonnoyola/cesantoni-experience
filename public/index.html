@@ -292,6 +292,7 @@
         <a href="/qr-terra.html" class="nav-item" style="text-decoration:none;" onclick="closeSidebar()">🤖 <span>QR Terra</span></a>
         <div class="nav-item" onclick="showPage('whatsapp')">💬 <span>WhatsApp Bot</span></div>
         <div class="nav-item" onclick="showPage('analytics')">📊 <span>Analytics</span></div>
+        <div class="nav-item" onclick="showPage('cotizaciones')">📋 <span>Cotizaciones</span></div>
         <div class="nav-item" onclick="showPage('promociones')">💰 <span>Promociones</span></div>
         <a href="/landings.html" class="nav-item" style="text-decoration:none;" onclick="closeSidebar()">📄 <span>Landings</span></a>
         <div style="position:absolute;bottom:16px;left:0;right:0;padding:0 24px">
@@ -622,6 +623,29 @@
             </div>
         </div>
         
+        <!-- ==================== COTIZACIONES ==================== -->
+        <div id="page-cotizaciones" class="page">
+            <div class="page-header">
+                <h1>Cotizaciones</h1>
+                <span class="badge badge-info" style="background:#F5EED6;color:#8B7340" id="cot-version">v9.0</span>
+            </div>
+            <div class="stats-row" style="grid-template-columns:repeat(4,1fr)">
+                <div class="stat-card" style="border-left:3px solid #C9A962"><div class="label">Total Cotizaciones</div><div class="value" id="cot-total">-</div></div>
+                <div class="stat-card" style="border-left:3px solid #27ae60"><div class="label">Monto Acumulado</div><div class="value" id="cot-monto" style="font-size:1.4rem">-</div></div>
+                <div class="stat-card" style="border-left:3px solid #3498db"><div class="label">Ticket Promedio</div><div class="value" id="cot-ticket">-</div></div>
+                <div class="stat-card" style="border-left:3px solid #f39c12"><div class="label">Esta Semana</div><div class="value" id="cot-week" style="color:#27ae60">-</div></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+                <button class="cot-filter active" onclick="loadCotizaciones('all')" style="padding:6px 16px;border-radius:20px;border:1px solid #ddd;background:#111;color:#fff;cursor:pointer;font-size:0.8rem">Todos</button>
+                <button class="cot-filter" onclick="loadCotizaciones('week')" style="padding:6px 16px;border-radius:20px;border:1px solid #ddd;background:#fff;color:#333;cursor:pointer;font-size:0.8rem">Esta semana</button>
+                <button class="cot-filter" onclick="loadCotizaciones('month')" style="padding:6px 16px;border-radius:20px;border:1px solid #ddd;background:#fff;color:#333;cursor:pointer;font-size:0.8rem">Este mes</button>
+            </div>
+            <div class="card">
+                <div class="card-header"><span class="card-title">📋 Cotizaciones generadas</span><span class="card-action" onclick="loadCotizaciones()">Actualizar</span></div>
+                <div id="cot-table" style="overflow-x:auto"><span style="color:#aaa;padding:24px;display:block;text-align:center">Cargando...</span></div>
+            </div>
+        </div>
+
         <!-- ==================== LANDINGS ==================== -->
         <div id="page-landings" class="page">
             <div class="page-header">
@@ -945,6 +969,7 @@
             if (page === 'tiendas') loadStores();
             if (page === 'qr') loadQRSelects();
             if (page === 'promociones') loadPromoSection();
+            if (page === 'cotizaciones') loadCotizaciones();
             if (page === 'landings') loadLandings();
         }
         
@@ -1420,8 +1445,82 @@
         }
         
         // ==================== PROMOCIONES ====================
+        // ==================== COTIZACIONES ====================
+        async function loadCotizaciones(period = 'all') {
+            try {
+                const res = await fetch('/api/quotes', { headers: authHeaders() });
+                let quotes = await res.json();
+                if (!Array.isArray(quotes)) quotes = [];
+
+                const now = new Date();
+                const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+                // Stats (always from full data)
+                const allTotal = quotes.length;
+                const allMonto = quotes.reduce((s, q) => s + (parseFloat(q.grand_total) || 0), 0);
+                const allTicket = allTotal > 0 ? allMonto / allTotal : 0;
+                const allWeek = quotes.filter(q => new Date(q.created_at) >= weekAgo).length;
+
+                document.getElementById('cot-total').textContent = allTotal;
+                document.getElementById('cot-monto').textContent = '$' + Math.round(allMonto).toLocaleString('es-MX');
+                document.getElementById('cot-ticket').textContent = '$' + Math.round(allTicket).toLocaleString('es-MX');
+                document.getElementById('cot-week').textContent = allWeek;
+
+                // Filter
+                if (period === 'week') quotes = quotes.filter(q => new Date(q.created_at) >= weekAgo);
+                else if (period === 'month') quotes = quotes.filter(q => new Date(q.created_at) >= monthStart);
+
+                // Active filter chip
+                document.querySelectorAll('.cot-filter').forEach(b => { b.style.background = '#fff'; b.style.color = '#333'; });
+                const idx = period === 'week' ? 1 : period === 'month' ? 2 : 0;
+                const chips = document.querySelectorAll('.cot-filter');
+                if (chips[idx]) { chips[idx].style.background = '#111'; chips[idx].style.color = '#fff'; }
+
+                const tableEl = document.getElementById('cot-table');
+                if (quotes.length === 0) {
+                    tableEl.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa">Sin cotizaciones en este periodo</div>';
+                    return;
+                }
+
+                let html = `<table style="width:100%;border-collapse:collapse;font-size:0.85rem">
+                    <thead><tr style="background:#f8f8f5;text-align:left">
+                        <th style="padding:10px 12px;font-size:0.7rem;text-transform:uppercase;color:#888;letter-spacing:0.5px">Folio</th>
+                        <th style="padding:10px 12px;font-size:0.7rem;text-transform:uppercase;color:#888">Cliente</th>
+                        <th style="padding:10px 12px;font-size:0.7rem;text-transform:uppercase;color:#888">Tienda</th>
+                        <th style="padding:10px 12px;font-size:0.7rem;text-transform:uppercase;color:#888">Productos</th>
+                        <th style="padding:10px 12px;font-size:0.7rem;text-transform:uppercase;color:#888">Total</th>
+                        <th style="padding:10px 12px;font-size:0.7rem;text-transform:uppercase;color:#888">Fecha</th>
+                        <th style="padding:10px 12px;font-size:0.7rem;text-transform:uppercase;color:#888">Status</th>
+                    </tr></thead><tbody>`;
+
+                quotes.forEach(q => {
+                    const date = q.created_at ? new Date(q.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'short',year:'numeric'}) : '-';
+                    const items = q.items || [];
+                    const productNames = items.map(i => i.product_name).join(', ') || q.product_name || '-';
+                    const statusColors = { sent: '#27ae60', expired: '#e74c3c', converted: '#3498db' };
+                    const statusLabels = { sent: 'Enviada', expired: 'Vencida', converted: 'Convertida' };
+                    const st = q.status || 'sent';
+
+                    html += `<tr style="border-bottom:1px solid #f0f0f0;cursor:pointer" onmouseover="this.style.background='#fafaf8'" onmouseout="this.style.background='transparent'">
+                        <td style="padding:10px 12px"><a href="/cotizacion/${q.folio}" target="_blank" style="color:#C9A962;font-weight:700;text-decoration:none">${q.folio || '-'}</a></td>
+                        <td style="padding:10px 12px;font-weight:600">${q.customer_name || '-'}</td>
+                        <td style="padding:10px 12px;color:#666;font-size:0.8rem">${q.store_name || '-'}</td>
+                        <td style="padding:10px 12px;font-size:0.8rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${productNames}">${q.items_count || items.length || 1} piso${(q.items_count || items.length || 1) > 1 ? 's' : ''}</td>
+                        <td style="padding:10px 12px;font-weight:700">${q.grand_total ? '$' + Math.round(q.grand_total).toLocaleString('es-MX') : '-'}</td>
+                        <td style="padding:10px 12px;color:#888;font-size:0.8rem">${date}</td>
+                        <td style="padding:10px 12px"><span style="padding:3px 10px;border-radius:12px;font-size:0.7rem;font-weight:600;background:${statusColors[st] || '#888'}22;color:${statusColors[st] || '#888'}">${statusLabels[st] || st}</span></td>
+                    </tr>`;
+                });
+
+                html += '</tbody></table>';
+                tableEl.innerHTML = html;
+            } catch(e) { console.error('Cotizaciones error:', e); }
+        }
+
+        // ==================== PROMOCIONES ====================
         let promoSelected = { product: new Set(), dist: new Set(), state: new Set(), city: new Set(), store: new Set() };
-        
+
         function loadPromoSection() {
             renderPromoFilters();
             renderPromoList();

@@ -908,6 +908,118 @@ app.get('/cotizacion/:folio', async (req, res) => {
   }
 });
 
+// Public comparison page
+app.get('/comparar/:ids', async (req, res) => {
+  try {
+    const idList = req.params.ids.split(',').map(s => s.trim()).filter(Boolean).slice(0, 5);
+    if (idList.length < 2) return res.status(400).send('<h1>Se necesitan al menos 2 productos</h1>');
+
+    const products = [];
+    for (const ref of idList) {
+      const p = await queryOne('SELECT * FROM products WHERE sku = $1 OR slug = $1 OR id::text = $1', [ref]);
+      if (p) products.push(p);
+    }
+    if (products.length < 2) return res.status(404).send('<h1>Productos no encontrados</h1>');
+
+    const cols = products.length;
+    const specs = [
+      { label: 'Precio/m²', fn: p => p.base_price ? `$${p.base_price}` : '-' },
+      { label: 'Formato', fn: p => p.format || '-' },
+      { label: 'Acabado', fn: p => p.finish || '-' },
+      { label: 'PEI', fn: p => p.pei ? `PEI ${p.pei}` : '-' },
+      { label: 'm²/Caja', fn: p => p.sqm_per_box ? `${p.sqm_per_box} m²` : '-' },
+      { label: 'Uso', fn: p => p.usage || '-' },
+      { label: 'Tipo', fn: p => p.type || '-' },
+      { label: 'Categoría', fn: p => p.category || '-' }
+    ];
+
+    const headerCells = products.map(p => `
+      <div class="cp-cell cp-header-cell">
+        <img src="${p.image_url || '/images/placeholder.jpg'}" alt="${p.name}" onerror="this.src='/images/placeholder.jpg'">
+        <div class="cp-name">${p.name}</div>
+        <div class="cp-price">$${p.base_price || '?'}/m²</div>
+        <div class="cp-cat">${p.category || 'Piso Premium'}</div>
+      </div>
+    `).join('');
+
+    const specRows = specs.map(s => {
+      const cells = products.map(p => {
+        const val = s.fn(p);
+        const isPrice = s.label.includes('Precio');
+        return `<div class="cp-cell${isPrice ? ' cp-highlight' : ''}">${val}</div>`;
+      }).join('');
+      return `<div class="cp-label">${s.label}</div>${cells}`;
+    }).join('');
+
+    const waMsg = encodeURIComponent('Hola, estoy comparando pisos: ' + products.map(p => p.name).join(' vs ') + '. Me interesa cotizar.');
+
+    res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comparar ${products.map(p => p.name).join(' vs ')} - Cesantoni</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Source Sans 3', sans-serif; background: #fafaf8; color: #111; }
+    .cp-header { background: #111118; color: white; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .cp-brand { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 700; letter-spacing: 2px; }
+    .cp-brand img { height: 40px; }
+    .cp-subtitle { color: #C9A962; font-size: 0.85rem; }
+    .cp-container { max-width: 900px; margin: 24px auto; padding: 0 16px; }
+    .cp-grid { display: grid; grid-template-columns: 120px repeat(${cols}, 1fr); gap: 1px; background: #e0e0e0; border-radius: 12px; overflow: hidden; }
+    .cp-label { background: #f5f5f0; padding: 12px 14px; font-weight: 600; font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: 0.3px; display: flex; align-items: center; }
+    .cp-cell { background: white; padding: 12px 14px; font-size: 0.9rem; text-align: center; display: flex; align-items: center; justify-content: center; }
+    .cp-highlight { font-weight: 700; color: #C9A962; font-size: 1rem; }
+    .cp-header-cell { flex-direction: column; padding: 20px 12px; gap: 8px; }
+    .cp-header-cell img { width: 100%; max-height: 140px; object-fit: cover; border-radius: 8px; }
+    .cp-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1rem; }
+    .cp-price { color: #C9A962; font-weight: 700; font-size: 1.1rem; }
+    .cp-cat { font-size: 0.75rem; color: #888; }
+    .cp-empty { background: #f5f5f0; } /* top-left corner */
+    .cp-actions { text-align: center; margin: 32px 0; }
+    .cp-btn { display: inline-block; padding: 14px 32px; border-radius: 8px; font-size: 1rem; font-family: 'Source Sans 3', sans-serif; text-decoration: none; font-weight: 600; }
+    .cp-btn-wa { background: #25D366; color: white; }
+    .cp-btn-wa:hover { background: #1DA851; }
+    .cp-footer { text-align: center; padding: 24px; color: #888; font-size: 0.8rem; border-top: 2px solid #C9A962; margin-top: 32px; }
+    .cp-footer strong { font-family: 'Playfair Display', serif; color: #111; letter-spacing: 1px; }
+    @media (max-width: 600px) {
+      .cp-grid { grid-template-columns: 90px repeat(${cols}, 1fr); }
+      .cp-cell, .cp-label { padding: 8px 6px; font-size: 0.75rem; }
+      .cp-header-cell img { max-height: 80px; }
+      .cp-name { font-size: 0.85rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="cp-header">
+    <div>
+      <div class="cp-brand"><img src="/images/logo-cesantoni.png" alt="CESANTONI" onerror="this.outerHTML='<span>CESANTONI</span>'"></div>
+      <div class="cp-subtitle">Comparador de Pisos</div>
+    </div>
+  </div>
+  <div class="cp-container">
+    <div class="cp-grid">
+      <div class="cp-label cp-empty"></div>
+      ${headerCells}
+      ${specRows}
+    </div>
+    <div class="cp-actions">
+      <a class="cp-btn cp-btn-wa" href="https://wa.me/5215651747912?text=${waMsg}" target="_blank">Cotizar por WhatsApp</a>
+    </div>
+  </div>
+  <div class="cp-footer">
+    <strong>CESANTONI</strong><br>Pisos & Revestimientos Premium
+  </div>
+</body>
+</html>`);
+  } catch (e) {
+    console.error('Compare page error:', e.message);
+    res.status(500).send('<h1>Error al cargar comparacion</h1>');
+  }
+});
+
 app.get('/api/landing/:identifier', async (req, res) => {
   try {
     // Buscar por SKU o por slug
@@ -3593,11 +3705,15 @@ app.post('/webhook', async (req, res) => {
 
           await sendWhatsApp(from, `✅ *${selectedProduct.name}* agregado (${pickCount} seleccionados)`);
           await new Promise(r => setTimeout(r, 300));
-          await sendWhatsAppButtons(from, '¿Qué quieres hacer?', [
+          const catBtns = [
             { id: 'ver_mas_catalogo', title: '📋 Elegir otro piso' },
-            { id: 'cotizar_seleccion', title: `📐 Cotizar mis ${pickCount}` },
-            { id: 'ver_seleccionados', title: `👁️ Ver mis ${pickCount} pisos` }
-          ]);
+            { id: 'cotizar_seleccion', title: `📐 Cotizar mis ${pickCount}` }
+          ];
+          catBtns.push(pickCount >= 2
+            ? { id: 'comparar_seleccion', title: `⚖️ Comparar ${pickCount}` }
+            : { id: 'ver_seleccionados', title: `👁️ Ver mis ${pickCount} pisos` }
+          );
+          await sendWhatsAppButtons(from, '¿Qué quieres hacer?', catBtns);
         } else {
           await sendWhatsApp(from, `No encontré ese producto. Escríbeme el nombre del piso que te interesa. 😊`);
         }
@@ -3640,6 +3756,69 @@ app.post('/webhook', async (req, res) => {
             await sendWhatsApp(from, `📐 *Cotizando ${firstName}*\n\n¿Cuántos m² necesitas?\n_Escribe el número, ej: 50_`);
           } else {
             await sendWhatsApp(from, `📐 *Cotizando ${uniqueRefs.length} pisos*\n\nEmpecemos con *${firstName}*\n¿Cuántos m² necesitas?\n_Escribe el número, ej: 50_`);
+          }
+        }
+
+      } else if (btnId === 'comparar_seleccion') {
+        // Compare selected catalog picks side by side
+        const picks = await query(
+          "SELECT message FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '[CATALOG_PICK]%' ORDER BY created_at ASC",
+          [from]);
+
+        const seen = new Set();
+        const uniqueRefs = [];
+        for (const p of picks) {
+          const ref = p.message.replace('[CATALOG_PICK] ', '').trim();
+          if (!seen.has(ref)) { seen.add(ref); uniqueRefs.push(ref); }
+        }
+
+        if (uniqueRefs.length < 2) {
+          await sendWhatsApp(from, 'Necesitas al menos 2 pisos para comparar. Elige otro piso primero.');
+        } else {
+          const compareProducts = [];
+          for (const ref of uniqueRefs) {
+            const p = await queryOne('SELECT * FROM products WHERE sku = ? OR id::text = ?', [ref, ref]);
+            if (p) compareProducts.push(p);
+          }
+
+          if (compareProducts.length < 2) {
+            await sendWhatsApp(from, 'No encontré los productos. Intenta elegirlos de nuevo.');
+          } else {
+            // Send images
+            for (const p of compareProducts) {
+              if (p.image_url) {
+                await sendWhatsAppImage(from, p.image_url, `*${p.name}*`);
+                await new Promise(r => setTimeout(r, 500));
+              }
+            }
+
+            // Build comparison text
+            let comp = `⚖️ *COMPARADOR DE PISOS*\n${'─'.repeat(24)}\n\n`;
+            const specs = [
+              { e: '💰', l: 'Precio', fn: p => `$${p.base_price || '?'}/m²` },
+              { e: '📐', l: 'Formato', fn: p => p.format || '-' },
+              { e: '✨', l: 'Acabado', fn: p => p.finish || '-' },
+              { e: '💪', l: 'PEI', fn: p => p.pei ? `PEI ${p.pei}` : '-' },
+              { e: '📦', l: 'm²/caja', fn: p => p.sqm_per_box ? `${p.sqm_per_box} m²` : '-' },
+              { e: '🏠', l: 'Uso', fn: p => p.usage || '-' }
+            ];
+
+            for (const p of compareProducts) {
+              comp += `*${p.name}*\n`;
+              for (const s of specs) comp += `  ${s.e} ${s.l}: ${s.fn(p)}\n`;
+              comp += `\n`;
+            }
+
+            const ids = compareProducts.map(p => p.sku || p.id).join(',');
+            comp += `🔗 *Ver comparación completa:*\n${BASE_URL}/comparar/${ids}`;
+
+            await sendWhatsApp(from, comp);
+            await new Promise(r => setTimeout(r, 500));
+            await sendWhatsAppButtons(from, '¿Qué sigue?', [
+              { id: 'cotizar_seleccion', title: `📐 Cotizar mis ${uniqueRefs.length}` },
+              { id: 'ver_mas_catalogo', title: '📋 Elegir otro piso' },
+              { id: 'hablar_asesor', title: '👤 Hablar c/asesor' }
+            ]);
           }
         }
 
@@ -3695,11 +3874,14 @@ app.post('/webhook', async (req, res) => {
           }
 
           await new Promise(r => setTimeout(r, 500));
-          await sendWhatsAppButtons(from, `Esos son tus ${uniqueRefs.length} favoritos. ¿Qué sigue?`, [
+          const vsBtns = [
             { id: 'cotizar_seleccion', title: `📐 Cotizar ${uniqueRefs.length} pisos` },
-            { id: 'ver_mas_catalogo', title: '📋 Agregar otro' },
+            uniqueRefs.length >= 2
+              ? { id: 'comparar_seleccion', title: `⚖️ Comparar ${uniqueRefs.length}` }
+              : { id: 'ver_mas_catalogo', title: '📋 Agregar otro' },
             { id: 'hablar_asesor', title: '👤 Hablar c/asesor' }
-          ]);
+          ];
+          await sendWhatsAppButtons(from, `Esos son tus ${uniqueRefs.length} favoritos. ¿Qué sigue?`, vsBtns);
         }
 
       } else if (btnId === 'ver_mas_catalogo') {
