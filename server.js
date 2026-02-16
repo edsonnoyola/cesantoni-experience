@@ -3187,7 +3187,7 @@ Responde SOLO el texto del mensaje. Corto, conversacional, sin listas.`;
             { role: 'model', parts: [{ text: 'Entendido, soy Terra.' }] },
             { role: 'user', parts: [{ text }] }
           ],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 256 },
           safetySettings: [
             { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
             { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
@@ -3230,8 +3230,21 @@ Responde SOLO el texto del mensaje. Corto, conversacional, sin listas.`;
 
     if (!reply) reply = 'Disculpa, tuve un problema. ¿Puedes repetir tu mensaje?';
 
-    // Post-process: strip cesantoni.com.mx links (Gemini sometimes adds them despite instructions)
-    reply = reply.replace(/https?:\/\/(www\.)?cesantoni\.com\.mx\S*/gi, '').replace(/\n{3,}/g, '\n\n').trim();
+    // Post-process: clean up Gemini output for WhatsApp
+    // 1. Strip cesantoni.com.mx links
+    reply = reply.replace(/https?:\/\/(www\.)?cesantoni\.com\.mx\S*/gi, '');
+    // 2. Strip markdown: bold, headers, horizontal rules, bullet lists
+    reply = reply.replace(/\*\*/g, '').replace(/^#{1,3}\s+/gm, '').replace(/^-{3,}/gm, '').replace(/^[•\-\*]\s+/gm, '').replace(/^\d+\.\s+/gm, '');
+    // 3. Strip emoji headers like "🏆 TOP RECOMENDACIONES:"
+    reply = reply.replace(/^[\p{Emoji}\p{Emoji_Presentation}\uFE0F]+\s*(TOP|MIS|MEJORES|RECOMENDACIONES)[^\n]*\n?/gmu, '');
+    // 4. Clean excessive whitespace
+    reply = reply.replace(/\n{3,}/g, '\n\n').trim();
+    // 5. Truncate to ~400 chars max (WhatsApp friendly) — cut at last sentence
+    if (reply.length > 400) {
+      const cut = reply.substring(0, 400);
+      const lastPeriod = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+      reply = lastPeriod > 100 ? cut.substring(0, lastPeriod + 1) : cut.substring(0, 400).trim();
+    }
 
     // Auto-append product landing link if Gemini mentions a product by name
     if (products.length > 0 && !/cesantoni-experience|\/p\//i.test(reply)) {
