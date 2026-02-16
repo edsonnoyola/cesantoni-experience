@@ -3203,26 +3203,10 @@ app.post('/webhook', async (req, res) => {
         const selectedProduct = await queryOne('SELECT * FROM products WHERE sku = ? OR slug = ? OR id::text = ?', [catRef, catRef, catRef]);
         if (selectedProduct) {
           await addLeadScore(from, 10, 'catalog_select');
-          const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
-          const link = `${baseUrl}/p/${selectedProduct.sku || selectedProduct.slug}`;
-          const pei = parseInt(selectedProduct.pei) || 0;
-          const peiTip = pei >= 4 ? 'Alto tráfico' : pei >= 3 ? 'Toda la casa' : pei >= 2 ? 'Tráfico ligero' : '';
-          let caption = `*${selectedProduct.name}*\n\n`;
-          caption += `💰 *$${selectedProduct.base_price || '?'}/m²*\n`;
-          caption += `📐 Formato: ${selectedProduct.format || '-'}\n`;
-          caption += `✨ Acabado: ${selectedProduct.finish || '-'}\n`;
-          if (pei) caption += `💪 PEI ${pei} — ${peiTip}\n`;
-          if (selectedProduct.usage) caption += `🏠 Uso: ${selectedProduct.usage}\n`;
-          if (selectedProduct.sqm_per_box) caption += `📦 ${selectedProduct.sqm_per_box} m²/caja\n`;
-          caption += `\n🔗 Ver detalles: ${link}`;
 
-          if (selectedProduct.image_url) {
-            await sendWhatsAppImage(from, selectedProduct.image_url, caption);
-          } else {
-            await sendWhatsApp(from, caption);
-          }
-
-          // Track product view
+          // Save pick (accumulate selections)
+          await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
+            [from, 'assistant', `[CATALOG_PICK] ${selectedProduct.sku || selectedProduct.id}`]);
           await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
             [from, 'assistant', `[VIEWED_PRODUCT] ${selectedProduct.name}`]);
 
@@ -3235,14 +3219,72 @@ app.post('/webhook', async (req, res) => {
             }
           }
 
-          await new Promise(r => setTimeout(r, 500));
-          await sendWhatsAppButtons(from, '¿Qué te gustaría hacer?', [
-            { id: 'calcular_m2', title: '📐 Calcular m²' },
-            { id: 'ver_mas_catalogo', title: '📋 Ver más pisos' },
+          // Count how many picks so far
+          const pickCount = await scalar(
+            "SELECT COUNT(*) FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '[CATALOG_PICK]%'", [from]);
+
+          await sendWhatsApp(from, `✅ *${selectedProduct.name}* agregado (${pickCount} seleccionados)`);
+          await new Promise(r => setTimeout(r, 300));
+          await sendWhatsAppButtons(from, '¿Qué quieres hacer?', [
+            { id: 'ver_mas_catalogo', title: '📋 Elegir otro piso' },
+            { id: 'ver_seleccionados', title: `👁️ Ver mis ${pickCount} pisos` },
             { id: 'hablar_asesor', title: '👤 Hablar c/asesor' }
           ]);
         } else {
           await sendWhatsApp(from, `No encontré ese producto. Escríbeme el nombre del piso que te interesa. 😊`);
+        }
+
+      } else if (btnId === 'ver_seleccionados') {
+        // Show all accumulated catalog picks with full details
+        const picks = await query(
+          "SELECT message FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '[CATALOG_PICK]%' ORDER BY created_at ASC",
+          [from]);
+
+        if (picks.length === 0) {
+          await sendWhatsApp(from, 'No tienes pisos seleccionados aún. Escríbeme _pisos de madera_ o el estilo que buscas. 😊');
+        } else {
+          const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
+          // Deduplicate picks
+          const seen = new Set();
+          const uniqueRefs = [];
+          for (const p of picks) {
+            const ref = p.message.replace('[CATALOG_PICK] ', '').trim();
+            if (!seen.has(ref)) { seen.add(ref); uniqueRefs.push(ref); }
+          }
+
+          await sendWhatsApp(from, `🏠 *Tus ${uniqueRefs.length} pisos seleccionados:*`);
+          await new Promise(r => setTimeout(r, 400));
+
+          for (const ref of uniqueRefs) {
+            const sp = await queryOne('SELECT * FROM products WHERE sku = ? OR id::text = ?', [ref, ref]);
+            if (!sp) continue;
+            const link = `${baseUrl}/p/${sp.sku || sp.slug}`;
+            const pei = parseInt(sp.pei) || 0;
+            const peiTip = pei >= 4 ? 'Alto tráfico' : pei >= 3 ? 'Toda la casa' : pei >= 2 ? 'Tráfico ligero' : '';
+            let caption = `*${sp.name}*\n`;
+            caption += `💰 $${sp.base_price || '?'}/m²\n`;
+            caption += `📐 ${sp.format || '-'} · ✨ ${sp.finish || '-'}\n`;
+            if (pei) caption += `💪 PEI ${pei} — ${peiTip}\n`;
+            if (sp.sqm_per_box) caption += `📦 ${sp.sqm_per_box} m²/caja\n`;
+            caption += `🔗 ${link}`;
+
+            if (sp.image_url) {
+              await sendWhatsAppImage(from, sp.image_url, caption);
+            } else {
+              await sendWhatsApp(from, caption);
+            }
+            await new Promise(r => setTimeout(r, 800));
+          }
+
+          // Clear picks after showing
+          await run("DELETE FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '[CATALOG_PICK]%'", [from]);
+
+          await new Promise(r => setTimeout(r, 500));
+          await sendWhatsAppButtons(from, `Esos son tus ${uniqueRefs.length} favoritos. ¿Qué sigue?`, [
+            { id: 'calcular_m2', title: '📐 Calcular m²' },
+            { id: 'comparar', title: '⚖️ Comparar' },
+            { id: 'hablar_asesor', title: '👤 Hablar c/asesor' }
+          ]);
         }
 
       } else if (btnId === 'ver_mas_catalogo') {
