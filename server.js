@@ -19,7 +19,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', async (req, res) => res.json({ version: 'v6.0.0', commit: 'catalog-multiproduct-appointments-survey-compare-share' }));
+app.get('/api/health', async (req, res) => res.json({ version: 'v7.0.0', commit: 'scoring-csv-broadcast-analytics-abandoned-notifications' }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
@@ -1925,6 +1925,14 @@ async function sendWhatsAppButtons(to, body, buttons) {
   }
 }
 
+// Lead scoring: update score on key actions
+async function addLeadScore(phone, points, action) {
+  try {
+    await run('UPDATE leads SET score = COALESCE(score, 0) + ?, updated_at = CURRENT_TIMESTAMP WHERE phone = ?', [points, phone]);
+    console.log(`   📊 Score +${points} (${action}) for ${phone}`);
+  } catch(e) { /* ignore if no lead */ }
+}
+
 // Send WhatsApp template message (for contacting users outside 24hr window)
 async function sendWhatsAppTemplate(to, templateName, params = []) {
   if (!WA_TOKEN) return null;
@@ -2828,9 +2836,10 @@ app.post('/webhook', async (req, res) => {
             }
           }
 
-          // Track viewed product for comparator
+          // Track viewed product for comparator + score
           await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
             [from, 'assistant', `[VIEWED_PRODUCT] ${p.name}`]);
+          await addLeadScore(from, 10, 'product_view');
 
           await new Promise(r => setTimeout(r, 800));
           await sendWhatsAppButtons(from,
@@ -2880,6 +2889,7 @@ app.post('/webhook', async (req, res) => {
 
       if (btnId === 'calcular_m2') {
         await sendWhatsApp(from, `¡Perfecto! ¿Cuántos m² necesitas de *${prodName || 'piso'}*? Si no sabes exacto, dime las medidas del espacio y lo calculo. 📐`);
+        await addLeadScore(from, 20, 'calcular_m2');
       } else if (btnId === 'ver_similares') {
         // Find similar products by format (same size = same look) then by finish
         const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
@@ -2924,6 +2934,7 @@ app.post('/webhook', async (req, res) => {
           await sendWhatsApp(from, `Deja busco opciones similares. ¿Qué estilo buscas? ¿Madera, mármol, piedra? 🤔`);
         }
       } else if (btnId === 'hablar_asesor') {
+        await addLeadScore(from, 50, 'hablar_asesor');
         const store = lead?.store_id ? await queryOne('SELECT * FROM stores WHERE id = ?', [lead.store_id]) : null;
 
         // Notify the store advisor with lead info via template
@@ -2992,6 +3003,7 @@ app.post('/webhook', async (req, res) => {
         await sendWhatsApp(from, '¡Perfecto! Escríbeme el nombre del siguiente piso que necesitas y te cotizo los m². 😊');
 
       } else if (btnId === 'enviar_cotizacion') {
+        await addLeadScore(from, 30, 'cotizacion');
         // Multi-product quote: gather all QUOTE_ITEM entries
         const quoteItems = await query(
           "SELECT message FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '[QUOTE_ITEM]%' ORDER BY created_at ASC",
@@ -3048,6 +3060,7 @@ app.post('/webhook', async (req, res) => {
         }
 
       } else if (btnId === 'agendar_visita') {
+        await addLeadScore(from, 40, 'agendar_visita');
         // Store visit scheduling
         const store = lead?.store_id ? await queryOne('SELECT * FROM stores WHERE id = ?', [lead.store_id]) : null;
         const storeName = store?.name || 'la tienda';
@@ -3311,6 +3324,141 @@ app.put('/api/leads/:id', async (req, res) => {
     if (status) await run('UPDATE leads SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [status, req.params.id]);
     if (notes) await run('UPDATE leads SET notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [notes, req.params.id]);
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// CSV Export
+app.get('/api/leads/export/csv', async (req, res) => {
+  try {
+    const { status, source, days } = req.query;
+    const d = parseInt(days) || 365;
+    let sql = `SELECT l.*, s.name as store_name_full, s.city as store_city, s.state as store_state, d.name as distributor
+      FROM leads l LEFT JOIN stores s ON l.store_id = s.id LEFT JOIN distributors d ON s.distributor_id = d.id
+      WHERE l.created_at >= NOW() - INTERVAL '${d} days'`;
+    const params = [];
+    if (status) { sql += ' AND l.status = ?'; params.push(status); }
+    if (source) { sql += ' AND l.source = ?'; params.push(source); }
+    sql += ' ORDER BY l.created_at DESC';
+    const leads = await query(sql, params);
+
+    const header = 'ID,Nombre,Teléfono,Fuente,Status,Score,Tienda,Ciudad,Estado,Distribuidor,Productos,Notas,Creado,Actualizado\n';
+    const rows = leads.map(l => {
+      const prods = (l.products_interested || '').replace(/"/g, '""');
+      const notes = (l.notes || '').replace(/"/g, '""').replace(/\n/g, ' ');
+      return `${l.id},"${l.name || ''}","${l.phone || ''}","${l.source}","${l.status}",${l.score || 0},"${l.store_name_full || ''}","${l.store_city || ''}","${l.store_state || ''}","${l.distributor || ''}","${prods}","${notes}","${l.created_at || ''}","${l.updated_at || ''}"`;
+    }).join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=leads_cesantoni_${new Date().toISOString().split('T')[0]}.csv`);
+    res.send('\uFEFF' + header + rows); // BOM for Excel
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Bot Analytics
+app.get('/api/analytics/bot', async (req, res) => {
+  try {
+    const d = parseInt(req.query.days) || 30;
+
+    // Top products searched
+    const topProducts = await query(`
+      SELECT message, COUNT(*) as views FROM wa_conversations
+      WHERE role = 'assistant' AND message LIKE '[VIEWED_PRODUCT]%'
+      AND created_at >= NOW() - INTERVAL '${d} days'
+      GROUP BY message ORDER BY views DESC LIMIT 10`);
+
+    // Messages per day
+    const msgsPerDay = await query(`
+      SELECT DATE(created_at) as day, COUNT(*) as count
+      FROM wa_conversations WHERE created_at >= NOW() - INTERVAL '${d} days'
+      GROUP BY DATE(created_at) ORDER BY day DESC LIMIT 30`);
+
+    // Leads by source
+    const leadsBySource = await query(`
+      SELECT source, COUNT(*) as count FROM leads
+      WHERE created_at >= NOW() - INTERVAL '${d} days'
+      GROUP BY source ORDER BY count DESC`);
+
+    // Leads by status
+    const leadsByStatus = await query(`
+      SELECT status, COUNT(*) as count FROM leads
+      WHERE created_at >= NOW() - INTERVAL '${d} days'
+      GROUP BY status ORDER BY count DESC`);
+
+    // Conversion rates
+    const totalLeads = await queryOne(`SELECT COUNT(*) as c FROM leads WHERE created_at >= NOW() - INTERVAL '${d} days'`);
+    const contacted = await queryOne(`SELECT COUNT(*) as c FROM leads WHERE status IN ('contacted','converted','appointment') AND created_at >= NOW() - INTERVAL '${d} days'`);
+    const converted = await queryOne(`SELECT COUNT(*) as c FROM leads WHERE status = 'converted' AND created_at >= NOW() - INTERVAL '${d} days'`);
+
+    // Average score
+    const avgScore = await queryOne(`SELECT ROUND(AVG(COALESCE(score, 0))) as avg FROM leads WHERE created_at >= NOW() - INTERVAL '${d} days'`);
+
+    // Top categories (from catalog searches)
+    const topCategories = await query(`
+      SELECT message, COUNT(*) as count FROM wa_conversations
+      WHERE role = 'user' AND (message ILIKE '%pisos de%' OR message ILIKE '%pisos para%')
+      AND created_at >= NOW() - INTERVAL '${d} days'
+      GROUP BY message ORDER BY count DESC LIMIT 5`);
+
+    res.json({
+      topProducts: topProducts.map(r => ({ name: r.message.replace('[VIEWED_PRODUCT] ', ''), views: parseInt(r.views) })),
+      msgsPerDay: msgsPerDay.map(r => ({ day: r.day, count: parseInt(r.count) })),
+      leadsBySource, leadsByStatus,
+      conversionRate: {
+        total: parseInt(totalLeads?.c || 0),
+        contacted: parseInt(contacted?.c || 0),
+        converted: parseInt(converted?.c || 0),
+        contactRate: totalLeads?.c > 0 ? ((contacted?.c / totalLeads.c) * 100).toFixed(1) : 0,
+        convertRate: totalLeads?.c > 0 ? ((converted?.c / totalLeads.c) * 100).toFixed(1) : 0,
+      },
+      avgScore: parseInt(avgScore?.avg || 0),
+      topCategories
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// New leads notification (polling)
+app.get('/api/leads/new/count', async (req, res) => {
+  try {
+    const since = req.query.since || new Date(Date.now() - 60*60*1000).toISOString();
+    const result = await queryOne("SELECT COUNT(*) as c FROM leads WHERE created_at > ?", [since]);
+    const recent = await query("SELECT id, name, phone, source, created_at FROM leads WHERE created_at > ? ORDER BY created_at DESC LIMIT 5", [since]);
+    res.json({ count: parseInt(result?.c || 0), recent });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// WhatsApp Broadcast
+app.post('/api/broadcast', async (req, res) => {
+  try {
+    const { template, params, filter } = req.body;
+    if (!template) return res.status(400).json({ error: 'Template name required' });
+
+    let sql = "SELECT DISTINCT phone, name FROM leads WHERE phone IS NOT NULL AND phone != ''";
+    const qParams = [];
+    if (filter?.source) { sql += ' AND source = ?'; qParams.push(filter.source); }
+    if (filter?.status) { sql += ' AND status = ?'; qParams.push(filter.status); }
+    if (filter?.minScore) { sql += ' AND COALESCE(score, 0) >= ?'; qParams.push(parseInt(filter.minScore)); }
+    const leads = await query(sql, qParams);
+
+    let sent = 0, failed = 0;
+    for (const lead of leads) {
+      try {
+        const p = (params || []).map(t => t.replace('{{nombre}}', lead.name || 'Cliente'));
+        await sendWhatsAppTemplate(lead.phone, template, p);
+        sent++;
+        await new Promise(r => setTimeout(r, 1000)); // Rate limit
+      } catch (e) {
+        failed++;
+      }
+    }
+    res.json({ total: leads.length, sent, failed });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -3628,6 +3776,48 @@ async function start() {
     }
   }, 60 * 60 * 1000); // Every 1 hour
   console.log('   📊 CRON survey active (every 1h)');
+
+  // CRON: Abandoned cart recovery (every 3 hours)
+  // Finds leads who calculated m² but never clicked hablar_asesor within 48h
+  setInterval(async () => {
+    try {
+      // Leads with QUOTE_ITEM or m² calc but no 'contacted' status, created 24-72h ago
+      const abandoned = await query(`
+        SELECT DISTINCT l.id, l.phone, l.name, l.products_interested
+        FROM leads l
+        JOIN wa_conversations wc ON wc.phone = l.phone
+        WHERE l.status = 'new'
+        AND l.created_at BETWEEN NOW() - INTERVAL '72 hours' AND NOW() - INTERVAL '24 hours'
+        AND (wc.message LIKE '[QUOTE_ITEM]%' OR wc.message LIKE '%Cotización%')
+        AND wc.role = 'assistant'
+        AND NOT EXISTS (
+          SELECT 1 FROM wa_conversations w2
+          WHERE w2.phone = l.phone AND w2.role = 'assistant'
+          AND w2.message LIKE '%abandoned_reminder%'
+        )
+        LIMIT 10`);
+
+      for (const lead of abandoned) {
+        let prodName = 'Pisos Cesantoni';
+        try { prodName = JSON.parse(lead.products_interested || '[]')[0] || prodName; } catch(e) {}
+
+        // Mark before send
+        await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
+          [lead.phone, 'assistant', '[abandoned_reminder]']);
+
+        await sendWhatsAppTemplate(lead.phone, 'lead_nuevo', [
+          lead.name || 'Cliente', lead.phone, 'Cesantoni',
+          `¿Aún interesado en ${prodName}? Tu cotización te espera`
+        ]);
+
+        console.log(`🛒 Abandoned cart reminder sent to ${lead.name || lead.phone}`);
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    } catch (e) {
+      console.error('CRON abandoned cart error:', e.message);
+    }
+  }, 3 * 60 * 60 * 1000); // Every 3 hours
+  console.log('   🛒 CRON abandoned cart active (every 3h)');
 }
 
 start().catch(console.error);

@@ -209,6 +209,9 @@ async function initDB() {
     )
   `);
 
+  // Add score column if not exists
+  await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 0`);
+
   // Additional tables that may exist in server.js
   await pool.query(`
     CREATE TABLE IF NOT EXISTS landings (

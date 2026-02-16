@@ -270,6 +270,7 @@
         <a href="/nfc.html" class="nav-item" style="text-decoration:none;" onclick="closeSidebar()">📲 <span>NFC Tags</span></a>
         <a href="/qr-terra.html" class="nav-item" style="text-decoration:none;" onclick="closeSidebar()">🤖 <span>QR Terra</span></a>
         <div class="nav-item" onclick="showPage('whatsapp')">💬 <span>WhatsApp Bot</span></div>
+        <div class="nav-item" onclick="showPage('analytics')">📊 <span>Analytics</span></div>
         <div class="nav-item" onclick="showPage('promociones')">💰 <span>Promociones</span></div>
         <a href="/landings.html" class="nav-item" style="text-decoration:none;" onclick="closeSidebar()">📄 <span>Landings</span></a>
     </nav>
@@ -719,7 +720,13 @@
         </div>
         <!-- ==================== LEADS ==================== -->
         <div id="page-leads" class="page">
-            <div class="page-header"><h1>Leads CRM</h1></div>
+            <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
+                <h1>Leads CRM</h1>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <span id="lp-notif-badge" style="display:none;background:#C41E3A;color:#fff;border-radius:12px;padding:2px 10px;font-size:0.75rem;font-weight:700;animation:pulse 2s infinite"></span>
+                    <a href="/api/leads/export/csv?days=365" style="font-size:0.75rem;padding:8px 16px;background:#27ae60;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Exportar CSV</a>
+                </div>
+            </div>
             <div class="stats-row" style="grid-template-columns: repeat(5, 1fr);">
                 <div class="stat-card"><div class="label">Total</div><div class="value" id="lp-total">-</div></div>
                 <div class="stat-card"><div class="label">Landing</div><div class="value" id="lp-landing">-</div></div>
@@ -749,6 +756,35 @@
                             Selecciona un lead para ver su información completa
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+        <!-- ==================== ANALYTICS ==================== -->
+        <div id="page-analytics" class="page">
+            <div class="page-header"><h1>Bot Analytics</h1></div>
+            <div class="stats-row" style="grid-template-columns: repeat(5, 1fr);">
+                <div class="stat-card"><div class="label">Total Leads</div><div class="value" id="an-total">-</div></div>
+                <div class="stat-card"><div class="label">Tasa Contacto</div><div class="value" id="an-contact-rate">-</div></div>
+                <div class="stat-card"><div class="label">Tasa Conversión</div><div class="value" id="an-convert-rate">-</div></div>
+                <div class="stat-card"><div class="label">Score Promedio</div><div class="value" id="an-avg-score">-</div></div>
+                <div class="stat-card"><div class="label">Contactados</div><div class="value" id="an-contacted">-</div></div>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header"><span class="card-title">Top Productos</span></div>
+                    <div id="an-top-products" style="padding:12px;font-size:0.85rem">Cargando...</div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><span class="card-title">Leads por Fuente</span></div>
+                    <div id="an-by-source" style="padding:12px;font-size:0.85rem">Cargando...</div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><span class="card-title">Leads por Status</span></div>
+                    <div id="an-by-status" style="padding:12px;font-size:0.85rem">Cargando...</div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><span class="card-title">Mensajes por Día</span></div>
+                    <div id="an-msgs-day" style="padding:12px;font-size:0.85rem">Cargando...</div>
                 </div>
             </div>
         </div>
@@ -828,6 +864,7 @@
             
             if (page === 'dashboard') loadDashboard();
             if (page === 'leads') loadLeadsPage();
+            if (page === 'analytics') loadAnalytics();
             if (page === 'whatsapp') loadWAPage();
             if (page === 'productos') loadProducts();
             if (page === 'tiendas') loadStores();
@@ -2259,11 +2296,14 @@
                     try { products = JSON.parse(l.products_interested || '[]').join(', '); } catch(e) { products = l.products_interested || ''; }
                     const city = l.store_city || '';
                     const store = l.store_full_name || l.store_name || '';
+                    const score = l.score || 0;
+                    const scoreColor = score >= 50 ? '#C41E3A' : score >= 20 ? '#f39c12' : '#ccc';
                     return `<div style="padding:12px 14px;border-bottom:1px solid #f5f5f5;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''" onclick="showLeadPage(${l.id})">
                         <div style="display:flex;justify-content:space-between;align-items:center">
                             <div style="display:flex;align-items:center;gap:8px">
                                 <span style="width:8px;height:8px;border-radius:50%;background:${statusDot};display:inline-block"></span>
                                 <strong style="font-size:0.9rem">${l.name || 'Sin nombre'}</strong>
+                                ${score > 0 ? `<span style="font-size:0.6rem;padding:2px 6px;border-radius:8px;background:${scoreColor};color:#fff;font-weight:700">${score}pts</span>` : ''}
                             </div>
                             <span style="font-size:0.65rem;color:#aaa">${date}</span>
                         </div>
@@ -2395,6 +2435,85 @@
                 showLeadPage(leadId);
             } catch (e) { console.error(e); }
         }
+
+        // ==================== ANALYTICS ====================
+        async function loadAnalytics() {
+            try {
+                const res = await fetch('/api/analytics/bot?days=30');
+                const data = await res.json();
+
+                document.getElementById('an-total').textContent = data.conversionRate.total;
+                document.getElementById('an-contact-rate').textContent = data.conversionRate.contactRate + '%';
+                document.getElementById('an-convert-rate').textContent = data.conversionRate.convertRate + '%';
+                document.getElementById('an-avg-score').textContent = data.avgScore;
+                document.getElementById('an-contacted').textContent = data.conversionRate.contacted;
+
+                // Top products
+                const topEl = document.getElementById('an-top-products');
+                if (data.topProducts.length > 0) {
+                    topEl.innerHTML = data.topProducts.map((p, i) => {
+                        const barW = Math.max(20, (p.views / (data.topProducts[0]?.views || 1)) * 100);
+                        return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                            <span style="width:20px;text-align:right;font-size:0.75rem;color:#888">${i+1}</span>
+                            <div style="flex:1">
+                                <div style="font-size:0.8rem;font-weight:600">${p.name}</div>
+                                <div style="height:6px;background:#f0f0f0;border-radius:3px;margin-top:3px"><div style="height:6px;background:linear-gradient(90deg,#C9A962,#8B7340);border-radius:3px;width:${barW}%"></div></div>
+                            </div>
+                            <span style="font-size:0.75rem;font-weight:700;color:#C9A962">${p.views}</span>
+                        </div>`;
+                    }).join('');
+                } else { topEl.innerHTML = '<span style="color:#aaa">Sin datos aún</span>'; }
+
+                // By source
+                const srcEl = document.getElementById('an-by-source');
+                const srcColors = { landing: '#C9A962', terra_qr: '#27ae60', whatsapp_bot: '#3498db' };
+                srcEl.innerHTML = data.leadsBySource.map(s => `
+                    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5">
+                        <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:${srcColors[s.source]||'#ccc'}"></span>${s.source}</span>
+                        <strong>${s.count}</strong>
+                    </div>`).join('') || '<span style="color:#aaa">Sin datos</span>';
+
+                // By status
+                const stEl = document.getElementById('an-by-status');
+                const stColors = { new: '#27ae60', contacted: '#f39c12', converted: '#3498db', appointment: '#9b59b6', lost: '#e74c3c' };
+                stEl.innerHTML = data.leadsByStatus.map(s => `
+                    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5">
+                        <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:${stColors[s.status]||'#ccc'}"></span>${s.status}</span>
+                        <strong>${s.count}</strong>
+                    </div>`).join('') || '<span style="color:#aaa">Sin datos</span>';
+
+                // Messages per day
+                const msgEl = document.getElementById('an-msgs-day');
+                if (data.msgsPerDay.length > 0) {
+                    const maxMsg = Math.max(...data.msgsPerDay.map(d => d.count));
+                    msgEl.innerHTML = data.msgsPerDay.slice(0, 14).map(d => {
+                        const barW = Math.max(5, (d.count / maxMsg) * 100);
+                        const day = new Date(d.day).toLocaleDateString('es-MX', { day:'numeric', month:'short' });
+                        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                            <span style="width:50px;font-size:0.7rem;color:#888;text-align:right">${day}</span>
+                            <div style="flex:1;height:8px;background:#f0f0f0;border-radius:4px"><div style="height:8px;background:#C9A962;border-radius:4px;width:${barW}%"></div></div>
+                            <span style="width:30px;font-size:0.7rem;font-weight:600">${d.count}</span>
+                        </div>`;
+                    }).join('');
+                } else { msgEl.innerHTML = '<span style="color:#aaa">Sin datos</span>'; }
+            } catch (e) { console.error('Analytics error:', e); }
+        }
+
+        // ==================== LEAD NOTIFICATIONS (polling) ====================
+        let lastNotifCheck = new Date().toISOString();
+        setInterval(async () => {
+            try {
+                const res = await fetch(`/api/leads/new/count?since=${lastNotifCheck}`);
+                const data = await res.json();
+                const badge = document.getElementById('lp-notif-badge');
+                if (data.count > 0) {
+                    badge.textContent = data.count + ' nuevo' + (data.count > 1 ? 's' : '');
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            } catch(e) {}
+        }, 30000); // Every 30 seconds
 
         // ==================== INIT ====================
         loadAllData().then(() => { loadDashboard(); loadFunnel(); loadLeads(); loadWALeads(); });
