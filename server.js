@@ -2751,7 +2751,7 @@ app.post('/webhook', async (req, res) => {
             `SELECT * FROM products WHERE active = 1 AND (
               name ILIKE '%wood%' OR format ILIKE '%20 x 120%' OR format ILIKE '%20 x 160%' OR format ILIKE '%26 x 160%'
               OR description ILIKE '%madera%'
-            ) ORDER BY RANDOM() LIMIT 5`);
+            ) ORDER BY RANDOM() LIMIT 10`);
         } else if (isMarble) {
           // Marble-look = marble keywords in description, or known marble names
           // Exclude wood-look formats and names
@@ -2765,13 +2765,13 @@ app.post('/webhook', async (req, res) => {
             )
             AND name NOT ILIKE '%wood%' AND name NOT ILIKE '%mutina%' AND name NOT ILIKE '%maple%'
             AND format NOT ILIKE '%20 x 120%' AND format NOT ILIKE '%20 x 160%' AND format NOT ILIKE '%26 x 160%'
-            ORDER BY RANDOM() LIMIT 5`);
+            ORDER BY RANDOM() LIMIT 10`);
         } else if (isStone) {
           catProducts = await query(
             `SELECT * FROM products WHERE active = 1 AND (
               description ILIKE '%piedra%' OR description ILIKE '%stone%' OR description ILIKE '%roca%'
               OR name ILIKE '%piatra%' OR name ILIKE '%coral%'
-            ) ORDER BY RANDOM() LIMIT 5`);
+            ) ORDER BY RANDOM() LIMIT 10`);
         } else {
           // Generic: search by finish, usage, name, description
           const catMap = {
@@ -2811,10 +2811,14 @@ app.post('/webhook', async (req, res) => {
             description: `$${s.base_price || '?'}/m² · ${s.format || ''} · ${s.finish || ''}`
           }));
           await sendWhatsAppList(from,
-            `🏠 *Pisos estilo ${catSearch}* — ${catProducts.length} opciones.\nSelecciona uno para ver detalles:`,
+            `🏠 *Pisos estilo ${catSearch}* — ${catProducts.length} opciones.\nSelecciona los que te interesen:`,
             'Ver pisos',
             [{ title: `Estilo ${catSearch}`, rows: listRows }]
           );
+          // Save last catalog search for "ver más" button
+          await run("DELETE FROM wa_conversations WHERE phone = ? AND role = 'system' AND message LIKE '[LAST_CATALOG]%'", [from]);
+          await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
+            [from, 'system', `[LAST_CATALOG] ${catSearch}`]);
           // Also send first product image as preview
           if (catProducts[0]?.image_url) {
             await new Promise(r => setTimeout(r, 500));
@@ -3234,11 +3238,61 @@ app.post('/webhook', async (req, res) => {
           await new Promise(r => setTimeout(r, 500));
           await sendWhatsAppButtons(from, '¿Qué te gustaría hacer?', [
             { id: 'calcular_m2', title: '📐 Calcular m²' },
-            { id: 'ver_similares', title: '🔄 Ver similares' },
+            { id: 'ver_mas_catalogo', title: '📋 Ver más pisos' },
             { id: 'hablar_asesor', title: '👤 Hablar c/asesor' }
           ]);
         } else {
           await sendWhatsApp(from, `No encontré ese producto. Escríbeme el nombre del piso que te interesa. 😊`);
+        }
+
+      } else if (btnId === 'ver_mas_catalogo') {
+        // Re-show the last catalog list
+        const lastCat = await queryOne(
+          "SELECT message FROM wa_conversations WHERE phone = ? AND role = 'system' AND message LIKE '[LAST_CATALOG]%' ORDER BY created_at DESC LIMIT 1",
+          [from]);
+        if (lastCat) {
+          const catSearch = lastCat.message.replace('[LAST_CATALOG] ', '').trim();
+          const isWood = /madera|wood/i.test(catSearch);
+          const isMarble = /m[aá]rmol|marble/i.test(catSearch);
+          const isStone = /piedra|stone/i.test(catSearch);
+          let catProducts = [];
+          if (isWood) {
+            catProducts = await query(`SELECT * FROM products WHERE active = 1 AND (
+              name ILIKE '%wood%' OR format ILIKE '%20 x 120%' OR format ILIKE '%20 x 160%' OR format ILIKE '%26 x 160%'
+              OR description ILIKE '%madera%') ORDER BY RANDOM() LIMIT 10`);
+          } else if (isMarble) {
+            catProducts = await query(`SELECT * FROM products WHERE active = 1 AND (
+              description ILIKE '%m_rmol%' OR description ILIKE '%marble%' OR description ILIKE '%calacatta%'
+              OR name ILIKE '%calacatta%' OR name ILIKE '%bianco%' OR name ILIKE '%quarzo%'
+              OR ((format ILIKE '%60x120%' OR format ILIKE '%60 x 120%' OR format ILIKE '%80x160%' OR format ILIKE '%80 x 160%')
+                  AND (finish ILIKE '%BRILLANTE%' OR finish ILIKE '%PULIDO%' OR finish ILIKE '%SATINADO%')))
+              AND name NOT ILIKE '%wood%' AND name NOT ILIKE '%mutina%' AND name NOT ILIKE '%maple%'
+              AND format NOT ILIKE '%20 x 120%' AND format NOT ILIKE '%20 x 160%' AND format NOT ILIKE '%26 x 160%'
+              ORDER BY RANDOM() LIMIT 10`);
+          } else if (isStone) {
+            catProducts = await query(`SELECT * FROM products WHERE active = 1 AND (
+              description ILIKE '%piedra%' OR description ILIKE '%stone%' OR description ILIKE '%roca%'
+              OR name ILIKE '%piatra%' OR name ILIKE '%coral%') ORDER BY RANDOM() LIMIT 10`);
+          } else {
+            catProducts = await query(
+              'SELECT * FROM products WHERE active = 1 AND (name ILIKE ? OR finish ILIKE ? OR usage ILIKE ? OR description ILIKE ?) ORDER BY RANDOM() LIMIT 10',
+              [`%${catSearch}%`, `%${catSearch}%`, `%${catSearch}%`, `%${catSearch}%`]);
+          }
+          if (catProducts.length > 0) {
+            const listRows = catProducts.map(s => ({
+              id: `cat_${s.sku || s.slug || s.id}`,
+              title: s.name,
+              description: `$${s.base_price || '?'}/m² · ${s.format || ''} · ${s.finish || ''}`
+            }));
+            await sendWhatsAppList(from,
+              `🏠 *Más pisos estilo ${catSearch}* — ${catProducts.length} opciones.\nSelecciona los que te interesen:`,
+              'Ver pisos',
+              [{ title: `Estilo ${catSearch}`, rows: listRows }]);
+          } else {
+            await sendWhatsApp(from, `No encontré más pisos de ese estilo. ¿Quieres probar otro? _madera, mármol, piedra, exterior..._ 😊`);
+          }
+        } else {
+          await sendWhatsApp(from, '¿Qué estilo de piso buscas? Dime por ejemplo: _pisos de madera_, _pisos de mármol_, _pisos para exterior_ 😊');
         }
 
       } else {
