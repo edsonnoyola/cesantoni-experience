@@ -1439,7 +1439,7 @@ app.get('/api/terra/sessions', async (req, res) => {
     const d = parseInt(days) || 30;
     const l = parseInt(lim) || 100;
 
-    let sql = `SELECT * FROM terra_sessions WHERE started_at >= NOW() - INTERVAL 'd days'`;
+    let sql = `SELECT * FROM terra_sessions WHERE started_at >= NOW() - INTERVAL '${d} days'`;
     const params = [];
 
     if (store) {
@@ -3259,7 +3259,7 @@ app.get('/api/leads', async (req, res) => {
       FROM leads l
       LEFT JOIN stores s ON l.store_id = s.id
       LEFT JOIN distributors d ON s.distributor_id = d.id
-      WHERE l.created_at >= NOW() - INTERVAL 'd days'`;
+      WHERE l.created_at >= NOW() - INTERVAL '${d} days'`;
     const params = [];
     if (status) { sql += ' AND l.status = ?'; params.push(status); }
     if (source) { sql += ' AND l.source = ?'; params.push(source); }
