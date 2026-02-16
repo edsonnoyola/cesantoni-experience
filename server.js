@@ -3023,7 +3023,7 @@ async function getSmartCatalog(text, useCases) {
   if (useCases.length > 0) {
     for (const uc of useCases) {
       const f = uc.filters;
-      let sql = 'SELECT id, name, slug, sku, category, format, finish, pei, usage, base_price, description FROM products WHERE active = 1';
+      let sql = 'SELECT id, name, slug, sku, category, format, finish, pei, usage, base_price, description, image_url FROM products WHERE active = 1';
       const params = [];
       if (f.category) { sql += ' AND category ILIKE ?'; params.push(`%${f.category}%`); }
       if (f.finish) { sql += ' AND finish ILIKE ?'; params.push(`%${f.finish}%`); }
@@ -3046,7 +3046,7 @@ async function getSmartCatalog(text, useCases) {
     const searchTerms = words.filter(w => !['hola','quiero','busco','necesito','para','tengo','como','puedo','algo','unos','unas','pisos','piso','que','una','los','las','del','por','con'].includes(w));
     for (const term of searchTerms.slice(0, 3)) {
       const found = await query(
-        `SELECT id, name, slug, sku, category, format, finish, pei, usage, base_price, description FROM products WHERE active = 1 AND (name ILIKE ? OR category ILIKE ? OR finish ILIKE ? OR uses ILIKE ? OR description ILIKE ?) LIMIT 8`,
+        `SELECT id, name, slug, sku, category, format, finish, pei, usage, base_price, description, image_url FROM products WHERE active = 1 AND (name ILIKE ? OR category ILIKE ? OR finish ILIKE ? OR uses ILIKE ? OR description ILIKE ?) LIMIT 8`,
         [`%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`]
       );
       products.push(...found);
@@ -3057,7 +3057,7 @@ async function getSmartCatalog(text, useCases) {
 
   // Final fallback: popular products
   if (products.length === 0) {
-    products = await query('SELECT id, name, slug, sku, category, format, finish, pei, usage, base_price, description FROM products WHERE active = 1 AND base_price > 0 ORDER BY name LIMIT 20');
+    products = await query('SELECT id, name, slug, sku, category, format, finish, pei, usage, base_price, description, image_url FROM products WHERE active = 1 AND base_price > 0 ORDER BY name LIMIT 20');
   }
 
   return products;
@@ -3187,7 +3187,11 @@ Responde SOLO el texto del mensaje. Corto, conversacional, sin listas.`;
             { role: 'model', parts: [{ text: 'Entendido, soy Terra.' }] },
             { role: 'user', parts: [{ text }] }
           ],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1024,
+            thinkingConfig: { thinkingBudget: 0 }
+          },
           safetySettings: [
             { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
             { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
@@ -3212,7 +3216,7 @@ Responde SOLO el texto del mensaje. Corto, conversacional, sin listas.`;
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{ role: 'user', parts: [{ text: `Eres Terra, asesora de pisos Cesantoni. Responde breve en español: ${text}` }] }],
-              generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
+              generationConfig: { temperature: 0.7, maxOutputTokens: 1024, thinkingConfig: { thinkingBudget: 0 } },
               safetySettings: [
                 { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
                 { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
