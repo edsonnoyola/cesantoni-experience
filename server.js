@@ -3145,20 +3145,19 @@ ${storeCity ? '- Ciudad conocida: ' + storeCity + ' — NO preguntes ciudad' : '
 
   const systemPrompt = `Eres Terra, asesora de pisos de Cesantoni por WhatsApp. Amable, experta, directa. Meta: convertir en cotización o visita.
 
-REGLAS:
-- MÁXIMO 2-3 oraciones. WhatsApp = BREVE.
+REGLAS ESTRICTAS:
+- MÁXIMO 3 oraciones + 1 pregunta. Esto es WhatsApp, NO un email.
+- Recomienda MÁXIMO 1 producto. Si quieren más opciones, las das después.
 - SIEMPRE en español mexicano. NUNCA en inglés.
-- Una pregunta a la vez, nunca cuestionarios.
-- Usa DATOS REALES del producto (formato, acabado, PEI, uso). NO respuestas genéricas.
+- NUNCA uses listas con viñetas (•, -, *). NUNCA uses markdown. Solo texto plano conversacional.
+- NUNCA pongas links de cesantoni.com.mx. Yo agrego los links automáticamente.
+- Usa DATOS REALES del producto (formato, acabado, PEI). NO respuestas genéricas.
 - Si no saben qué quieren: "¿Para qué espacio lo necesitas?"
 - Si preguntan precio: precio real + ofrece cotización.
 - Para cotizar solo necesitas m² y ciudad.
 - NUNCA inventes productos. Solo usa los del CATÁLOGO.
-- Cuando recomiendes, explica POR QUÉ ese producto es ideal para su necesidad.
-- Máximo 1 emoji por mensaje. Sin listas con viñetas.
-- Link de producto: cesantoni-experience-za74.onrender.com/p/{sku} — solo la primera vez.
-- Catálogo web: cesantoni-experience-za74.onrender.com/catalogo
-- Tiendas: cesantoni-experience-za74.onrender.com/tiendas
+- Explica POR QUÉ ese producto es ideal para su necesidad.
+- Máximo 1 emoji por mensaje.
 
 CONVERSIÓN:
 1. Interés → "¿Cuántos m² necesitas?"
@@ -3174,7 +3173,7 @@ ${historyText ? 'HISTORIAL:\n' + historyText : ''}
 CATÁLOGO RELEVANTE (${products.length} productos):
 ${catalogText}
 
-Responde SOLO el texto del mensaje.`;
+Responde SOLO el texto del mensaje. Corto, conversacional, sin listas.`;
 
   try {
     const response = await fetch(
@@ -3231,14 +3230,17 @@ Responde SOLO el texto del mensaje.`;
 
     if (!reply) reply = 'Disculpa, tuve un problema. ¿Puedes repetir tu mensaje?';
 
+    // Post-process: strip cesantoni.com.mx links (Gemini sometimes adds them despite instructions)
+    reply = reply.replace(/https?:\/\/(www\.)?cesantoni\.com\.mx\S*/gi, '').replace(/\n{3,}/g, '\n\n').trim();
+
     // Auto-append product landing link if Gemini mentions a product by name
-    if (products.length > 0 && !/cesantoni-experience|\/p\/|\/catalogo/i.test(reply)) {
+    if (products.length > 0 && !/cesantoni-experience|\/p\//i.test(reply)) {
       const replyLower = reply.toLowerCase();
       const mentioned = products.find(p => replyLower.includes(p.name.toLowerCase()));
       if (mentioned) {
         const slug = mentioned.sku || mentioned.slug;
         if (slug) {
-          reply += `\n\nVe los detalles aquí: https://cesantoni-experience-za74.onrender.com/p/${slug}`;
+          reply += `\n\nMíralo aquí: https://cesantoni-experience-za74.onrender.com/p/${slug}`;
         }
       }
     }
