@@ -213,6 +213,11 @@ async function initDB() {
   await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 0`);
   await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS advisor_name TEXT`);
   await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP`);
+  await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS followup_count INTEGER DEFAULT 0`);
+  await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS followup_stage INTEGER DEFAULT 0`);
+  await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS last_followup_at TIMESTAMP`);
+  await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS last_user_msg_at TIMESTAMP`);
+  await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS last_quote_folio TEXT`);
 
   // Store inventory
   await pool.query(`
@@ -288,6 +293,30 @@ async function initDB() {
     )
   `);
 
+  // Quotes enhancements
+  await pool.query(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS folio TEXT UNIQUE`);
+  await pool.query(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS grand_total REAL`);
+  await pool.query(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS items_count INTEGER DEFAULT 1`);
+  await pool.query(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS valid_until DATE`);
+  await pool.query(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS lead_id INTEGER`);
+  await pool.query(`ALTER TABLE quotes ALTER COLUMN customer_email DROP NOT NULL`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS quote_items (
+      id SERIAL PRIMARY KEY,
+      quote_id INTEGER NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+      product_name TEXT NOT NULL,
+      product_id INTEGER,
+      m2_requested REAL,
+      m2_with_merma REAL,
+      boxes INTEGER,
+      total_m2 REAL,
+      price_per_m2 REAL,
+      subtotal REAL,
+      sort_order INTEGER DEFAULT 0
+    )
+  `);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS reviews (
       id SERIAL PRIMARY KEY,
@@ -308,6 +337,8 @@ async function initDB() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_wa_conversations_phone ON wa_conversations(phone)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_scans_created ON scans(created_at)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_stores_slug ON stores(slug)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_quotes_folio ON quotes(folio)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_quote_items_quote ON quote_items(quote_id)`);
 
   console.log('PostgreSQL tables ready');
 

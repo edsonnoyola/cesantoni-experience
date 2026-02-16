@@ -46,7 +46,7 @@ app.post('/api/login', async (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', async (req, res) => res.json({ version: 'v8.0.0', commit: 'auth-assignment-inventory-list-daily-summary' }));
+app.get('/api/health', async (req, res) => res.json({ version: 'v9.0.0', commit: 'cotizador-automatico-seguimiento-inteligente' }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
@@ -785,6 +785,129 @@ app.get('/landing/:slug', async (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'landing.html'));
 });
 
+// Public quote page
+app.get('/cotizacion/:folio', async (req, res) => {
+  try {
+    const folio = req.params.folio.toUpperCase();
+    const quote = await queryOne('SELECT * FROM quotes WHERE folio = $1', [folio]);
+    if (!quote) return res.status(404).send('<h1>Cotizacion no encontrada</h1>');
+
+    const items = await query('SELECT * FROM quote_items WHERE quote_id = $1 ORDER BY sort_order ASC', [quote.id]);
+
+    const validUntil = quote.valid_until
+      ? new Date(quote.valid_until).toLocaleDateString('es-MX', {day:'numeric',month:'long',year:'numeric'})
+      : new Date(new Date(quote.created_at).getTime() + 15*24*60*60*1000).toLocaleDateString('es-MX', {day:'numeric',month:'long',year:'numeric'});
+
+    const createdDate = new Date(quote.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'long',year:'numeric'});
+
+    const itemsHtml = items.map((item, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td><strong>${item.product_name}</strong></td>
+        <td>${item.m2_requested || '-'} m&sup2;</td>
+        <td>${item.m2_with_merma || '-'} m&sup2;</td>
+        <td>${item.boxes || '-'}</td>
+        <td>${item.total_m2 || '-'} m&sup2;</td>
+        <td>${item.price_per_m2 ? '$' + Math.round(item.price_per_m2).toLocaleString('es-MX') + '/m&sup2;' : '-'}</td>
+        <td><strong>${item.subtotal ? '$' + Math.round(item.subtotal).toLocaleString('es-MX') : '-'}</strong></td>
+      </tr>
+    `).join('');
+
+    const totalM2 = items.reduce((s, i) => s + (parseFloat(i.total_m2) || 0), 0);
+
+    res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cotizacion ${folio} - Cesantoni</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Source Sans 3', sans-serif; max-width: 800px; margin: 0 auto; padding: 24px; color: #111; background: #fff; }
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #C9A962; padding-bottom: 16px; margin-bottom: 24px; }
+    .brand { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 700; color: #111; letter-spacing: 2px; }
+    .brand img { height: 50px; display: block; }
+    .folio-box { text-align: right; }
+    .folio { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: #C9A962; font-weight: 600; }
+    .folio-date { font-size: 0.85rem; color: #666; margin-top: 4px; }
+    .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin-bottom: 24px; font-size: 0.9rem; padding: 16px; background: #fafaf8; border-radius: 8px; }
+    .meta-label { color: #888; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    table { width: 100%; border-collapse: collapse; margin: 24px 0; }
+    th { background: #111118; color: white; padding: 10px 8px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    td { padding: 10px 8px; border-bottom: 1px solid #eee; font-size: 0.85rem; }
+    tr:nth-child(even) { background: #fafaf8; }
+    .total-row { background: #f5eed6 !important; }
+    .total-row td { font-size: 1rem; font-weight: 600; border-top: 2px solid #C9A962; }
+    .notes { margin-top: 24px; padding: 16px; background: #fafaf8; border-radius: 8px; font-size: 0.8rem; color: #666; line-height: 1.6; }
+    .print-btn { display: inline-block; background: #C9A962; color: white; border: none; padding: 12px 28px; border-radius: 6px; cursor: pointer; font-size: 1rem; font-family: 'Source Sans 3', sans-serif; margin: 24px 0; text-decoration: none; }
+    .print-btn:hover { background: #A68B4B; }
+    .wa-btn { display: inline-block; background: #25D366; color: white; border: none; padding: 12px 28px; border-radius: 6px; cursor: pointer; font-size: 1rem; font-family: 'Source Sans 3', sans-serif; margin: 24px 8px; text-decoration: none; }
+    .wa-btn:hover { background: #1DA851; }
+    .footer { margin-top: 32px; padding-top: 16px; border-top: 2px solid #C9A962; text-align: center; font-size: 0.8rem; color: #888; }
+    .footer strong { color: #111; font-family: 'Playfair Display', serif; letter-spacing: 1px; }
+    @media print { .no-print { display: none !important; } body { padding: 0; } }
+    @media (max-width: 600px) {
+      .meta { grid-template-columns: 1fr; }
+      table { font-size: 0.75rem; }
+      th, td { padding: 6px 4px; }
+      .header { flex-direction: column; gap: 12px; text-align: center; }
+      .folio-box { text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      <img src="/images/logo-cesantoni.png" alt="CESANTONI" onerror="this.outerHTML='<span>CESANTONI</span>'">
+    </div>
+    <div class="folio-box">
+      <div class="folio">${folio}</div>
+      <div class="folio-date">${createdDate}</div>
+    </div>
+  </div>
+  <div class="meta">
+    <div><div class="meta-label">Cliente</div>${quote.customer_name || 'Cliente'}</div>
+    <div><div class="meta-label">Tienda</div>${quote.store_name || 'Cesantoni'}</div>
+    <div><div class="meta-label">Telefono</div>${quote.customer_phone || '-'}</div>
+    <div><div class="meta-label">Vigencia</div>${validUntil}</div>
+  </div>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Producto</th><th>Area</th><th>+Merma 10%</th><th>Cajas</th><th>m&sup2; reales</th><th>Precio/m&sup2;</th><th>Subtotal</th></tr>
+    </thead>
+    <tbody>
+      ${itemsHtml}
+      <tr class="total-row">
+        <td colspan="5" style="text-align:right">TOTAL</td>
+        <td>${totalM2.toFixed(1)} m&sup2;</td>
+        <td></td>
+        <td>$${quote.grand_total ? Math.round(quote.grand_total).toLocaleString('es-MX') : '-'} MXN</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="notes">
+    <strong>Notas:</strong><br>
+    &bull; Precios sujetos a cambio sin previo aviso<br>
+    &bull; Vigencia: 15 dias a partir de la fecha de emision<br>
+    &bull; Precios no incluyen instalacion ni envio<br>
+    &bull; Se incluye 10% adicional por merma (cortes y desperdicios)
+  </div>
+  <div class="no-print" style="text-align:center">
+    <button class="print-btn" onclick="window.print()">Imprimir / Descargar PDF</button>
+    <a class="wa-btn" href="https://wa.me/5215651747912?text=${encodeURIComponent('Hola, tengo la cotizacion ' + folio + ' y me gustaria continuar')}" target="_blank">Contactar por WhatsApp</a>
+  </div>
+  <div class="footer">
+    <strong>CESANTONI</strong><br>Pisos &amp; Revestimientos Premium | cesantoni.com.mx
+  </div>
+</body>
+</html>`);
+  } catch (e) {
+    console.error('Quote page error:', e.message);
+    res.status(500).send('<h1>Error al cargar la cotizacion</h1>');
+  }
+});
+
 app.get('/api/landing/:identifier', async (req, res) => {
   try {
     // Buscar por SKU o por slug
@@ -1262,10 +1385,25 @@ app.post('/api/quotes', async (req, res) => {
 // List quotes (admin)
 app.get('/api/quotes', async (req, res) => {
   try {
-    const quotes = await query(`SELECT * FROM quotes ORDER BY created_at DESC`);
+    const quotes = await query(`SELECT * FROM quotes ORDER BY created_at DESC LIMIT 100`);
+    for (const q of quotes) {
+      q.items = await query('SELECT * FROM quote_items WHERE quote_id = $1 ORDER BY sort_order', [q.id]);
+    }
     res.json(quotes);
   } catch (err) {
-    res.json([]); // Table might not exist yet
+    res.json([]);
+  }
+});
+
+// Single quote by folio
+app.get('/api/quotes/:folio', async (req, res) => {
+  try {
+    const quote = await queryOne('SELECT * FROM quotes WHERE folio = $1', [req.params.folio.toUpperCase()]);
+    if (!quote) return res.status(404).json({ error: 'Not found' });
+    quote.items = await query('SELECT * FROM quote_items WHERE quote_id = $1 ORDER BY sort_order', [quote.id]);
+    res.json(quote);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -1992,6 +2130,21 @@ async function addLeadScore(phone, points, action) {
   } catch(e) { /* ignore if no lead */ }
 }
 
+// Generate sequential quote folio: COT-26-0001
+async function generateQuoteFolio() {
+  const year = new Date().getFullYear().toString().slice(-2);
+  const lastQuote = await queryOne(
+    "SELECT folio FROM quotes WHERE folio LIKE $1 ORDER BY id DESC LIMIT 1",
+    [`COT-${year}-%`]
+  );
+  let nextNum = 1;
+  if (lastQuote?.folio) {
+    const parts = lastQuote.folio.split('-');
+    nextNum = parseInt(parts[2] || '0') + 1;
+  }
+  return `COT-${year}-${String(nextNum).padStart(4, '0')}`;
+}
+
 // Send WhatsApp template message (for contacting users outside 24hr window)
 async function sendWhatsAppTemplate(to, templateName, params = []) {
   if (!WA_TOKEN) return null;
@@ -2401,6 +2554,15 @@ app.post('/webhook', async (req, res) => {
 
     // Mark as read
     markAsRead(message.id);
+
+    // Track user activity for follow-up system
+    await run("UPDATE leads SET last_user_msg_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE phone = ?", [from]);
+    // If lead was in follow-up and responds, reset to active engagement
+    const followupCheck = await queryOne("SELECT id, status FROM leads WHERE phone = ? AND status = 'follow_up'", [from]);
+    if (followupCheck) {
+      await run("UPDATE leads SET status = 'new', followup_stage = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [followupCheck.id]);
+      console.log(`🔄 Lead ${from} re-engaged, follow-up reset`);
+    }
 
     // Handle text messages
     if (message.type === 'text') {
@@ -3084,13 +3246,15 @@ app.post('/webhook', async (req, res) => {
 
         if (quoteItems.length > 0) {
           const leadName = lead?.name || contactName || 'Cliente';
-          let quote = `📄 *COTIZACIÓN CESANTONI*\n`;
-          quote += `👤 ${leadName}\n`;
-          quote += `📅 ${new Date().toLocaleDateString('es-MX')}\n`;
-          quote += `${'─'.repeat(20)}\n\n`;
 
+          // 1. Generate folio
+          const folio = await generateQuoteFolio();
+
+          // 2. Parse items and calculate totals
           let grandTotal = 0;
           let grandM2 = 0;
+          const parsedItems = [];
+
           for (let i = 0; i < quoteItems.length; i++) {
             const parts = quoteItems[i].message.replace('[QUOTE_ITEM] ', '').split('|');
             const [pName, pM2, pM2Merma, pBoxes, pTotalM2, pPrice] = parts;
@@ -3098,32 +3262,83 @@ app.post('/webhook', async (req, res) => {
             grandTotal += price;
             grandM2 += parseFloat(pTotalM2) || 0;
 
-            quote += `*${i + 1}. ${pName}*\n`;
-            quote += `   Área: ${pM2} m² + 10% = ${pM2Merma} m²\n`;
-            quote += `   Cajas: ${pBoxes} (${pTotalM2} m²)\n`;
-            if (price) quote += `   Subtotal: $${Number(price).toLocaleString('es-MX')}\n`;
-            quote += `\n`;
+            const product = await queryOne('SELECT id, base_price FROM products WHERE name ILIKE ?', [`%${pName.trim()}%`]);
+
+            parsedItems.push({
+              product_name: pName.trim(),
+              product_id: product?.id || null,
+              m2_requested: parseFloat(pM2) || 0,
+              m2_with_merma: parseFloat(pM2Merma) || 0,
+              boxes: parseInt(pBoxes) || 0,
+              total_m2: parseFloat(pTotalM2) || 0,
+              price_per_m2: product?.base_price || null,
+              subtotal: price,
+              sort_order: i
+            });
           }
-          quote += `${'─'.repeat(20)}\n`;
-          quote += `📦 *Total: ${grandM2.toFixed(1)} m²*\n`;
-          if (grandTotal > 0) quote += `💰 *TOTAL: $${Math.round(grandTotal).toLocaleString('es-MX')} MXN*\n`;
-          quote += `\n_Precios sujetos a cambio. Vigencia: 15 días._`;
 
-          await sendWhatsApp(from, quote);
+          // 3. Save quote to DB
+          const validUntil = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+          const quoteResult = await run(
+            `INSERT INTO quotes (folio, customer_name, customer_phone, store_id, store_name, grand_total, items_count, valid_until, lead_id, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'sent') RETURNING id`,
+            [folio, leadName, from, lead?.store_id || null, lead?.store_name || null, grandTotal, parsedItems.length, validUntil, lead?.id || null]
+          );
+          const quoteId = quoteResult.rows?.[0]?.id;
 
-          // Notify store advisor
+          // 4. Save quote items
+          if (quoteId) {
+            for (const item of parsedItems) {
+              await run(
+                `INSERT INTO quote_items (quote_id, product_name, product_id, m2_requested, m2_with_merma, boxes, total_m2, price_per_m2, subtotal, sort_order)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [quoteId, item.product_name, item.product_id, item.m2_requested, item.m2_with_merma, item.boxes, item.total_m2, item.price_per_m2, item.subtotal, item.sort_order]
+              );
+            }
+          }
+
+          // 5. Update lead with quote folio
+          if (lead?.id) {
+            await run("UPDATE leads SET last_quote_folio = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [folio, lead.id]);
+          }
+
+          // 6. Build WhatsApp summary with link
+          const quoteUrl = `${BASE_URL}/cotizacion/${folio}`;
+          let quoteTxt = `📄 *COTIZACIÓN ${folio}*\n`;
+          quoteTxt += `👤 ${leadName}\n`;
+          quoteTxt += `📅 ${new Date().toLocaleDateString('es-MX')}\n`;
+          quoteTxt += `${'─'.repeat(20)}\n\n`;
+
+          for (let i = 0; i < parsedItems.length; i++) {
+            const item = parsedItems[i];
+            quoteTxt += `*${i + 1}. ${item.product_name}*\n`;
+            quoteTxt += `   ${item.m2_requested} m² + 10% = ${item.m2_with_merma} m² (${item.boxes} cajas)\n`;
+            if (item.subtotal) quoteTxt += `   Subtotal: $${Math.round(item.subtotal).toLocaleString('es-MX')}\n`;
+            quoteTxt += `\n`;
+          }
+          quoteTxt += `${'─'.repeat(20)}\n`;
+          quoteTxt += `📦 *Total: ${grandM2.toFixed(1)} m²*\n`;
+          if (grandTotal > 0) quoteTxt += `💰 *TOTAL: $${Math.round(grandTotal).toLocaleString('es-MX')} MXN*\n`;
+          quoteTxt += `\n📋 *Ver cotización completa:*\n${quoteUrl}\n`;
+          quoteTxt += `\n_Vigencia: 15 días_`;
+
+          await sendWhatsApp(from, quoteTxt);
+
+          // 7. Notify store advisor
           const store = lead?.store_id ? await queryOne('SELECT * FROM stores WHERE id = ?', [lead.store_id]) : null;
           if (store?.whatsapp) {
             await sendWhatsAppTemplate(store.whatsapp, 'lead_nuevo', [
-              leadName, from, store?.name || 'Tienda', `Cotización ${quoteItems.length} productos: $${Math.round(grandTotal).toLocaleString('es-MX')}`
+              leadName, from, store?.name || 'Tienda', `Cotización ${folio}: ${parsedItems.length} productos, $${Math.round(grandTotal).toLocaleString('es-MX')}`
             ]);
           }
 
-          // Clear quote items for next session
+          // 8. Clear quote items for next session
           await run("DELETE FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '[QUOTE_ITEM]%'", [from]);
 
+          console.log(`📄 Quote ${folio} created: ${parsedItems.length} items, $${Math.round(grandTotal)}`);
+
           await new Promise(r => setTimeout(r, 500));
-          await sendWhatsAppButtons(from, '¿Qué quieres hacer?', [
+          await sendWhatsAppButtons(from, '¡Tu cotización está lista! ¿Qué quieres hacer?', [
             { id: 'hablar_asesor', title: '👤 Hablar c/asesor' },
             { id: 'agendar_visita', title: '📅 Agendar visita' },
             { id: 'agregar_otro', title: '➕ Nuevo cálculo' }
@@ -3935,63 +4150,126 @@ async function start() {
     console.log('   (HTTPS not available - no cert files)');
   }
 
-  // CRON: Follow-up with leads that haven't been contacted (every 2 hours)
+  // CRON: Smart follow-up system (every 30 minutes)
+  // Replaces old follow-up + abandoned cart CRONs with 3-stage intelligent follow-up
   setInterval(async () => {
     try {
-      // Find leads created 24+ hours ago that are still 'new' (never contacted)
-      const staleLeads = await query(`
+      // Find leads eligible for follow-up
+      const candidates = await query(`
         SELECT l.*, s.whatsapp as store_whatsapp, s.name as store_display_name
         FROM leads l
         LEFT JOIN stores s ON l.store_id = s.id
-        WHERE l.status = 'new'
-          AND l.created_at < NOW() - INTERVAL '24 hours'
-          AND l.created_at > NOW() - INTERVAL '72 hours'
+        WHERE l.status IN ('new', 'follow_up')
           AND l.phone IS NOT NULL
+          AND COALESCE(l.followup_stage, 0) < 3
+          AND l.created_at < NOW() - INTERVAL '6 hours'
+        ORDER BY l.created_at ASC
+        LIMIT 20
       `);
 
-      if (staleLeads.length === 0) return;
-      console.log(`⏰ CRON: ${staleLeads.length} leads pending follow-up`);
+      if (candidates.length === 0) return;
+      console.log(`⏰ CRON Smart Follow-up: ${candidates.length} candidates`);
 
-      for (const lead of staleLeads) {
-        const prods = lead.products_interested ? JSON.parse(lead.products_interested) : [];
-        const prodName = prods[0] || 'pisos Cesantoni';
+      for (const lead of candidates) {
+        const currentStage = lead.followup_stage || 0;
+        const lastFollowup = lead.last_followup_at ? new Date(lead.last_followup_at) : null;
+        const lastUserMsg = lead.last_user_msg_at ? new Date(lead.last_user_msg_at) : null;
+        const createdAt = new Date(lead.created_at);
+        const now = Date.now();
 
-        // Check last bot message to this lead
-        const lastMsg = await queryOne(
-          "SELECT created_at FROM wa_conversations WHERE phone = ? AND role = 'assistant' ORDER BY created_at DESC LIMIT 1",
-          [lead.phone]);
+        const hoursSinceCreation = (now - createdAt.getTime()) / (1000 * 60 * 60);
+        const hoursSinceLastFollowup = lastFollowup ? (now - lastFollowup.getTime()) / (1000 * 60 * 60) : Infinity;
+        const hoursSinceLastUserMsg = lastUserMsg ? (now - lastUserMsg.getTime()) / (1000 * 60 * 60) : Infinity;
 
-        // Don't send if we already messaged within 12 hours
-        if (lastMsg) {
-          const hoursSinceLastMsg = (Date.now() - new Date(lastMsg.created_at).getTime()) / (1000 * 60 * 60);
-          if (hoursSinceLastMsg < 12) continue;
+        // STOP: User replied after our last follow-up (they're engaged)
+        if (lastUserMsg && lastFollowup && lastUserMsg > lastFollowup) continue;
+
+        // Determine target stage
+        let targetStage = 0;
+        let shouldSend = false;
+
+        if (currentStage === 0 && hoursSinceCreation >= 6) {
+          targetStage = 1; shouldSend = true; // Stage 1: ~6h after creation
+        } else if (currentStage === 1 && hoursSinceLastFollowup >= 18) {
+          targetStage = 2; shouldSend = true; // Stage 2: ~24h total
+        } else if (currentStage === 2 && hoursSinceLastFollowup >= 48) {
+          targetStage = 3; shouldSend = true; // Stage 3: ~72h total
         }
 
-        // Send follow-up via template (safe outside 24hr window)
-        const followUp = await sendWhatsAppTemplate(
-          lead.phone,
-          'lead_nuevo',
-          [
-            lead.name || 'Cliente',
-            lead.phone,
-            lead.store_name || 'Cesantoni',
-            `Seguimiento: ¿Sigues interesado en ${prodName}?`
-          ]
+        if (!shouldSend) continue;
+
+        // Check if within 24h window (can send regular message)
+        const withinWindow = hoursSinceLastUserMsg <= 24;
+
+        // Get product info for personalization
+        let prodName = 'pisos Cesantoni';
+        try { const prods = lead.products_interested ? JSON.parse(lead.products_interested) : []; prodName = prods[0] || prodName; } catch(e) {}
+        const leadName = lead.name || 'Cliente';
+        const quoteFolio = lead.last_quote_folio;
+        const quoteUrl = quoteFolio ? `${BASE_URL}/cotizacion/${quoteFolio}` : null;
+
+        // MARK BEFORE SEND (prevent duplicate sends)
+        await run(
+          "UPDATE leads SET followup_stage = ?, last_followup_at = CURRENT_TIMESTAMP, followup_count = COALESCE(followup_count, 0) + 1, status = 'follow_up', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+          [targetStage, lead.id]
         );
 
-        if (!followUp?.error) {
-          await run("UPDATE leads SET status = 'follow_up', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [lead.id]);
-          console.log(`  📩 Follow-up sent to ${lead.name || lead.phone} for ${prodName}`);
+        let sent = false;
+
+        if (targetStage === 1) {
+          // Stage 1: Soft reminder
+          if (withinWindow) {
+            const msg = quoteFolio
+              ? `Hola ${leadName}! 👋 Vi que te interesó *${prodName}*. Tu cotización ${quoteFolio} sigue disponible:\n${quoteUrl}\n\n¿Te puedo ayudar con algo más?`
+              : `Hola ${leadName}! 👋 Vi que te interesó *${prodName}*. ¿Quieres que te cotice los m² o prefieres hablar con un asesor?`;
+            const result = await sendWhatsAppButtons(lead.phone, msg, [
+              { id: 'enviar_cotizacion', title: '📄 Ver cotización' },
+              { id: 'hablar_asesor', title: '👤 Hablar c/asesor' }
+            ]);
+            sent = !result?.error;
+          } else {
+            const result = await sendWhatsAppTemplate(lead.phone, 'lead_nuevo', [
+              leadName, lead.phone, lead.store_name || 'Cesantoni',
+              `Recordatorio: te interesó ${prodName}. ¡Respóndeme y te ayudo!`
+            ]);
+            sent = !result?.error;
+          }
+        } else if (targetStage === 2) {
+          // Stage 2: Check-in with quote reference
+          const msg4 = quoteFolio
+            ? `Tu cotización ${quoteFolio} de ${prodName} sigue vigente. ¡Respóndeme si tienes dudas!`
+            : `¿Seguimos con ${prodName}? Un asesor puede ayudarte a elegir.`;
+          const result = await sendWhatsAppTemplate(lead.phone, 'lead_nuevo', [
+            leadName, lead.phone, lead.store_name || 'Cesantoni', msg4
+          ]);
+          sent = !result?.error;
+        } else if (targetStage === 3) {
+          // Stage 3: Last chance
+          const msg4 = quoteFolio
+            ? `Última oportunidad: tu cotización ${quoteFolio} vence pronto. ¡No te lo pierdas!`
+            : `Último aviso: ${prodName} tiene alta demanda. ¡Contáctame antes de que se agote!`;
+          const result = await sendWhatsAppTemplate(lead.phone, 'lead_nuevo', [
+            leadName, lead.phone, lead.store_name || 'Cesantoni', msg4
+          ]);
+          sent = !result?.error;
+        }
+
+        if (sent) {
+          console.log(`  📩 Follow-up stage ${targetStage} sent to ${leadName} (${lead.phone})`);
+        } else {
+          // Rollback on failure
+          await run("UPDATE leads SET followup_stage = ?, followup_count = GREATEST(COALESCE(followup_count, 1) - 1, 0) WHERE id = ?",
+            [currentStage, lead.id]);
+          console.error(`  ❌ Follow-up stage ${targetStage} FAILED for ${lead.phone}`);
         }
 
         await new Promise(r => setTimeout(r, 2000)); // Rate limit
       }
     } catch (e) {
-      console.error('CRON follow-up error:', e.message);
+      console.error('CRON smart follow-up error:', e.message);
     }
-  }, 2 * 60 * 60 * 1000); // Every 2 hours
-
-  console.log('   ⏰ CRON follow-up active (every 2h)');
+  }, 30 * 60 * 1000); // Every 30 minutes
+  console.log('   ⏰ CRON smart follow-up active (every 30min, 3 stages)');
 
   // CRON: Satisfaction survey (every 1 hour, sends survey to leads contacted 24h+ ago)
   setInterval(async () => {
@@ -4022,48 +4300,6 @@ async function start() {
     }
   }, 60 * 60 * 1000); // Every 1 hour
   console.log('   📊 CRON survey active (every 1h)');
-
-  // CRON: Abandoned cart recovery (every 3 hours)
-  // Finds leads who calculated m² but never clicked hablar_asesor within 48h
-  setInterval(async () => {
-    try {
-      // Leads with QUOTE_ITEM or m² calc but no 'contacted' status, created 24-72h ago
-      const abandoned = await query(`
-        SELECT DISTINCT l.id, l.phone, l.name, l.products_interested
-        FROM leads l
-        JOIN wa_conversations wc ON wc.phone = l.phone
-        WHERE l.status = 'new'
-        AND l.created_at BETWEEN NOW() - INTERVAL '72 hours' AND NOW() - INTERVAL '24 hours'
-        AND (wc.message LIKE '[QUOTE_ITEM]%' OR wc.message LIKE '%Cotización%')
-        AND wc.role = 'assistant'
-        AND NOT EXISTS (
-          SELECT 1 FROM wa_conversations w2
-          WHERE w2.phone = l.phone AND w2.role = 'assistant'
-          AND w2.message LIKE '%abandoned_reminder%'
-        )
-        LIMIT 10`);
-
-      for (const lead of abandoned) {
-        let prodName = 'Pisos Cesantoni';
-        try { prodName = JSON.parse(lead.products_interested || '[]')[0] || prodName; } catch(e) {}
-
-        // Mark before send
-        await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
-          [lead.phone, 'assistant', '[abandoned_reminder]']);
-
-        await sendWhatsAppTemplate(lead.phone, 'lead_nuevo', [
-          lead.name || 'Cliente', lead.phone, 'Cesantoni',
-          `¿Aún interesado en ${prodName}? Tu cotización te espera`
-        ]);
-
-        console.log(`🛒 Abandoned cart reminder sent to ${lead.name || lead.phone}`);
-        await new Promise(r => setTimeout(r, 2000));
-      }
-    } catch (e) {
-      console.error('CRON abandoned cart error:', e.message);
-    }
-  }, 3 * 60 * 60 * 1000); // Every 3 hours
-  console.log('   🛒 CRON abandoned cart active (every 3h)');
 
   // CRON: Daily summary to manager (every 1h, sends at ~9am Mexico time)
   setInterval(async () => {
