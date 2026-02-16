@@ -2490,7 +2490,7 @@ Formato EXACTO: {"intent":"recommend|lookup|question|greeting","speech":"MAXIMO 
           contents,
           generationConfig: {
             temperature: 0.8,
-            maxOutputTokens: 200
+            maxOutputTokens: 1024
           }
         })
       }
@@ -3188,7 +3188,7 @@ Responde SOLO el texto del mensaje.`;
             { role: 'model', parts: [{ text: 'Entendido, soy Terra.' }] },
             { role: 'user', parts: [{ text }] }
           ],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 300 },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
           safetySettings: [
             { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
             { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
@@ -3213,7 +3213,7 @@ Responde SOLO el texto del mensaje.`;
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{ role: 'user', parts: [{ text: `Eres Terra, asesora de pisos Cesantoni. Responde breve en español: ${text}` }] }],
-              generationConfig: { temperature: 0.7, maxOutputTokens: 200 },
+              generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
               safetySettings: [
                 { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
                 { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
@@ -5143,7 +5143,7 @@ Si no sabes algo específico, sugiere contactar a un asesor por WhatsApp.
           }],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 200
+            maxOutputTokens: 1024
           }
         })
       }
