@@ -46,7 +46,7 @@ app.post('/api/login', async (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', async (req, res) => res.json({ version: 'v9.1.0', commit: 'store-locator-geocoding' }));
+app.get('/api/health', async (req, res) => res.json({ version: 'v9.2.0', commit: 'gemini-ia-catalogo-funnel' }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
@@ -1148,6 +1148,306 @@ renderStores(allStores);
   } catch (e) {
     console.error('Store locator error:', e.message);
     res.status(500).send('<h1>Error al cargar el localizador</h1>');
+  }
+});
+
+// =====================================================
+// PUBLIC CATALOG PAGE
+// =====================================================
+app.get('/catalogo', async (req, res) => {
+  try {
+    const products = await query(`
+      SELECT id, sku, name, category, subcategory, format, finish, type,
+             uses, base_price, image_url, gallery, slug, description, pei,
+             sqm_per_box, pieces_per_box, official_url, usage, resistance
+      FROM products WHERE active = 1 ORDER BY category, name
+    `);
+    const categories = [...new Set(products.filter(p => p.category).map(p => p.category))].sort();
+    const finishes = [...new Set(products.filter(p => p.finish).map(p => p.finish))].sort();
+    const formats = [...new Set(products.filter(p => p.format).map(p => p.format))].sort();
+
+    res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catálogo de Pisos - Cesantoni</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Source+Sans+3:wght@300;400;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Source Sans 3', sans-serif; background: #111118; color: #fff; min-height: 100vh; }
+
+  .header { background: #111118; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #C9A962; position: sticky; top: 0; z-index: 100; }
+  .header h1 { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: #C9A962; }
+  .header .logo { font-family: 'Playfair Display', serif; font-size: 0.85rem; letter-spacing: 3px; color: #C9A962; border: 1px solid #C9A962; padding: 4px 12px; }
+  .header .count { font-size: 0.85rem; color: #999; }
+
+  .filters { padding: 16px 24px; border-bottom: 1px solid #222; background: #16161e; position: sticky; top: 58px; z-index: 99; }
+  .cat-pills { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
+  .cat-pills::-webkit-scrollbar { display: none; }
+  .pill { padding: 6px 16px; border-radius: 20px; border: 1px solid #444; background: transparent; color: #ccc; font-size: 0.85rem; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+  .pill:hover { border-color: #C9A962; color: #C9A962; }
+  .pill.active { background: #C9A962; color: #111; border-color: #C9A962; font-weight: 600; }
+
+  .filter-row { display: flex; gap: 12px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+  .filter-row select, .filter-row input { padding: 8px 12px; border-radius: 8px; border: 1px solid #444; background: #222; color: #fff; font-size: 0.85rem; min-width: 140px; }
+  .filter-row .search-box { flex: 1; min-width: 200px; }
+  .result-count { font-size: 0.85rem; color: #888; margin-left: auto; white-space: nowrap; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; padding: 24px; max-width: 1400px; margin: 0 auto; }
+
+  .card { background: #1a1a24; border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border: 1px solid #2a2a34; }
+  .card:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(201,169,98,0.15); border-color: #C9A962; }
+  .card-img { width: 100%; height: 200px; object-fit: cover; background: #222; }
+  .card-body { padding: 14px 16px; }
+  .card-cat { font-size: 0.75rem; color: #C9A962; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .card-name { font-family: 'Playfair Display', serif; font-size: 1.05rem; margin-bottom: 6px; color: #fff; }
+  .card-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .badge { font-size: 0.7rem; padding: 3px 8px; border-radius: 4px; background: #2a2a34; color: #bbb; }
+  .badge.finish { background: #C9A96220; color: #C9A962; }
+  .card-price { font-size: 1.1rem; font-weight: 700; color: #C9A962; }
+  .card-price span { font-size: 0.8rem; font-weight: 400; color: #888; }
+
+  /* Detail modal */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 200; overflow-y: auto; padding: 40px 20px; }
+  .modal-overlay.open { display: flex; justify-content: center; align-items: flex-start; }
+  .modal { background: #1a1a24; border-radius: 16px; max-width: 800px; width: 100%; border: 1px solid #333; }
+  .modal-close { position: absolute; top: 16px; right: 20px; font-size: 2rem; color: #888; cursor: pointer; background: none; border: none; z-index: 10; }
+  .modal-close:hover { color: #fff; }
+  .modal-img { width: 100%; height: 320px; object-fit: cover; border-radius: 16px 16px 0 0; }
+  .modal-gallery { display: flex; gap: 8px; padding: 12px 24px; overflow-x: auto; }
+  .modal-gallery img { width: 80px; height: 60px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent; transition: border 0.2s; }
+  .modal-gallery img:hover, .modal-gallery img.active { border-color: #C9A962; }
+  .modal-body { padding: 20px 24px 24px; }
+  .modal-body h2 { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: #C9A962; margin-bottom: 4px; }
+  .modal-body .sku { font-size: 0.85rem; color: #888; margin-bottom: 16px; }
+  .modal-specs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .spec { padding: 10px 14px; background: #222; border-radius: 8px; }
+  .spec-label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+  .spec-val { font-size: 0.95rem; color: #fff; font-weight: 600; margin-top: 2px; }
+  .modal-desc { font-size: 0.9rem; color: #bbb; line-height: 1.6; margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn-wa { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; background: #25D366; color: #fff; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.2s; }
+  .btn-wa:hover { background: #1da851; }
+  .btn-site { display: inline-flex; align-items: center; gap: 6px; padding: 14px 24px; background: transparent; color: #C9A962; border: 1px solid #C9A962; border-radius: 10px; font-size: 0.95rem; cursor: pointer; text-decoration: none; transition: all 0.2s; }
+  .btn-site:hover { background: #C9A962; color: #111; }
+
+  .no-products { text-align: center; padding: 80px 20px; color: #666; }
+  .no-products h2 { font-family: 'Playfair Display', serif; color: #444; margin-bottom: 8px; }
+
+  @media (max-width: 768px) {
+    .grid { grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 12px; }
+    .card-img { height: 150px; }
+    .header h1 { font-size: 1.1rem; }
+    .modal-img { height: 220px; }
+    .modal-specs { grid-template-columns: 1fr; }
+    .filters { padding: 12px; }
+    .filter-row { flex-direction: column; }
+    .filter-row select, .filter-row input { width: 100%; }
+  }
+  @media (max-width: 480px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <div style="display:flex;align-items:center;gap:16px">
+    <div class="logo">CESANTONI</div>
+    <h1>Catálogo de Pisos</h1>
+  </div>
+  <span class="count">${products.length} productos</span>
+</div>
+
+<div class="filters">
+  <div class="cat-pills" id="catPills">
+    <button class="pill active" data-cat="all">Todos</button>
+    ${categories.map(c => `<button class="pill" data-cat="${c}">${c}</button>`).join('')}
+  </div>
+  <div class="filter-row">
+    <input type="text" id="searchBox" class="search-box" placeholder="Buscar por nombre, SKU..." />
+    <select id="filterFinish"><option value="">Acabado</option>${finishes.map(f => `<option value="${f}">${f}</option>`).join('')}</select>
+    <select id="filterFormat"><option value="">Formato</option>${formats.map(f => `<option value="${f}">${f}</option>`).join('')}</select>
+    <select id="filterPrice">
+      <option value="">Precio</option>
+      <option value="0-300">Hasta $300/m²</option>
+      <option value="300-500">$300 - $500/m²</option>
+      <option value="500-800">$500 - $800/m²</option>
+      <option value="800-99999">$800+ /m²</option>
+    </select>
+    <span class="result-count" id="resultCount"></span>
+  </div>
+</div>
+
+<div class="grid" id="productGrid"></div>
+
+<div class="no-products" id="noProducts" style="display:none">
+  <h2>Sin resultados</h2>
+  <p>Intenta con otros filtros o busca por nombre</p>
+</div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <img class="modal-img" id="modalImg" src="" alt="" />
+    <div class="modal-gallery" id="modalGallery"></div>
+    <div class="modal-body">
+      <h2 id="modalName"></h2>
+      <p class="sku" id="modalSku"></p>
+      <div class="modal-specs" id="modalSpecs"></div>
+      <p class="modal-desc" id="modalDesc"></p>
+      <div class="modal-actions" id="modalActions"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const allProducts = ${JSON.stringify(products.map(p => ({
+  id: p.id, sku: p.sku, name: p.name, category: p.category || '',
+  subcategory: p.subcategory || '', format: p.format || '', finish: p.finish || '',
+  type: p.type || '', uses: p.uses || '', base_price: p.base_price || 0,
+  image_url: p.image_url || '', gallery: p.gallery || '', slug: p.slug || '',
+  description: p.description || '', pei: p.pei || 0,
+  sqm_per_box: p.sqm_per_box || 0, pieces_per_box: p.pieces_per_box || 0,
+  official_url: p.official_url || '', usage: p.usage || '', resistance: p.resistance || ''
+})))};
+
+let currentCat = 'all';
+let currentSearch = '';
+let currentFinish = '';
+let currentFormat = '';
+let currentPrice = '';
+
+function filterProducts() {
+  let filtered = allProducts;
+  if (currentCat !== 'all') filtered = filtered.filter(p => p.category === currentCat);
+  if (currentSearch) {
+    const q = currentSearch.toLowerCase();
+    filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.subcategory.toLowerCase().includes(q));
+  }
+  if (currentFinish) filtered = filtered.filter(p => p.finish === currentFinish);
+  if (currentFormat) filtered = filtered.filter(p => p.format === currentFormat);
+  if (currentPrice) {
+    const [min, max] = currentPrice.split('-').map(Number);
+    filtered = filtered.filter(p => p.base_price >= min && p.base_price <= max);
+  }
+  return filtered;
+}
+
+function renderGrid() {
+  const products = filterProducts();
+  const grid = document.getElementById('productGrid');
+  const noP = document.getElementById('noProducts');
+  document.getElementById('resultCount').textContent = products.length + ' de ' + allProducts.length;
+
+  if (products.length === 0) {
+    grid.innerHTML = '';
+    noP.style.display = 'block';
+    return;
+  }
+  noP.style.display = 'none';
+
+  grid.innerHTML = products.map(p => {
+    const img = p.image_url || 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" fill="%23222"><rect width="300" height="200"/><text x="150" y="100" text-anchor="middle" fill="%23555" font-size="14">Sin imagen</text></svg>');
+    return '<div class="card" onclick="openModal(' + p.id + ')">' +
+      '<img class="card-img" src="' + img + '" alt="' + p.name + '" loading="lazy" onerror="this.src=\\'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" fill="%23222"><rect width="300" height="200"/><text x="150" y="100" text-anchor="middle" fill="%23555" font-size="14">Sin imagen</text></svg>') + '\\'"/>' +
+      '<div class="card-body">' +
+        '<div class="card-cat">' + p.category + (p.subcategory ? ' · ' + p.subcategory : '') + '</div>' +
+        '<div class="card-name">' + p.name + '</div>' +
+        '<div class="card-meta">' +
+          (p.format ? '<span class="badge">' + p.format + '</span>' : '') +
+          (p.finish ? '<span class="badge finish">' + p.finish + '</span>' : '') +
+          (p.pei ? '<span class="badge">PEI ' + p.pei + '</span>' : '') +
+        '</div>' +
+        (p.base_price ? '<div class="card-price">$' + Math.round(p.base_price).toLocaleString() + ' <span>/m²</span></div>' : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function openModal(id) {
+  const p = allProducts.find(x => x.id === id);
+  if (!p) return;
+
+  document.getElementById('modalImg').src = p.image_url || '';
+  document.getElementById('modalName').textContent = p.name;
+  document.getElementById('modalSku').textContent = 'SKU: ' + p.sku + (p.type ? ' · ' + p.type : '');
+
+  // Gallery
+  const galleryEl = document.getElementById('modalGallery');
+  let images = [];
+  if (p.gallery) {
+    try { images = JSON.parse(p.gallery); } catch { images = []; }
+  }
+  if (p.image_url) images = [p.image_url, ...images.filter(i => i !== p.image_url)];
+  galleryEl.innerHTML = images.slice(0, 8).map((img, i) =>
+    '<img src="' + img + '" class="' + (i === 0 ? 'active' : '') + '" onclick="document.getElementById(\\'modalImg\\').src=this.src; this.parentElement.querySelectorAll(\\'img\\').forEach(x=>x.classList.remove(\\'active\\')); this.classList.add(\\'active\\')" />'
+  ).join('');
+
+  // Specs
+  const specs = [];
+  if (p.format) specs.push({ l: 'Formato', v: p.format });
+  if (p.finish) specs.push({ l: 'Acabado', v: p.finish });
+  if (p.category) specs.push({ l: 'Categoría', v: p.category + (p.subcategory ? ' - ' + p.subcategory : '') });
+  if (p.pei) specs.push({ l: 'PEI', v: p.pei + (p.pei >= 4 ? ' (Alto tráfico)' : '') });
+  if (p.usage) specs.push({ l: 'Uso', v: p.usage });
+  if (p.resistance) specs.push({ l: 'Resistencia', v: p.resistance });
+  if (p.sqm_per_box) specs.push({ l: 'm²/caja', v: p.sqm_per_box.toFixed(2) + ' m²' });
+  if (p.pieces_per_box) specs.push({ l: 'Piezas/caja', v: p.pieces_per_box });
+  if (p.base_price) specs.push({ l: 'Precio', v: '$' + Math.round(p.base_price).toLocaleString() + ' /m²' });
+  if (p.uses) specs.push({ l: 'Aplicaciones', v: p.uses });
+
+  document.getElementById('modalSpecs').innerHTML = specs.map(s =>
+    '<div class="spec"><div class="spec-label">' + s.l + '</div><div class="spec-val">' + s.v + '</div></div>'
+  ).join('');
+
+  document.getElementById('modalDesc').textContent = p.description || '';
+
+  // Actions
+  const waMsg = encodeURIComponent('Hola, me interesa el piso ' + p.name + (p.sku ? ' (SKU: ' + p.sku + ')' : '') + '. ¿Me pueden dar más información?');
+  let actions = '<a class="btn-wa" href="https://wa.me/5215651747912?text=' + waMsg + '" target="_blank">&#x1F4AC; Cotizar por WhatsApp</a>';
+  if (p.official_url) {
+    actions += '<a class="btn-site" href="' + p.official_url + '" target="_blank">Ver en cesantoni.com.mx &#x2197;</a>';
+  }
+  document.getElementById('modalActions').innerHTML = actions;
+
+  document.getElementById('modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Event listeners
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+document.querySelectorAll('.pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentCat = btn.dataset.cat;
+    renderGrid();
+  });
+});
+
+document.getElementById('searchBox').addEventListener('input', e => { currentSearch = e.target.value; renderGrid(); });
+document.getElementById('filterFinish').addEventListener('change', e => { currentFinish = e.target.value; renderGrid(); });
+document.getElementById('filterFormat').addEventListener('change', e => { currentFormat = e.target.value; renderGrid(); });
+document.getElementById('filterPrice').addEventListener('change', e => { currentPrice = e.target.value; renderGrid(); });
+
+// Initial render
+renderGrid();
+</script>
+</body>
+</html>`);
+  } catch (e) {
+    console.error('Catalog error:', e.message);
+    res.status(500).send('<h1>Error al cargar el catálogo</h1>');
   }
 });
 
@@ -2693,12 +2993,82 @@ async function markAsRead(messageId) {
 }
 
 // WhatsApp bot - process incoming message with Gemini
+// Use case map: keyword → product recommendation hints
+const USE_CASE_MAP = [
+  { pattern: /ba[ñn]o|regadera|ducha|shower/i, filters: { finish: 'MATE' }, tip: 'Acabado mate = antideslizante, ideal para zonas húmedas' },
+  { pattern: /cocina|kitchen/i, filters: { finish: 'NATURAL' }, tip: 'Acabado natural = fácil limpieza, resiste manchas' },
+  { pattern: /sala|comedor|estancia|living|lobby/i, filters: { finish: 'PULIDO' }, tip: 'Acabado pulido = brillo espejo, elegancia premium' },
+  { pattern: /exterior|terraza|patio|alberca|piscina|outdoor/i, filters: { usage: 'EXT' }, tip: 'Porcelánico <0.5% absorción, apto exterior/piscina' },
+  { pattern: /madera|wood|parquet/i, filters: { category: 'MADERA' }, tip: 'Porcelanato efecto madera, no se raya ni decolora' },
+  { pattern: /m[aá]rmol|marble|calacatta|carrara/i, filters: { category: 'MARMOL' }, tip: 'Porcelanato efecto mármol, sin mantenimiento' },
+  { pattern: /piedra|stone|slate|cantera/i, filters: { category: 'PIEDRA' }, tip: 'Efecto piedra natural, resistente a climas extremos' },
+  { pattern: /comercial|local|oficina|hotel|restaurante/i, filters: { pei: 4 }, tip: 'PEI 4+ para alto tráfico comercial' },
+  { pattern: /gran.*formato|large|grande|120|160|180/i, filters: { format: '120' }, tip: 'Gran formato = menos juntas, aspecto premium' },
+  { pattern: /econ[oó]mi|barat|precio bajo|budget/i, filters: { priceMax: 350 }, tip: 'Opciones con excelente relación calidad-precio' },
+];
+
+function extractRecommendations(text) {
+  const matches = [];
+  for (const uc of USE_CASE_MAP) {
+    if (uc.pattern.test(text)) matches.push(uc);
+  }
+  return matches;
+}
+
+async function getSmartCatalog(text, useCases) {
+  // Build smart SQL based on user intent
+  let products = [];
+
+  if (useCases.length > 0) {
+    for (const uc of useCases) {
+      const f = uc.filters;
+      let sql = 'SELECT id, name, slug, sku, category, format, finish, pei, usage, base_price, description FROM products WHERE active = 1';
+      const params = [];
+      if (f.category) { sql += ' AND category ILIKE ?'; params.push(`%${f.category}%`); }
+      if (f.finish) { sql += ' AND finish ILIKE ?'; params.push(`%${f.finish}%`); }
+      if (f.usage) { sql += ' AND usage ILIKE ?'; params.push(`%${f.usage}%`); }
+      if (f.pei) { sql += ' AND pei >= ?'; params.push(f.pei); }
+      if (f.format) { sql += ' AND format LIKE ?'; params.push(`%${f.format}%`); }
+      if (f.priceMax) { sql += ' AND base_price <= ? AND base_price > 0'; params.push(f.priceMax); }
+      sql += ' ORDER BY base_price DESC LIMIT 10';
+      const found = await query(sql, params);
+      products.push(...found);
+    }
+    // Deduplicate
+    const seen = new Set();
+    products = products.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; }).slice(0, 15);
+  }
+
+  // If no use-case match or no results, try keyword search
+  if (products.length === 0) {
+    const words = text.toLowerCase().match(/[a-záéíóúñü]{3,}/g) || [];
+    const searchTerms = words.filter(w => !['hola','quiero','busco','necesito','para','tengo','como','puedo','algo','unos','unas','pisos','piso','que','una','los','las','del','por','con'].includes(w));
+    for (const term of searchTerms.slice(0, 3)) {
+      const found = await query(
+        `SELECT id, name, slug, sku, category, format, finish, pei, usage, base_price, description FROM products WHERE active = 1 AND (name ILIKE ? OR category ILIKE ? OR finish ILIKE ? OR uses ILIKE ? OR description ILIKE ?) LIMIT 8`,
+        [`%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`]
+      );
+      products.push(...found);
+    }
+    const seen = new Set();
+    products = products.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; }).slice(0, 15);
+  }
+
+  // Final fallback: popular products
+  if (products.length === 0) {
+    products = await query('SELECT id, name, slug, sku, category, format, finish, pei, usage, base_price, description FROM products WHERE active = 1 AND base_price > 0 ORDER BY name LIMIT 20');
+  }
+
+  return products;
+}
+
 async function processWhatsAppMessage(from, text, customerName) {
   // Get conversation history
-  const history = await query(
-    'SELECT role, message FROM wa_conversations WHERE phone = ? ORDER BY created_at DESC LIMIT 10',
+  const rawHistory = await query(
+    'SELECT role, message FROM wa_conversations WHERE phone = ? ORDER BY created_at DESC LIMIT 15',
     [from]
-  ).reverse();
+  );
+  const history = [...rawHistory].reverse();
 
   // Save incoming message
   await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
@@ -2710,7 +3080,6 @@ async function processWhatsAppMessage(from, text, customerName) {
     let prods = [];
     try { prods = JSON.parse(lead.products_interested || '[]'); } catch(e) {}
 
-    // Get store info if available
     let storeInfo = null;
     if (lead.store_id) {
       storeInfo = await queryOne('SELECT name, city, state, address, phone, whatsapp FROM stores WHERE id = ?', [lead.store_id]);
@@ -2721,24 +3090,14 @@ async function processWhatsAppMessage(from, text, customerName) {
         [slug, lead.store_name, `%${lead.store_name}%`]);
     }
 
-    // Get FULL product details for interested products (not just prices)
-    let productPrices = '';
     let productDetails = '';
     if (prods.length > 0) {
       const prodData = (await Promise.all(prods.map(pName => queryOne('SELECT name, slug, sku, base_price, format, finish, type, pei, usage, description, category FROM products WHERE name ILIKE ?', [`%${pName.toLowerCase()}%`])))).filter(Boolean);
       if (prodData.length > 0) {
-        productPrices = prodData.map(p => `${p.name}: $${p.base_price || 'consultar'}/m² · ${p.format || ''}`).join(', ');
         productDetails = prodData.map(p => {
-          let detail = `PRODUCTO: ${p.name} (SKU: ${p.sku || p.slug})`;
-          detail += `\n  Precio: $${p.base_price || 'consultar'}/m²`;
-          detail += `\n  Formato: ${p.format || 'Gran formato'}`;
-          detail += `\n  Acabado: ${p.finish || 'Premium'}`;
-          detail += `\n  Tipo: ${p.type || 'Porcelánico'}`;
-          if (p.pei) detail += `\n  PEI: ${p.pei} (${p.pei >= 4 ? 'alto tráfico/comercial' : p.pei >= 3 ? 'toda la casa' : 'tráfico ligero'})`;
-          if (p.usage) detail += `\n  Uso recomendado: ${p.usage}`;
-          if (p.description) detail += `\n  Descripción: ${p.description}`;
-          detail += `\n  Link: cesantoni-experience-za74.onrender.com/p/${p.sku || p.slug}`;
-          return detail;
+          let d = `${p.name} (${p.sku||p.slug}): $${p.base_price||'consultar'}/m², ${p.format||''}, ${p.finish||''}, PEI:${p.pei||'?'}, ${p.usage||''}`;
+          if (p.description) d += ` — ${p.description.substring(0, 80)}`;
+          return d;
         }).join('\n');
       }
     }
@@ -2746,68 +3105,70 @@ async function processWhatsAppMessage(from, text, customerName) {
     const storeCity = storeInfo ? `${storeInfo.city || ''}, ${storeInfo.state || ''}`.trim().replace(/^,|,$/g, '') : '';
     const storePhone = storeInfo ? (storeInfo.whatsapp || storeInfo.phone || '') : '';
 
-    leadContext = `\nCONTEXTO DEL LEAD (YA TIENES ESTA INFO, ÚSALA):
-- Fuente: ${lead.source === 'landing' ? 'Escaneó QR en tienda' : lead.source === 'terra_qr' ? 'Usó Terra en tienda' : 'WhatsApp directo'}
-- Tienda: ${lead.store_name || 'No especificada'}${storeCity ? ' (' + storeCity + ')' : ''}${storePhone ? ' · Tel: ' + storePhone : ''}
-- Pisos que le interesan: ${prods.length > 0 ? prods.join(', ') : 'No especificados'}
-${productPrices ? '- Precios: ' + productPrices : ''}
-- Notas: ${lead.notes || ''}
-${productDetails ? '\nDETALLES COMPLETOS DEL PRODUCTO QUE LE INTERESA:\n' + productDetails : ''}
-
-IMPORTANTE PARA ESTE LEAD:
-${lead.source === 'landing' || lead.source === 'terra_qr' ? '- Este cliente ESTÁ EN LA TIENDA AHORA (escaneó QR ahí). NO le digas "pasa a la tienda" ni "te contactaremos" — YA ESTÁ AHÍ.' : '- Lead orgánico, puede no estar en tienda.'}
-${storeCity ? '- YA SABES su ciudad (' + storeCity + ') — NUNCA preguntes ciudad.' : ''}
-${lead.store_name ? '- YA SABES su tienda (' + lead.store_name + ') — NUNCA preguntes tienda.' : ''}
-${productPrices ? '- YA TIENES precios — dáselos DIRECTO cuando pregunte.' : ''}
-- Solo necesitas los m² para cotizar
-- Si dijo m², calcula: precio × m² × 1.1 (merma) y da el total directo
-- Si está en tienda, dile "pídele a un asesor ahí que te ayude a cerrar"
-- NUNCA digas "te contactaremos" ni "la tienda se pondrá en contacto"`;
+    leadContext = `\nCONTEXTO DEL LEAD:
+- Fuente: ${lead.source === 'landing' ? 'QR en tienda' : lead.source === 'terra_qr' ? 'Terra en tienda' : 'WhatsApp directo'}
+- Tienda: ${lead.store_name || 'N/A'}${storeCity ? ' (' + storeCity + ')' : ''}${storePhone ? ' · Tel: ' + storePhone : ''}
+- Pisos: ${prods.length > 0 ? prods.join(', ') : 'N/A'}
+${productDetails ? '- Detalles:\n' + productDetails : ''}
+- ${lead.source === 'landing' || lead.source === 'terra_qr' ? 'ESTÁ EN TIENDA — no digas "pasa a la tienda"' : 'Lead orgánico'}
+${storeCity ? '- Ciudad conocida: ' + storeCity + ' — NO preguntes ciudad' : ''}
+- Solo falta m² para cotizar. Si da m², calcula: precio × m² × 1.1 (merma)`;
   }
 
-  // Get product catalog (compact)
-  const products = await query('SELECT id, name, slug, category, format, finish, pei, usage, base_price FROM products WHERE active = 1 ORDER BY name');
+  // Smart catalog: only relevant products
+  const useCases = extractRecommendations(text + ' ' + history.filter(h => h.role === 'user').slice(-3).map(h => h.message).join(' '));
+  const products = await getSmartCatalog(text, useCases);
+
   const catalogText = products.map(p =>
-    `${p.name}|${p.slug}|${p.category||'PREMIUM'}|${p.format||''}|PEI:${p.pei||''}|${p.finish||''}|${p.usage||''}${p.base_price ? '|$'+p.base_price : ''}`
+    `${p.name}|${p.sku||p.slug}|${p.category||''}|${p.format||''}|${p.finish||''}|PEI:${p.pei||''}|${p.usage||''}|$${p.base_price||'?'}/m²`
   ).join('\n');
 
-  const systemPrompt = `Eres Terra, la asesora de pisos de Cesantoni por WhatsApp. Eres amable, experta y directa. Tu meta es convertir cada conversación en una cotización o visita a tienda.
+  const useCaseTips = useCases.length > 0
+    ? '\nSUGERENCIAS PARA ESTE CLIENTE:\n' + useCases.map(u => `- ${u.tip}`).join('\n')
+    : '';
 
-REGLAS ESTRICTAS:
-- MÁXIMO 2-3 oraciones por mensaje. Es WhatsApp, NO un email. Sé BREVE.
-- NUNCA hagas listas largas ni cuestionarios. Una pregunta a la vez.
-- Responde en español mexicano, cálido y directo
-- Si preguntan por un producto, usa los DATOS REALES del producto (formato, acabado, PEI, uso, descripción). NO des respuestas genéricas como "es porcelánico y resistente" — usa las especificaciones técnicas reales.
-- Si no saben qué quieren, haz UNA sola pregunta: "¿Para qué espacio lo necesitas?"
-- Si preguntan precio, usa el precio real del catálogo/contexto. Ofrece cotización.
-- Para cotización solo necesitas: m² aproximados y ciudad. NO pidas nombre, teléfono, ni tipo de piso (ya lo sabes del contexto)
-- NUNCA inventes productos que no están en el catálogo
-- LINKS: Solo incluye el link la PRIMERA vez que mencionas un producto. NO repitas el mismo link en cada mensaje.
-- Máximo 1 emoji por mensaje
-- PROHIBIDO: listas con viñetas, formularios, preguntas múltiples, mensajes largos, respuestas genéricas sin datos del producto
+  // Conversation summary for long chats
+  let historyText;
+  if (history.length > 8) {
+    const older = history.slice(0, -6).map(h => h.message).join(' ').substring(0, 200);
+    const recent = history.slice(-6).map(h => `${h.role === 'user' ? 'Cliente' : 'Terra'}: ${h.message}`).join('\n');
+    historyText = `RESUMEN CONVERSACIÓN ANTERIOR: ${older}...\n\nÚLTIMOS MENSAJES:\n${recent}`;
+  } else {
+    historyText = history.map(h => `${h.role === 'user' ? 'Cliente' : 'Terra'}: ${h.message}`).join('\n');
+  }
 
-CUANDO PREGUNTEN SOBRE UN PRODUCTO ESPECÍFICO:
-- Usa los datos reales de "DETALLES COMPLETOS DEL PRODUCTO" en el contexto
-- Ejemplo: si preguntan "¿es fácil de limpiar?" y es acabado NATURAL, di "Sí, el acabado natural del NEKK no acumula suciedad y se limpia con agua y jabón neutro, sin necesidad de ceras."
-- Ejemplo: si preguntan "¿es resistente?" y tiene PEI 4, di "Sí, tiene PEI 4 (apto para tráfico comercial), aguanta alto tráfico sin rayarse."
-- NO digas solo "es porcelánico" — eso es genérico. Usa el dato específico del producto.
+  const systemPrompt = `Eres Terra, asesora de pisos de Cesantoni por WhatsApp. Amable, experta, directa. Meta: convertir en cotización o visita.
 
-FLUJO DE CONVERSIÓN (una pregunta a la vez):
-1. Cliente muestra interés → "¡Excelente! ¿Cuántos m² necesitas?"
-2. Da m² y ya tienes precio → Calcula directo: "X m² × $precio + 10% merma = $total aprox. Pídele a un asesor ahí que te ayude a cerrar!"
-3. Si NO sabes ciudad (lead orgánico) → "¿En qué ciudad estás?"
-4. Da ciudad → "Te cotizo: X m² de Y = $Z aprox. Te paso la tienda más cercana."
+REGLAS:
+- MÁXIMO 2-3 oraciones. WhatsApp = BREVE.
+- SIEMPRE en español mexicano. NUNCA en inglés.
+- Una pregunta a la vez, nunca cuestionarios.
+- Usa DATOS REALES del producto (formato, acabado, PEI, uso). NO respuestas genéricas.
+- Si no saben qué quieren: "¿Para qué espacio lo necesitas?"
+- Si preguntan precio: precio real + ofrece cotización.
+- Para cotizar solo necesitas m² y ciudad.
+- NUNCA inventes productos. Solo usa los del CATÁLOGO.
+- Cuando recomiendes, explica POR QUÉ ese producto es ideal para su necesidad.
+- Máximo 1 emoji por mensaje. Sin listas con viñetas.
+- Link de producto: cesantoni-experience-za74.onrender.com/p/{sku} — solo la primera vez.
+- Catálogo web: cesantoni-experience-za74.onrender.com/catalogo
+- Tiendas: cesantoni-experience-za74.onrender.com/tiendas
+
+CONVERSIÓN:
+1. Interés → "¿Cuántos m² necesitas?"
+2. Da m² → Calcula: m² × precio × 1.1 = total
+3. Sin ciudad → "¿En qué ciudad estás?"
 ${leadContext}
-CESANTONI: Empresa mexicana premium de porcelanato. ${products.length} productos. 407 tiendas en México. Tecnología HD, gran formato, garantía.
-TÉCNICO: PEI 3=toda la casa, PEI 4=comercios, PEI 5=industrial. Mate=no resbala, ideal baños/cocina. Pulido=brillo espejo, para sala/comedor. Lappato=semi-brillo elegante. Natural=fácil limpieza. Porcelánico <0.5% absorción=exterior/baño/piscina.
+${useCaseTips}
+TÉCNICO: PEI 3=toda la casa, PEI 4=comercios, PEI 5=industrial. Mate=antideslizante baño/cocina. Pulido=brillo espejo sala. Lappato=semi-brillo elegante. Natural=fácil limpieza. <0.5% absorción=exterior/piscina.
 
 Cliente: ${customerName || from}
-${history.length > 0 ? 'HISTORIAL:\n' + history.map(h => `${h.role === 'user' ? 'Cliente' : 'Terra'}: ${h.message}`).join('\n') : ''}
+${historyText ? 'HISTORIAL:\n' + historyText : ''}
 
-CATÁLOGO (${products.length} productos):
+CATÁLOGO RELEVANTE (${products.length} productos):
 ${catalogText}
 
-Responde SOLO el texto del mensaje, nada más. No uses JSON ni markdown.`;
+Responde SOLO el texto del mensaje.`;
 
   try {
     const response = await fetch(
@@ -2818,7 +3179,7 @@ Responde SOLO el texto del mensaje, nada más. No uses JSON ni markdown.`;
         body: JSON.stringify({
           contents: [
             { role: 'user', parts: [{ text: systemPrompt }] },
-            { role: 'model', parts: [{ text: 'Entendido, soy Terra por WhatsApp.' }] },
+            { role: 'model', parts: [{ text: 'Entendido, soy Terra.' }] },
             { role: 'user', parts: [{ text }] }
           ],
           generationConfig: { temperature: 0.7, maxOutputTokens: 300 }
@@ -2829,13 +3190,10 @@ Responde SOLO el texto del mensaje, nada más. No uses JSON ni markdown.`;
     const data = await response.json();
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Disculpa, tuve un problema. ¿Puedes repetir tu mensaje?';
 
-    // Auto-update lead status based on conversation progress
     if (lead && lead.status === 'new') {
       const allMsgs = history.map(h => h.message).join(' ') + ' ' + text;
-      const hasCotizacion = /cotiza|metros|m2|m²|cuant.*cuest|precio/i.test(allMsgs);
-      if (hasCotizacion) {
+      if (/cotiza|metros|m2|m²|cuant.*cuest|precio/i.test(allMsgs)) {
         await run('UPDATE leads SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', ['contacted', lead.id]);
-        console.log(`📊 Lead ${lead.id} auto-updated to 'contacted'`);
       }
     }
 
@@ -4596,12 +4954,17 @@ app.get('/api/funnel', async (req, res) => {
 
     const scans = await scalar(`SELECT COUNT(*) FROM scans WHERE created_at >= ${dateFilter}`) || 0;
     const waClicks = await scalar(`SELECT COUNT(*) FROM whatsapp_clicks WHERE created_at >= ${dateFilter}`) || 0;
+    const conversations = await scalar(`SELECT COUNT(DISTINCT phone) FROM wa_conversations WHERE role = 'user' AND created_at >= ${dateFilter}`) || 0;
     const totalLeads = await scalar(`SELECT COUNT(*) FROM leads WHERE created_at >= ${dateFilter}`) || 0;
     const landingLeads = await scalar(`SELECT COUNT(*) FROM leads WHERE source = 'landing' AND created_at >= ${dateFilter}`) || 0;
     const terraLeads = await scalar(`SELECT COUNT(*) FROM leads WHERE source = 'terra_qr' AND created_at >= ${dateFilter}`) || 0;
     const waLeads = await scalar(`SELECT COUNT(*) FROM leads WHERE source = 'whatsapp_bot' AND created_at >= ${dateFilter}`) || 0;
     const contacted = await scalar(`SELECT COUNT(*) FROM leads WHERE status = 'contacted' AND created_at >= ${dateFilter}`) || 0;
     const converted = await scalar(`SELECT COUNT(*) FROM leads WHERE status = 'converted' AND created_at >= ${dateFilter}`) || 0;
+
+    // Quotes data
+    const quotesCount = await scalar(`SELECT COUNT(*) FROM quotes WHERE created_at >= ${dateFilter}`) || 0;
+    const quotesTotal = await scalar(`SELECT COALESCE(SUM(grand_total), SUM(total), 0) FROM quotes WHERE created_at >= ${dateFilter}`) || 0;
 
     // Daily breakdown for chart
     const daily = await query(`
@@ -4623,19 +4986,40 @@ app.get('/api/funnel', async (req, res) => {
       GROUP BY p.name ORDER BY scans DESC LIMIT 10
     `);
 
+    // Top products quoted
+    const topQuoted = await query(`
+      SELECT qi.product_name as name, COUNT(*) as quotes, SUM(COALESCE(qi.subtotal, 0)) as revenue
+      FROM quote_items qi JOIN quotes q ON qi.quote_id = q.id
+      WHERE q.created_at >= ${dateFilter}
+      GROUP BY qi.product_name ORDER BY quotes DESC LIMIT 5
+    `).catch(() => []);
+
+    // Top stores by scans
+    const topStores = await query(`
+      SELECT st.name, st.state, COUNT(s.id) as scans
+      FROM scans s JOIN stores st ON s.store_id = st.id
+      WHERE s.created_at >= ${dateFilter}
+      GROUP BY st.id, st.name, st.state ORDER BY scans DESC LIMIT 5
+    `);
+
     res.json({
       period_days: days,
-      funnel: { scans, wa_clicks: waClicks, leads: totalLeads, contacted, converted },
+      funnel: { scans, wa_clicks: waClicks, conversations, leads: totalLeads, quotes: quotesCount, contacted, converted },
       leads_by_source: { landing: landingLeads, terra_qr: terraLeads, whatsapp_bot: waLeads },
+      quotes_summary: { count: quotesCount, total_value: Math.round(quotesTotal) },
       conversion_rates: {
         scan_to_click: scans > 0 ? ((waClicks / scans) * 100).toFixed(1) : '0',
         click_to_lead: waClicks > 0 ? ((totalLeads / waClicks) * 100).toFixed(1) : '0',
         lead_to_contacted: totalLeads > 0 ? ((contacted / totalLeads) * 100).toFixed(1) : '0',
-        lead_to_converted: totalLeads > 0 ? ((converted / totalLeads) * 100).toFixed(1) : '0'
+        lead_to_converted: totalLeads > 0 ? ((converted / totalLeads) * 100).toFixed(1) : '0',
+        lead_to_quote: totalLeads > 0 ? ((quotesCount / totalLeads) * 100).toFixed(1) : '0',
+        overall: scans > 0 ? ((converted / scans) * 100).toFixed(1) : '0'
       },
       daily_scans: daily,
       daily_leads: dailyLeads,
-      top_products: topProducts
+      top_products: topProducts,
+      top_quoted: topQuoted,
+      top_stores: topStores
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
