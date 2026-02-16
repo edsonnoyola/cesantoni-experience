@@ -2761,8 +2761,161 @@ app.post('/webhook', async (req, res) => {
         return;
       }
 
-      // --- M² Calculator: detect if user is answering the "¿Cuántos m²?" prompt ---
+      // --- COTIZAR QUEUE: sequential m² collection for multi-product quotes ---
       const m2Number = text.match(/^[\s]*(\d+(?:[.,]\d+)?)\s*(m2|m²|metros?)?\s*$/i);
+      if (m2Number) {
+        const cotizarQueue = await query(
+          "SELECT id, message FROM wa_conversations WHERE phone = ? AND role = 'system' AND message LIKE '[COTIZAR_QUEUE]%' ORDER BY created_at ASC",
+          [from]);
+
+        if (cotizarQueue.length > 0) {
+          const m2 = parseFloat(m2Number[1].replace(',', '.'));
+          await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
+
+          // Process current (first in queue)
+          const currentEntry = cotizarQueue[0];
+          const parts = currentEntry.message.replace('[COTIZAR_QUEUE] ', '').split('|');
+          const queueIdx = parseInt(parts[0]);
+          const productRef = parts[1];
+
+          const product = await queryOne('SELECT * FROM products WHERE sku = ? OR id::text = ?', [productRef, productRef]);
+
+          if (product && product.sqm_per_box && product.base_price) {
+            const m2ConMerma = m2 * 1.10;
+            const boxes = Math.ceil(m2ConMerma / product.sqm_per_box);
+            const totalM2 = (boxes * product.sqm_per_box).toFixed(2);
+            const totalPrice = Math.round(boxes * product.sqm_per_box * product.base_price);
+
+            // Save QUOTE_ITEM
+            await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
+              [from, 'assistant', `[QUOTE_ITEM] ${product.name}|${m2}|${m2ConMerma.toFixed(1)}|${boxes}|${totalM2}|${totalPrice}`]);
+
+            // Remove processed entry from queue
+            await run('DELETE FROM wa_conversations WHERE id = ?', [currentEntry.id]);
+
+            // Check remaining queue
+            const remaining = cotizarQueue.length - 1;
+
+            if (remaining > 0) {
+              // Ask for next product
+              const nextEntry = cotizarQueue[1];
+              const nextParts = nextEntry.message.replace('[COTIZAR_QUEUE] ', '').split('|');
+              const nextRef = nextParts[1];
+              const nextProduct = await queryOne('SELECT * FROM products WHERE sku = ? OR id::text = ?', [nextRef, nextRef]);
+              const nextName = nextProduct?.name || nextRef;
+
+              await sendWhatsApp(from, `✅ *${product.name}*: ${m2} m² → ${boxes} cajas ($${totalPrice.toLocaleString('es-MX')})\n\nSiguiente: *${nextName}*\n¿Cuántos m²?`);
+            } else {
+              // All products done! Auto-generate quote
+              await sendWhatsApp(from, `✅ *${product.name}*: ${m2} m² → ${boxes} cajas ($${totalPrice.toLocaleString('es-MX')})\n\n⏳ Generando tu cotización...`);
+              await new Promise(r => setTimeout(r, 800));
+
+              // Trigger quote generation (same logic as enviar_cotizacion)
+              await addLeadScore(from, 30, 'cotizacion');
+              const quoteItems = await query(
+                "SELECT message FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '[QUOTE_ITEM]%' ORDER BY created_at ASC",
+                [from]);
+
+              if (quoteItems.length > 0) {
+                const lead = await queryOne('SELECT * FROM leads WHERE phone = ?', [from]);
+                const leadName = lead?.name || contactName || 'Cliente';
+                const folio = await generateQuoteFolio();
+
+                let grandTotal = 0;
+                let grandM2 = 0;
+                const parsedItems = [];
+
+                for (let i = 0; i < quoteItems.length; i++) {
+                  const qParts = quoteItems[i].message.replace('[QUOTE_ITEM] ', '').split('|');
+                  const [pName, pM2, pM2Merma, pBoxes, pTotalM2, pPrice] = qParts;
+                  const price = parseFloat(pPrice) || 0;
+                  grandTotal += price;
+                  grandM2 += parseFloat(pTotalM2) || 0;
+
+                  const prod = await queryOne('SELECT id, base_price FROM products WHERE name ILIKE ?', [`%${pName.trim()}%`]);
+                  parsedItems.push({
+                    product_name: pName.trim(), product_id: prod?.id || null,
+                    m2_requested: parseFloat(pM2) || 0, m2_with_merma: parseFloat(pM2Merma) || 0,
+                    boxes: parseInt(pBoxes) || 0, total_m2: parseFloat(pTotalM2) || 0,
+                    price_per_m2: prod?.base_price || null, subtotal: price, sort_order: i
+                  });
+                }
+
+                const validUntil = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                const quoteResult = await run(
+                  `INSERT INTO quotes (folio, customer_name, customer_phone, store_id, store_name, grand_total, items_count, valid_until, lead_id, status)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'sent') RETURNING id`,
+                  [folio, leadName, from, lead?.store_id || null, lead?.store_name || null, grandTotal, parsedItems.length, validUntil, lead?.id || null]
+                );
+                const quoteId = quoteResult.rows?.[0]?.id;
+
+                if (quoteId) {
+                  for (const item of parsedItems) {
+                    await run(
+                      `INSERT INTO quote_items (quote_id, product_name, product_id, m2_requested, m2_with_merma, boxes, total_m2, price_per_m2, subtotal, sort_order)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                      [quoteId, item.product_name, item.product_id, item.m2_requested, item.m2_with_merma, item.boxes, item.total_m2, item.price_per_m2, item.subtotal, item.sort_order]
+                    );
+                  }
+                }
+
+                if (lead?.id) await run("UPDATE leads SET last_quote_folio = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [folio, lead.id]);
+
+                const quoteUrl = `${BASE_URL}/cotizacion/${folio}`;
+                let quoteTxt = `📄 *COTIZACIÓN ${folio}*\n`;
+                quoteTxt += `👤 ${leadName}\n${'─'.repeat(20)}\n\n`;
+
+                for (let i = 0; i < parsedItems.length; i++) {
+                  const item = parsedItems[i];
+                  quoteTxt += `*${i + 1}. ${item.product_name}*\n`;
+                  quoteTxt += `   ${item.m2_requested} m² → ${item.boxes} cajas`;
+                  if (item.subtotal) quoteTxt += ` · $${Math.round(item.subtotal).toLocaleString('es-MX')}`;
+                  quoteTxt += `\n`;
+                }
+                quoteTxt += `\n${'─'.repeat(20)}\n`;
+                quoteTxt += `📦 *${grandM2.toFixed(1)} m²* · 💰 *$${Math.round(grandTotal).toLocaleString('es-MX')} MXN*\n`;
+                quoteTxt += `\n📋 ${quoteUrl}\n`;
+                quoteTxt += `_Vigencia: 15 días_`;
+
+                await sendWhatsApp(from, quoteTxt);
+
+                // Notify store
+                const store = lead?.store_id ? await queryOne('SELECT * FROM stores WHERE id = ?', [lead.store_id]) : null;
+                if (store?.whatsapp) {
+                  await sendWhatsAppTemplate(store.whatsapp, 'lead_nuevo', [
+                    leadName, from, store?.name || 'Tienda', `Cotización ${folio}: ${parsedItems.length} pisos, $${Math.round(grandTotal).toLocaleString('es-MX')}`
+                  ]);
+                }
+
+                await run("DELETE FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '[QUOTE_ITEM]%'", [from]);
+                console.log(`📄 Quote ${folio} created: ${parsedItems.length} items, $${Math.round(grandTotal)}`);
+
+                await new Promise(r => setTimeout(r, 500));
+                await sendWhatsAppButtons(from, '¡Tu cotización está lista!', [
+                  { id: 'hablar_asesor', title: '👤 Hablar c/asesor' },
+                  { id: 'agendar_visita', title: '📅 Agendar visita' },
+                  { id: 'ver_mas_catalogo', title: '📋 Cotizar otros' }
+                ]);
+              }
+            }
+          } else {
+            // Product missing sqm_per_box data
+            await run('DELETE FROM wa_conversations WHERE id = ?', [currentEntry.id]);
+            const remaining = cotizarQueue.length - 1;
+            await sendWhatsApp(from, `⚠️ No tengo datos de empaque para ${product?.name || productRef}. Lo omití.`);
+            if (remaining > 0) {
+              const nextEntry = cotizarQueue[1];
+              const nextParts = nextEntry.message.replace('[COTIZAR_QUEUE] ', '').split('|');
+              const nextRef = nextParts[1];
+              const nextProduct = await queryOne('SELECT * FROM products WHERE sku = ? OR id::text = ?', [nextRef, nextRef]);
+              await sendWhatsApp(from, `Siguiente: *${nextProduct?.name || nextRef}*\n¿Cuántos m²?`);
+            }
+          }
+          return;
+        }
+      }
+
+      // --- M² Calculator: detect if user is answering the "¿Cuántos m²?" prompt ---
       if (m2Number) {
         const lastBotMsg = await queryOne(
           "SELECT message FROM wa_conversations WHERE phone = ? AND role = 'assistant' ORDER BY created_at DESC LIMIT 1", [from]);
@@ -3442,11 +3595,52 @@ app.post('/webhook', async (req, res) => {
           await new Promise(r => setTimeout(r, 300));
           await sendWhatsAppButtons(from, '¿Qué quieres hacer?', [
             { id: 'ver_mas_catalogo', title: '📋 Elegir otro piso' },
-            { id: 'ver_seleccionados', title: `👁️ Ver mis ${pickCount} pisos` },
-            { id: 'hablar_asesor', title: '👤 Hablar c/asesor' }
+            { id: 'cotizar_seleccion', title: `📐 Cotizar mis ${pickCount}` },
+            { id: 'ver_seleccionados', title: `👁️ Ver mis ${pickCount} pisos` }
           ]);
         } else {
           await sendWhatsApp(from, `No encontré ese producto. Escríbeme el nombre del piso que te interesa. 😊`);
+        }
+
+      } else if (btnId === 'cotizar_seleccion') {
+        // Start sequential m² collection for all selected products
+        const picks = await query(
+          "SELECT message FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '[CATALOG_PICK]%' ORDER BY created_at ASC",
+          [from]);
+
+        if (picks.length === 0) {
+          await sendWhatsApp(from, 'No tienes pisos seleccionados. Escríbeme _pisos de madera_ o el estilo que buscas. 😊');
+        } else {
+          // Deduplicate
+          const seen = new Set();
+          const uniqueRefs = [];
+          for (const p of picks) {
+            const ref = p.message.replace('[CATALOG_PICK] ', '').trim();
+            if (!seen.has(ref)) { seen.add(ref); uniqueRefs.push(ref); }
+          }
+
+          // Clear old picks and COTIZAR_QUEUE
+          await run("DELETE FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '[CATALOG_PICK]%'", [from]);
+          await run("DELETE FROM wa_conversations WHERE phone = ? AND role = 'system' AND message LIKE '[COTIZAR_QUEUE]%'", [from]);
+          await run("DELETE FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '[QUOTE_ITEM]%'", [from]);
+
+          // Save queue: each product to cotizar
+          for (let i = 0; i < uniqueRefs.length; i++) {
+            await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
+              [from, 'system', `[COTIZAR_QUEUE] ${i}|${uniqueRefs[i]}`]);
+          }
+
+          // Ask m² for the first product
+          const firstProduct = await queryOne('SELECT * FROM products WHERE sku = ? OR id::text = ?', [uniqueRefs[0], uniqueRefs[0]]);
+          const firstName = firstProduct?.name || uniqueRefs[0];
+
+          await addLeadScore(from, 20, 'cotizar_seleccion');
+
+          if (uniqueRefs.length === 1) {
+            await sendWhatsApp(from, `📐 *Cotizando ${firstName}*\n\n¿Cuántos m² necesitas?\n_Escribe el número, ej: 50_`);
+          } else {
+            await sendWhatsApp(from, `📐 *Cotizando ${uniqueRefs.length} pisos*\n\nEmpecemos con *${firstName}*\n¿Cuántos m² necesitas?\n_Escribe el número, ej: 50_`);
+          }
         }
 
       } else if (btnId === 'ver_seleccionados') {
@@ -3494,10 +3688,16 @@ app.post('/webhook', async (req, res) => {
           // Clear picks after showing
           await run("DELETE FROM wa_conversations WHERE phone = ? AND role = 'assistant' AND message LIKE '[CATALOG_PICK]%'", [from]);
 
+          // Re-insert picks for cotizar (they were cleared above for display)
+          for (const ref of uniqueRefs) {
+            await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
+              [from, 'assistant', `[CATALOG_PICK] ${ref}`]);
+          }
+
           await new Promise(r => setTimeout(r, 500));
           await sendWhatsAppButtons(from, `Esos son tus ${uniqueRefs.length} favoritos. ¿Qué sigue?`, [
-            { id: 'calcular_m2', title: '📐 Calcular m²' },
-            { id: 'comparar', title: '⚖️ Comparar' },
+            { id: 'cotizar_seleccion', title: `📐 Cotizar ${uniqueRefs.length} pisos` },
+            { id: 'ver_mas_catalogo', title: '📋 Agregar otro' },
             { id: 'hablar_asesor', title: '👤 Hablar c/asesor' }
           ]);
         }
