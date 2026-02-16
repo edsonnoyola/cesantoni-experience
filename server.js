@@ -3187,7 +3187,7 @@ Responde SOLO el texto del mensaje. Corto, conversacional, sin listas.`;
             { role: 'model', parts: [{ text: 'Entendido, soy Terra.' }] },
             { role: 'user', parts: [{ text }] }
           ],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 256 },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
           safetySettings: [
             { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
             { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
@@ -3246,16 +3246,13 @@ Responde SOLO el texto del mensaje. Corto, conversacional, sin listas.`;
       reply = lastPeriod > 100 ? cut.substring(0, lastPeriod + 1) : cut.substring(0, 400).trim();
     }
 
-    // Auto-append product landing link if Gemini mentions a product by name
-    if (products.length > 0 && !/cesantoni-experience|\/p\//i.test(reply)) {
+    // Find the best matching product from smart catalog
+    let matchedProduct = null;
+    if (products.length > 0) {
       const replyLower = reply.toLowerCase();
-      const mentioned = products.find(p => replyLower.includes(p.name.toLowerCase()));
-      if (mentioned) {
-        const slug = mentioned.sku || mentioned.slug;
-        if (slug) {
-          reply += `\n\nMíralo aquí: https://cesantoni-experience-za74.onrender.com/p/${slug}`;
-        }
-      }
+      matchedProduct = products.find(p => replyLower.includes(p.name.toLowerCase()));
+      // Fallback: first product from catalog if Gemini didn't mention one by name
+      if (!matchedProduct) matchedProduct = products[0];
     }
 
     if (lead && lead.status === 'new') {
@@ -3265,10 +3262,10 @@ Responde SOLO el texto del mensaje. Corto, conversacional, sin listas.`;
       }
     }
 
-    return reply;
+    return { reply, product: matchedProduct };
   } catch (err) {
     console.error('WA Gemini error:', err.message);
-    return 'Disculpa, tuve un problema técnico. Intenta de nuevo en un momento. 🙏';
+    return { reply: 'Disculpa, tuve un problema técnico. Intenta de nuevo en un momento.', product: null };
   }
 }
 
@@ -4029,22 +4026,14 @@ app.post('/webhook', async (req, res) => {
           [from, contactName || from, `Contacto directo por WhatsApp. Primer mensaje: ${text.substring(0, 100)}`]);
       }
 
-      const reply = await processWhatsAppMessage(from, text, contactName);
+      const { reply, product } = await processWhatsAppMessage(from, text, contactName);
+      const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
 
-      // UX: If reply mentions a product, send ONE image message with recommendation as caption
-      const slugMatch = reply.match(/\/p\/([A-Za-z0-9_-]+)/i);
-      if (slugMatch) {
-        const pSlug = slugMatch[1];
-        const product = await queryOne('SELECT name, image_url, slug, sku, base_price, format, finish FROM products WHERE slug = ? OR sku = ? OR slug ILIKE ? OR sku ILIKE ?', [pSlug, pSlug, pSlug, pSlug]);
-        if (product?.image_url) {
-          // Strip the link from the text (it'll be in the landing preview)
-          const cleanReply = reply.replace(/\n*Míralo aquí:.*$/i, '').trim();
-          const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
-          const caption = `${cleanReply}\n\n*${product.name}*${product.base_price ? ' · $' + product.base_price + '/m²' : ''}${product.format ? ' · ' + product.format : ''}\n\n${baseUrl}/p/${product.sku || product.slug}`;
-          await sendWhatsAppImage(from, product.image_url, caption);
-        } else {
-          await sendWhatsApp(from, reply);
-        }
+      if (product?.image_url) {
+        // Send ONE image with recommendation + product info + landing link as caption
+        const slug = product.sku || product.slug;
+        const caption = `${reply}\n\n*${product.name}*${product.base_price ? ' · $' + product.base_price + '/m²' : ''}${product.format ? ' · ' + product.format : ''}\n\n${baseUrl}/p/${slug}`;
+        await sendWhatsAppImage(from, product.image_url, caption);
       } else {
         await sendWhatsApp(from, reply);
       }
@@ -4612,8 +4601,14 @@ app.post('/webhook', async (req, res) => {
 
       } else {
         // Unknown button, pass to AI
-        const reply = await processWhatsAppMessage(from, btnTitle, contactName);
-        await sendWhatsApp(from, reply);
+        const { reply, product } = await processWhatsAppMessage(from, btnTitle, contactName);
+        if (product?.image_url) {
+          const slug = product.sku || product.slug;
+          const caption = `${reply}\n\n*${product.name}*${product.base_price ? ' · $' + product.base_price + '/m²' : ''}\n\nhttps://cesantoni-experience-za74.onrender.com/p/${slug}`;
+          await sendWhatsAppImage(from, product.image_url, caption);
+        } else {
+          await sendWhatsApp(from, reply);
+        }
       }
 
     } else if (message.type === 'audio') {
@@ -4629,15 +4624,13 @@ app.post('/webhook', async (req, res) => {
             await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', `[Audio] ${transcription}`]);
 
             // Process transcribed text through normal AI flow
-            const reply = await processWhatsAppMessage(from, transcription, contactName);
-            await sendWhatsApp(from, reply);
-
-            // Check if reply mentions a product
-            const slugMatch = reply.match(/\/p\/([A-Za-z0-9_-]+)/i);
-            if (slugMatch) {
-              const pSlug = slugMatch[1];
-              const product = await queryOne('SELECT name, image_url FROM products WHERE slug ILIKE ? OR sku ILIKE ?', [pSlug, pSlug]);
-              if (product?.image_url) await sendWhatsAppImage(from, product.image_url, `${product.name} - Cesantoni`);
+            const { reply, product } = await processWhatsAppMessage(from, transcription, contactName);
+            if (product?.image_url) {
+              const slug = product.sku || product.slug;
+              const caption = `${reply}\n\n*${product.name}*${product.base_price ? ' · $' + product.base_price + '/m²' : ''}\n\nhttps://cesantoni-experience-za74.onrender.com/p/${slug}`;
+              await sendWhatsAppImage(from, product.image_url, caption);
+            } else {
+              await sendWhatsApp(from, reply);
             }
           } else {
             await sendWhatsApp(from, 'No pude entender el audio. ¿Podrías escribirme tu mensaje? 🙏');
