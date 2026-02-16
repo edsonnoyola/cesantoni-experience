@@ -3231,6 +3231,18 @@ Responde SOLO el texto del mensaje.`;
 
     if (!reply) reply = 'Disculpa, tuve un problema. ¿Puedes repetir tu mensaje?';
 
+    // Auto-append product landing link if Gemini mentions a product by name
+    if (products.length > 0 && !/cesantoni-experience|\/p\/|\/catalogo/i.test(reply)) {
+      const replyLower = reply.toLowerCase();
+      const mentioned = products.find(p => replyLower.includes(p.name.toLowerCase()));
+      if (mentioned) {
+        const slug = mentioned.sku || mentioned.slug;
+        if (slug) {
+          reply += `\n\nVe los detalles aquí: https://cesantoni-experience-za74.onrender.com/p/${slug}`;
+        }
+      }
+    }
+
     if (lead && lead.status === 'new') {
       const allMsgs = history.map(h => h.message).join(' ') + ' ' + text;
       if (/cotiza|metros|m2|m²|cuant.*cuest|precio/i.test(allMsgs)) {
