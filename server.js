@@ -46,7 +46,7 @@ app.post('/api/login', async (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', async (req, res) => res.json({ version: 'v9.0.0', commit: 'cotizador-automatico-seguimiento-inteligente' }));
+app.get('/api/health', async (req, res) => res.json({ version: 'v9.1.0', commit: 'store-locator-geocoding' }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
@@ -381,6 +381,40 @@ app.put('/api/stores/:id', async (req, res) => {
     values.push(req.params.id);
     await run(`UPDATE stores SET ${fields.join(', ')} WHERE id = ?`, values);
     res.json({ message: 'Tienda actualizada' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Haversine distance (km) between two lat/lng points
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+app.get('/api/stores/nearest', async (req, res) => {
+  try {
+    const { lat, lng, limit } = req.query;
+    if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
+    const userLat = parseFloat(lat);
+    const userLng = parseFloat(lng);
+    const max = Math.min(parseInt(limit) || 5, 20);
+
+    const stores = await query(`
+      SELECT s.*, d.name as distributor_name
+      FROM stores s JOIN distributors d ON s.distributor_id = d.id
+      WHERE s.active = 1 AND s.lat IS NOT NULL AND s.lng IS NOT NULL
+    `);
+
+    const withDist = stores.map(s => ({
+      ...s,
+      distance_km: Math.round(haversine(userLat, userLng, s.lat, s.lng) * 10) / 10
+    })).sort((a, b) => a.distance_km - b.distance_km).slice(0, max);
+
+    res.json(withDist);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -905,6 +939,215 @@ app.get('/cotizacion/:folio', async (req, res) => {
   } catch (e) {
     console.error('Quote page error:', e.message);
     res.status(500).send('<h1>Error al cargar la cotizacion</h1>');
+  }
+});
+
+// Public store locator page
+app.get('/tiendas', async (req, res) => {
+  try {
+    const stores = await query(`
+      SELECT s.id, s.name, s.state, s.city, s.address, s.lat, s.lng, s.whatsapp, s.phone,
+             s.promo_text, d.name as distributor_name
+      FROM stores s JOIN distributors d ON s.distributor_id = d.id
+      WHERE s.active = 1 AND s.lat IS NOT NULL AND s.lng IS NOT NULL
+      ORDER BY s.state, s.name
+    `);
+    const states = [...new Set(stores.map(s => s.state))].sort();
+
+    res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Encuentra tu Tienda - Cesantoni</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Source+Sans+3:wght@300;400;600&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Source Sans 3', sans-serif; background: #111118; color: #fff; height: 100vh; display: flex; flex-direction: column; }
+
+  .header { background: #111118; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #C9A962; z-index: 1000; }
+  .header h1 { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: #C9A962; }
+  .header .logo { font-family: 'Playfair Display', serif; font-size: 0.9rem; letter-spacing: 3px; color: #C9A962; border: 1px solid #C9A962; padding: 4px 12px; }
+  .header .count { font-size: 0.85rem; color: #aaa; }
+
+  .main { display: flex; flex: 1; overflow: hidden; }
+  #map { flex: 1; z-index: 1; }
+
+  .sidebar { width: 360px; background: #1a1a24; overflow-y: auto; display: flex; flex-direction: column; z-index: 2; }
+  .sidebar-header { padding: 16px; border-bottom: 1px solid #333; }
+  .sidebar-header select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #444; background: #222; color: #fff; font-size: 0.95rem; }
+  .btn-locate { width: 100%; margin-top: 10px; padding: 12px; border: none; border-radius: 8px; background: #C9A962; color: #111; font-weight: 600; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-locate:hover { background: #b8953d; }
+
+  .store-list { flex: 1; overflow-y: auto; }
+  .store-card { padding: 14px 16px; border-bottom: 1px solid #2a2a34; cursor: pointer; transition: background 0.2s; }
+  .store-card:hover { background: #252530; }
+  .store-card.active { background: #2a2a3a; border-left: 3px solid #C9A962; }
+  .store-card h3 { font-size: 0.95rem; color: #fff; margin-bottom: 4px; }
+  .store-card .dist { font-size: 0.8rem; color: #C9A962; margin-bottom: 4px; }
+  .store-card .addr { font-size: 0.8rem; color: #999; line-height: 1.4; }
+  .store-card .distance { font-size: 0.85rem; color: #C9A962; font-weight: 600; margin-top: 6px; }
+  .store-card .actions { margin-top: 8px; display: flex; gap: 8px; }
+  .store-card .actions a { font-size: 0.8rem; color: #C9A962; text-decoration: none; padding: 4px 10px; border: 1px solid #C9A962; border-radius: 4px; }
+  .store-card .actions a:hover { background: #C9A962; color: #111; }
+
+  .no-results { padding: 40px 16px; text-align: center; color: #666; }
+
+  @media (max-width: 768px) {
+    .main { flex-direction: column-reverse; }
+    .sidebar { width: 100%; max-height: 45vh; }
+    #map { min-height: 55vh; }
+    .header h1 { font-size: 1rem; }
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">CESANTONI</div>
+  <h1>Encuentra tu Tienda</h1>
+  <div class="count">${stores.length} tiendas</div>
+</div>
+<div class="main">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <select id="stateFilter" onchange="filterByState()">
+        <option value="">Todos los estados</option>
+        ${states.map(s => `<option value="${s}">${s}</option>`).join('')}
+      </select>
+      <button class="btn-locate" onclick="locateMe()">📍 Usar mi ubicacion</button>
+    </div>
+    <div class="store-list" id="storeList"></div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const allStores = ${JSON.stringify(stores.map(s => ({
+  id: s.id, name: s.name, state: s.state, city: s.city || '',
+  address: s.address || '', lat: s.lat, lng: s.lng,
+  whatsapp: s.whatsapp || '', phone: s.phone || '',
+  distributor: s.distributor_name || '', promo: s.promo_text || ''
+})))};
+
+const map = L.map('map').setView([23.6345, -102.5528], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap', maxZoom: 18
+}).addTo(map);
+
+const goldIcon = L.divIcon({
+  html: '<div style="background:#C9A962;width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>',
+  iconSize: [16, 16], iconAnchor: [8, 8], className: ''
+});
+const activeIcon = L.divIcon({
+  html: '<div style="background:#fff;width:16px;height:16px;border-radius:50%;border:3px solid #C9A962;box-shadow:0 2px 8px rgba(201,169,98,0.6)"></div>',
+  iconSize: [22, 22], iconAnchor: [11, 11], className: ''
+});
+
+let markers = [];
+let userMarker = null;
+let userLat = null, userLng = null;
+let activeStoreId = null;
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function renderStores(stores) {
+  const list = document.getElementById('storeList');
+  if (stores.length === 0) { list.innerHTML = '<div class="no-results">No se encontraron tiendas</div>'; return; }
+
+  list.innerHTML = stores.map(s => {
+    const dist = s._dist != null ? '<div class="distance">📍 ' + s._dist.toFixed(1) + ' km</div>' : '';
+    const wa = s.whatsapp ? '<a href="https://wa.me/' + s.whatsapp.replace(/\\D/g,'') + '" target="_blank">💬 WhatsApp</a>' : '';
+    const ph = s.phone ? '<a href="tel:' + s.phone + '">📞 Llamar</a>' : '';
+    return '<div class="store-card' + (s.id === activeStoreId ? ' active' : '') + '" onclick="focusStore(' + s.id + ',' + s.lat + ',' + s.lng + ')">' +
+      '<h3>' + s.name + '</h3>' +
+      '<div class="dist">' + s.distributor + (s.promo ? ' · ' + s.promo : '') + '</div>' +
+      '<div class="addr">' + s.address + '<br>' + [s.city, s.state].filter(Boolean).join(', ') + '</div>' +
+      dist +
+      '<div class="actions">' + wa + ph + '</div></div>';
+  }).join('');
+}
+
+function addMarkers(stores) {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  stores.forEach(s => {
+    const m = L.marker([s.lat, s.lng], { icon: goldIcon })
+      .bindPopup('<b>' + s.name + '</b><br>' + s.distributor + '<br><small>' + s.address + '</small>' +
+        (s.whatsapp ? '<br><a href="https://wa.me/' + s.whatsapp.replace(/\\D/g,'') + '" target="_blank">💬 WhatsApp</a>' : ''))
+      .addTo(map);
+    m._storeId = s.id;
+    markers.push(m);
+  });
+}
+
+function focusStore(id, lat, lng) {
+  activeStoreId = id;
+  map.setView([lat, lng], 15);
+  markers.forEach(m => { m.setIcon(m._storeId === id ? activeIcon : goldIcon); if (m._storeId === id) m.openPopup(); });
+  document.querySelectorAll('.store-card').forEach((c, i) => {
+    const stores = getFilteredStores();
+    c.classList.toggle('active', stores[i] && stores[i].id === id);
+  });
+}
+
+function getFilteredStores() {
+  const state = document.getElementById('stateFilter').value;
+  let filtered = state ? allStores.filter(s => s.state === state) : [...allStores];
+  if (userLat != null) {
+    filtered.forEach(s => s._dist = haversine(userLat, userLng, s.lat, s.lng));
+    filtered.sort((a, b) => a._dist - b._dist);
+  }
+  return filtered;
+}
+
+function filterByState() {
+  const stores = getFilteredStores();
+  renderStores(stores);
+  addMarkers(stores);
+  if (stores.length > 0 && !userLat) {
+    const bounds = L.latLngBounds(stores.map(s => [s.lat, s.lng]));
+    map.fitBounds(bounds, { padding: [30, 30] });
+  }
+}
+
+function locateMe() {
+  if (!navigator.geolocation) { alert('Tu navegador no soporta geolocalizacion'); return; }
+  const btn = document.querySelector('.btn-locate');
+  btn.textContent = '⏳ Buscando...';
+  navigator.geolocation.getCurrentPosition(pos => {
+    userLat = pos.coords.latitude;
+    userLng = pos.coords.longitude;
+    if (userMarker) map.removeLayer(userMarker);
+    userMarker = L.marker([userLat, userLng], {
+      icon: L.divIcon({ html: '<div style="background:#4285f4;width:14px;height:14px;border-radius:50%;border:3px solid #fff;box-shadow:0 1px 6px rgba(66,133,244,0.6)"></div>', iconSize: [20,20], iconAnchor: [10,10], className: '' })
+    }).addTo(map).bindPopup('Tu ubicacion').openPopup();
+
+    const stores = getFilteredStores();
+    renderStores(stores);
+    addMarkers(stores);
+    map.setView([userLat, userLng], 11);
+    btn.textContent = '📍 Ubicacion activada';
+  }, err => {
+    btn.textContent = '📍 Usar mi ubicacion';
+    alert('No se pudo obtener tu ubicacion. Verifica los permisos.');
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+// Initial render
+addMarkers(allStores);
+renderStores(allStores);
+</script>
+</body>
+</html>`);
+  } catch (e) {
+    console.error('Store locator error:', e.message);
+    res.status(500).send('<h1>Error al cargar el localizador</h1>');
   }
 });
 
@@ -4023,6 +4266,41 @@ app.post('/webhook', async (req, res) => {
             await sendWhatsApp(from, 'No pude analizar la imagen. ¿Podrías describirme qué tipo de piso buscas? (madera, mármol, piedra...) 🤔');
           }
         }
+      }
+
+    } else if (message.type === 'location') {
+      // User shared their location — find nearest stores
+      const userLat = message.location.latitude;
+      const userLng = message.location.longitude;
+      console.log(`📍 Location from ${from}: ${userLat}, ${userLng}`);
+
+      const allStores = await query(`
+        SELECT s.*, d.name as distributor_name
+        FROM stores s JOIN distributors d ON s.distributor_id = d.id
+        WHERE s.active = 1 AND s.lat IS NOT NULL AND s.lng IS NOT NULL
+      `);
+
+      const nearest = allStores.map(s => ({
+        ...s,
+        dist: haversine(userLat, userLng, s.lat, s.lng)
+      })).sort((a, b) => a.dist - b.dist).slice(0, 5);
+
+      if (nearest.length > 0) {
+        let msg = `📍 *Tiendas Cesantoni cerca de ti:*\n\n`;
+        for (const s of nearest) {
+          msg += `🏪 *${s.name}*\n`;
+          msg += `   ${s.distributor_name}`;
+          if (s.promo_text) msg += ` · ${s.promo_text}`;
+          msg += `\n`;
+          if (s.address) msg += `   ${s.address}\n`;
+          msg += `   📏 *${s.dist.toFixed(1)} km*\n`;
+          if (s.whatsapp) msg += `   💬 wa.me/${s.whatsapp.replace(/\D/g, '')}\n`;
+          msg += `\n`;
+        }
+        msg += `🗺️ Ver todas: ${BASE_URL}/tiendas`;
+        await sendWhatsApp(from, msg);
+      } else {
+        await sendWhatsApp(from, 'Aún no tenemos tiendas con ubicación registrada. Escríbeme tu ciudad y te busco la más cercana. 🏪');
       }
 
     } else if (message.type === 'document') {
