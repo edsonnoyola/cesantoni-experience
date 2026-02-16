@@ -5151,8 +5151,8 @@ Si no sabes algo específico, sugiere contactar a un asesor por WhatsApp.
     const data = await response.json();
 
     if (data.error) {
-      console.error('Gemini error:', data.error);
-      return res.status(500).json({ error: 'Error al procesar tu pregunta' });
+      console.error('Gemini error:', JSON.stringify(data.error));
+      return res.status(500).json({ error: 'Error al procesar tu pregunta', detail: data.error.message || data.error.status || 'unknown' });
     }
 
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text ||
