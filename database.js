@@ -209,8 +209,33 @@ async function initDB() {
     )
   `);
 
-  // Add score column if not exists
+  // Add columns if not exists
   await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 0`);
+  await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS advisor_name TEXT`);
+  await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP`);
+
+  // Store inventory
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS store_inventory (
+      id SERIAL PRIMARY KEY,
+      store_id INTEGER REFERENCES stores(id),
+      product_id INTEGER REFERENCES products(id),
+      in_stock BOOLEAN DEFAULT true,
+      updated_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(store_id, product_id)
+    )
+  `);
+
+  // CRM users
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS crm_users (
+      id SERIAL PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      role TEXT DEFAULT 'admin',
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
 
   // Additional tables that may exist in server.js
   await pool.query(`

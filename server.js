@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const https = require('https');
+const crypto = require('crypto');
 const QRCode = require('qrcode');
 const fs = require('fs');
 const { initDB, query, queryOne, run, scalar } = require('./database');
@@ -12,14 +13,40 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const CRM_PASSWORD = process.env.CRM_PASSWORD || 'cesantoni2026';
+const MANAGER_PHONE = process.env.MANAGER_PHONE || '5215610016226';
+
+// Simple token store (in-memory, resets on restart)
+const authTokens = new Set();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Auth middleware for CRM pages
+function crmAuth(req, res, next) {
+  const token = req.headers['x-auth-token'] || req.query.token;
+  if (authTokens.has(token)) return next();
+  res.status(401).json({ error: 'Unauthorized' });
+}
+
+// Login endpoint
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+  if (password === CRM_PASSWORD) {
+    const token = crypto.randomBytes(32).toString('hex');
+    authTokens.add(token);
+    res.json({ token, username: username || 'admin' });
+  } else {
+    res.status(401).json({ error: 'Contraseña incorrecta' });
+  }
+});
+
+// Public assets (landing, terra, etc)
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', async (req, res) => res.json({ version: 'v7.0.0', commit: 'scoring-csv-broadcast-analytics-abandoned-notifications' }));
+app.get('/api/health', async (req, res) => res.json({ version: 'v8.0.0', commit: 'auth-assignment-inventory-list-daily-summary' }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
@@ -1925,6 +1952,38 @@ async function sendWhatsAppButtons(to, body, buttons) {
   }
 }
 
+// Send WhatsApp interactive list message (up to 10 items in sections)
+async function sendWhatsAppList(to, body, buttonText, sections) {
+  if (!WA_TOKEN) return null;
+  try {
+    const res = await fetch(`https://graph.facebook.com/v21.0/${WA_PHONE_ID}/messages`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp', to, type: 'interactive',
+        interactive: {
+          type: 'list',
+          body: { text: body },
+          action: {
+            button: buttonText,
+            sections: sections.map(s => ({
+              title: s.title,
+              rows: s.rows.map(r => ({ id: r.id, title: r.title.substring(0, 24), description: (r.description || '').substring(0, 72) }))
+            }))
+          }
+        }
+      })
+    });
+    const data = await res.json();
+    if (data.error) console.error('WA list error:', data.error);
+    else try { await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [to, 'assistant', `${body}\n[Lista: ${buttonText}]`]); } catch(e) {}
+    return data;
+  } catch (err) {
+    console.error('WA list error:', err.message);
+    return null;
+  }
+}
+
 // Lead scoring: update score on key actions
 async function addLeadScore(phone, points, action) {
   try {
@@ -2745,22 +2804,22 @@ app.post('/webhook', async (req, res) => {
 
         if (catProducts.length > 0) {
           const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
-          await sendWhatsApp(from, `🏠 *Pisos estilo ${catSearch}* — ${catProducts.length} opciones:`);
-          await new Promise(r => setTimeout(r, 500));
-          for (const s of catProducts) {
-            let caption = `*${s.name}* · $${s.base_price || '?'}/m²\n`;
-            caption += `📐 ${s.format || ''} · ✨ ${s.finish || ''}\n`;
-            if (s.pei) caption += `💪 PEI ${s.pei}\n`;
-            caption += `\n🔗 ${baseUrl}/p/${s.sku || s.slug || s.name}`;
-            if (s.image_url) {
-              await sendWhatsAppImage(from, s.image_url, caption);
-            } else {
-              await sendWhatsApp(from, caption);
-            }
-            await new Promise(r => setTimeout(r, 800));
+          // Send as interactive list + first product image
+          const listRows = catProducts.map(s => ({
+            id: `cat_${s.sku || s.slug || s.id}`,
+            title: s.name,
+            description: `$${s.base_price || '?'}/m² · ${s.format || ''} · ${s.finish || ''}`
+          }));
+          await sendWhatsAppList(from,
+            `🏠 *Pisos estilo ${catSearch}* — ${catProducts.length} opciones.\nSelecciona uno para ver detalles:`,
+            'Ver pisos',
+            [{ title: `Estilo ${catSearch}`, rows: listRows }]
+          );
+          // Also send first product image as preview
+          if (catProducts[0]?.image_url) {
+            await new Promise(r => setTimeout(r, 500));
+            await sendWhatsAppImage(from, catProducts[0].image_url, `${catProducts[0].name} — $${catProducts[0].base_price || '?'}/m²`);
           }
-          await new Promise(r => setTimeout(r, 500));
-          await sendWhatsApp(from, '¿Cuál te gusta? Escríbeme el nombre para más info, calcular m² o comparar. 😊');
           return;
         }
         // Fall through if no products found for this category
@@ -2810,11 +2869,20 @@ app.post('/webhook', async (req, res) => {
           const pei = parseInt(p.pei) || 0;
           const peiTip = pei >= 4 ? 'Alto tráfico' : pei >= 3 ? 'Toda la casa' : pei >= 2 ? 'Tráfico ligero' : '';
 
+          // Check store inventory if lead has a store
+          const leadForStock = await queryOne('SELECT store_id FROM leads WHERE phone = ?', [from]);
+          let stockInfo = '';
+          if (leadForStock?.store_id) {
+            const inv = await queryOne('SELECT in_stock FROM store_inventory WHERE store_id = ? AND product_id = ?', [leadForStock.store_id, p.id]);
+            if (inv) stockInfo = inv.in_stock ? '\n✅ Disponible en tu tienda' : '\n⚠️ No disponible en tu tienda — consulta opciones';
+          }
+
           let caption = `*${p.name}*${p.base_price ? ' · $' + p.base_price + '/m²' : ''}\n\n`;
           caption += `📐 ${p.format || 'Gran formato'}\n`;
           caption += `✨ ${p.finish || 'Premium'}\n`;
           if (p.pei) caption += `💪 PEI ${p.pei} — ${peiTip}\n`;
           if (p.usage) caption += `🏠 ${p.usage}\n`;
+          if (stockInfo) caption += stockInfo + '\n';
           caption += `\n🔗 ${baseUrl}/p/${p.sku || p.slug || p.id}`;
 
           await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
@@ -2874,10 +2942,11 @@ app.post('/webhook', async (req, res) => {
         }
       }
     } else if (message.type === 'interactive') {
-      // Handle button replies
-      const btnId = message.interactive?.button_reply?.id || '';
-      const btnTitle = message.interactive?.button_reply?.title || '';
-      console.log(`   🔘 Button: ${btnId} "${btnTitle}"`);
+      // Handle button replies AND list replies
+      const btnId = message.interactive?.button_reply?.id || message.interactive?.list_reply?.id || '';
+      const btnTitle = message.interactive?.button_reply?.title || message.interactive?.list_reply?.title || '';
+      const isListReply = !!message.interactive?.list_reply;
+      console.log(`   🔘 ${isListReply ? 'List' : 'Button'}: ${btnId} "${btnTitle}"`);
 
       await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', `[Botón] ${btnTitle}`]);
 
@@ -3124,6 +3193,54 @@ app.post('/webhook', async (req, res) => {
         }
         await sendWhatsApp(from, `¡Gracias por tu calificación! ${rating >= 4 ? '😊' : 'Tomaremos en cuenta tu opinión para mejorar. 🙏'}\n\n¿Te puedo ayudar con algo más?`);
 
+      } else if (btnId.startsWith('cat_')) {
+        // Catalog list reply: user selected a product from the list
+        const catRef = btnId.replace('cat_', '');
+        const selectedProduct = await queryOne('SELECT * FROM products WHERE sku = ? OR slug = ? OR id::text = ?', [catRef, catRef, catRef]);
+        if (selectedProduct) {
+          await addLeadScore(from, 10, 'catalog_select');
+          const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
+          const link = `${baseUrl}/p/${selectedProduct.sku || selectedProduct.slug}`;
+          const pei = parseInt(selectedProduct.pei) || 0;
+          const peiTip = pei >= 4 ? 'Alto tráfico' : pei >= 3 ? 'Toda la casa' : pei >= 2 ? 'Tráfico ligero' : '';
+          let caption = `*${selectedProduct.name}*\n\n`;
+          caption += `💰 *$${selectedProduct.base_price || '?'}/m²*\n`;
+          caption += `📐 Formato: ${selectedProduct.format || '-'}\n`;
+          caption += `✨ Acabado: ${selectedProduct.finish || '-'}\n`;
+          if (pei) caption += `💪 PEI ${pei} — ${peiTip}\n`;
+          if (selectedProduct.usage) caption += `🏠 Uso: ${selectedProduct.usage}\n`;
+          if (selectedProduct.sqm_per_box) caption += `📦 ${selectedProduct.sqm_per_box} m²/caja\n`;
+          caption += `\n🔗 Ver detalles: ${link}`;
+
+          if (selectedProduct.image_url) {
+            await sendWhatsAppImage(from, selectedProduct.image_url, caption);
+          } else {
+            await sendWhatsApp(from, caption);
+          }
+
+          // Track product view
+          await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
+            [from, 'assistant', `[VIEWED_PRODUCT] ${selectedProduct.name}`]);
+
+          // Update lead products
+          if (lead) {
+            const prods = lead.products_interested ? JSON.parse(lead.products_interested) : [];
+            if (!prods.includes(selectedProduct.name)) {
+              prods.push(selectedProduct.name);
+              await run('UPDATE leads SET products_interested = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [JSON.stringify(prods), lead.id]);
+            }
+          }
+
+          await new Promise(r => setTimeout(r, 500));
+          await sendWhatsAppButtons(from, '¿Qué te gustaría hacer?', [
+            { id: 'calcular_m2', title: '📐 Calcular m²' },
+            { id: 'ver_similares', title: '🔄 Ver similares' },
+            { id: 'hablar_asesor', title: '👤 Hablar c/asesor' }
+          ]);
+        } else {
+          await sendWhatsApp(from, `No encontré ese producto. Escríbeme el nombre del piso que te interesa. 😊`);
+        }
+
       } else {
         // Unknown button, pass to AI
         const reply = await processWhatsAppMessage(from, btnTitle, contactName);
@@ -3316,13 +3433,14 @@ app.get('/api/leads/:id', async (req, res) => {
   }
 });
 
-app.put('/api/leads/:id', async (req, res) => {
+app.put('/api/leads/:id', crmAuth, async (req, res) => {
   try {
-    const { status, notes } = req.body;
+    const { status, notes, advisor_name } = req.body;
     const lead = await queryOne('SELECT id FROM leads WHERE id = ?', [req.params.id]);
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
     if (status) await run('UPDATE leads SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [status, req.params.id]);
     if (notes) await run('UPDATE leads SET notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [notes, req.params.id]);
+    if (advisor_name !== undefined) await run('UPDATE leads SET advisor_name = ?, assigned_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [advisor_name || null, req.params.id]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -3330,7 +3448,7 @@ app.put('/api/leads/:id', async (req, res) => {
 });
 
 // CSV Export
-app.get('/api/leads/export/csv', async (req, res) => {
+app.get('/api/leads/export/csv', crmAuth, async (req, res) => {
   try {
     const { status, source, days } = req.query;
     const d = parseInt(days) || 365;
@@ -3435,7 +3553,7 @@ app.get('/api/leads/new/count', async (req, res) => {
 });
 
 // WhatsApp Broadcast
-app.post('/api/broadcast', async (req, res) => {
+app.post('/api/broadcast', crmAuth, async (req, res) => {
   try {
     const { template, params, filter } = req.body;
     if (!template) return res.status(400).json({ error: 'Template name required' });
@@ -3465,13 +3583,45 @@ app.post('/api/broadcast', async (req, res) => {
 });
 
 // =====================================================
+// STORE INVENTORY
+// =====================================================
+
+// Get inventory for a store
+app.get('/api/stores/:id/inventory', async (req, res) => {
+  try {
+    const items = await query(`
+      SELECT si.*, p.name as product_name, p.sku, p.format, p.base_price, p.image_url
+      FROM store_inventory si
+      JOIN products p ON si.product_id = p.id
+      WHERE si.store_id = ?
+      ORDER BY p.name`, [req.params.id]);
+    res.json(items);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Update inventory (bulk)
+app.put('/api/stores/:id/inventory', crmAuth, async (req, res) => {
+  try {
+    const { products } = req.body; // [{ product_id, in_stock }]
+    if (!Array.isArray(products)) return res.status(400).json({ error: 'products array required' });
+    for (const p of products) {
+      await run(`INSERT INTO store_inventory (store_id, product_id, in_stock, updated_at)
+        VALUES (?, ?, ?, NOW())
+        ON CONFLICT (store_id, product_id) DO UPDATE SET in_stock = ?, updated_at = NOW()`,
+        [req.params.id, p.product_id, p.in_stock, p.in_stock]);
+    }
+    res.json({ success: true, updated: products.length });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// =====================================================
 // FUNNEL ANALYTICS
 // =====================================================
 
 app.get('/api/funnel', async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 30;
-    const dateFilter = `NOW() - INTERVAL 'days days'`;
+    const dateFilter = `NOW() - INTERVAL '${days} days'`;
 
     const scans = await scalar(`SELECT COUNT(*) FROM scans WHERE created_at >= ${dateFilter}`) || 0;
     const waClicks = await scalar(`SELECT COUNT(*) FROM whatsapp_clicks WHERE created_at >= ${dateFilter}`) || 0;
@@ -3499,7 +3649,7 @@ app.get('/api/funnel', async (req, res) => {
       SELECT p.name, COUNT(s.id) as scans
       FROM scans s JOIN products p ON s.product_id = p.id
       WHERE s.created_at >= ${dateFilter}
-      GROUP BY s.product_id ORDER BY scans DESC LIMIT 10
+      GROUP BY p.name ORDER BY scans DESC LIMIT 10
     `);
 
     res.json({
@@ -3818,6 +3968,56 @@ async function start() {
     }
   }, 3 * 60 * 60 * 1000); // Every 3 hours
   console.log('   🛒 CRON abandoned cart active (every 3h)');
+
+  // CRON: Daily summary to manager (every 1h, sends at ~9am Mexico time)
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      const mxHour = new Date(now.toLocaleString('en-US', { timeZone: 'America/Mexico_City' })).getHours();
+      if (mxHour !== 9) return; // Only at 9am Mexico time
+
+      // Check if already sent today
+      const today = new Date().toISOString().split('T')[0];
+      const alreadySent = await queryOne(
+        "SELECT id FROM wa_conversations WHERE phone = ? AND role = 'system' AND message LIKE ? AND created_at::date = CURRENT_DATE",
+        [MANAGER_PHONE, '[DAILY_SUMMARY]%']);
+      if (alreadySent) return;
+
+      // Mark before send
+      await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
+        [MANAGER_PHONE, 'system', `[DAILY_SUMMARY] ${today}`]);
+
+      // Gather stats
+      const newLeads24h = await scalar("SELECT COUNT(*) FROM leads WHERE created_at >= NOW() - INTERVAL '24 hours'") || 0;
+      const totalLeads = await scalar("SELECT COUNT(*) FROM leads") || 0;
+      const contacted = await scalar("SELECT COUNT(*) FROM leads WHERE status = 'contacted'") || 0;
+      const converted = await scalar("SELECT COUNT(*) FROM leads WHERE status = 'converted'") || 0;
+      const msgs24h = await scalar("SELECT COUNT(*) FROM wa_conversations WHERE created_at >= NOW() - INTERVAL '24 hours'") || 0;
+      const topProduct = await queryOne(`
+        SELECT message, COUNT(*) as c FROM wa_conversations
+        WHERE role = 'assistant' AND message LIKE '[VIEWED_PRODUCT]%'
+        AND created_at >= NOW() - INTERVAL '24 hours'
+        GROUP BY message ORDER BY c DESC LIMIT 1`);
+      const topProd = topProduct ? topProduct.message.replace('[VIEWED_PRODUCT] ', '') : 'N/A';
+      const pendingLeads = await scalar("SELECT COUNT(*) FROM leads WHERE status = 'new' AND created_at < NOW() - INTERVAL '24 hours'") || 0;
+
+      const summary = `📊 *Resumen Diario Cesantoni*\n${today}\n${'─'.repeat(20)}\n\n` +
+        `🆕 Nuevos leads (24h): *${newLeads24h}*\n` +
+        `📋 Total leads: *${totalLeads}*\n` +
+        `📞 Contactados: *${contacted}*\n` +
+        `✅ Convertidos: *${converted}*\n` +
+        `💬 Mensajes (24h): *${msgs24h}*\n` +
+        `🏆 Top producto: *${topProd}*\n` +
+        `⚠️ Pendientes +24h: *${pendingLeads}*\n\n` +
+        `Dashboard: https://cesantoni-experience-za74.onrender.com`;
+
+      await sendWhatsApp(MANAGER_PHONE, summary);
+      console.log(`📊 Daily summary sent to manager`);
+    } catch (e) {
+      console.error('CRON daily summary error:', e.message);
+    }
+  }, 60 * 60 * 1000); // Check every hour
+  console.log('   📊 CRON daily summary active (9am MX)');
 }
 
 start().catch(console.error);
