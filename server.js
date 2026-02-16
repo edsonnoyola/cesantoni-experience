@@ -4030,16 +4030,23 @@ app.post('/webhook', async (req, res) => {
       }
 
       const reply = await processWhatsAppMessage(from, text, contactName);
-      await sendWhatsApp(from, reply);
 
-      // If reply mentions a product link, also send the product image
+      // UX: If reply mentions a product, send ONE image message with recommendation as caption
       const slugMatch = reply.match(/\/p\/([A-Za-z0-9_-]+)/i);
       if (slugMatch) {
         const pSlug = slugMatch[1];
-        const product = await queryOne('SELECT name, image_url, slug FROM products WHERE slug = ? OR sku = ? OR slug ILIKE ? OR sku ILIKE ?', [pSlug, pSlug, pSlug, pSlug]);
+        const product = await queryOne('SELECT name, image_url, slug, sku, base_price, format, finish FROM products WHERE slug = ? OR sku = ? OR slug ILIKE ? OR sku ILIKE ?', [pSlug, pSlug, pSlug, pSlug]);
         if (product?.image_url) {
-          await sendWhatsAppImage(from, product.image_url, `${product.name} - Cesantoni`);
+          // Strip the link from the text (it'll be in the landing preview)
+          const cleanReply = reply.replace(/\n*Míralo aquí:.*$/i, '').trim();
+          const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
+          const caption = `${cleanReply}\n\n*${product.name}*${product.base_price ? ' · $' + product.base_price + '/m²' : ''}${product.format ? ' · ' + product.format : ''}\n\n${baseUrl}/p/${product.sku || product.slug}`;
+          await sendWhatsAppImage(from, product.image_url, caption);
+        } else {
+          await sendWhatsApp(from, reply);
         }
+      } else {
+        await sendWhatsApp(from, reply);
       }
     } else if (message.type === 'interactive') {
       // Handle button replies AND list replies
