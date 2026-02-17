@@ -3391,20 +3391,21 @@ app.post('/webhook', async (req, res) => {
   // Always respond 200 immediately (Meta requires fast response)
   res.sendStatus(200);
 
-  // Forward to Make.com (existing CRM) in background
-  if (WA_FORWARD_URL) {
-    fetch(WA_FORWARD_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req.body)
-    }).catch(e => console.log('Forward to Make.com error:', e.message));
-  }
-
   try {
     const entry = req.body?.entry?.[0];
     if (entry?.id) global.lastWabaId = entry.id;
     const changes = entry?.changes?.[0];
     const value = changes?.value;
+
+    // Forward to Make.com — ONLY status updates, NOT messages
+    // (Make.com had its own bot that sent duplicate responses)
+    if (WA_FORWARD_URL && value?.statuses && !value?.messages) {
+      fetch(WA_FORWARD_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req.body)
+      }).catch(e => console.log('Forward to Make.com error:', e.message));
+    }
 
     // Process status updates (delivered, read, failed)
     if (value?.statuses) {
