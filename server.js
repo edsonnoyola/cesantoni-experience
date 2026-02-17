@@ -5,12 +5,14 @@ const https = require('https');
 const crypto = require('crypto');
 const QRCode = require('qrcode');
 const fs = require('fs');
+const multer = require('multer');
 const { initDB, query, queryOne, run, scalar } = require('./database');
 const { execSync } = require('child_process');
 const { Storage } = require('@google-cloud/storage');
 require('dotenv').config();
 
 const app = express();
+const csvUpload = multer({ dest: '/tmp/csv/', limits: { fileSize: 5 * 1024 * 1024 } });
 const PORT = process.env.PORT || 3000;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const CRM_PASSWORD = process.env.CRM_PASSWORD || 'cesantoni2026';
@@ -46,7 +48,7 @@ app.post('/api/login', async (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', async (req, res) => res.json({ version: 'v9.3.0', commit: 'bot-cleanup-scoring-og' }));
+app.get('/api/health', async (req, res) => res.json({ version: 'v9.4.0', commit: 'store-pricing-city-detection' }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
@@ -2826,6 +2828,66 @@ async function addLeadScore(phone, points, action) {
   } catch(e) { /* ignore if no lead */ }
 }
 
+// Get store-specific price for a product (falls back to base_price)
+async function getProductPrice(productId, storeId) {
+  if (storeId) {
+    const inv = await queryOne(
+      'SELECT price FROM store_inventory WHERE store_id = ? AND product_id = ?',
+      [storeId, productId]);
+    if (inv?.price != null) return inv.price;
+  }
+  const prod = await queryOne('SELECT base_price FROM products WHERE id = ?', [productId]);
+  return prod?.base_price || null;
+}
+
+// Batch: get store prices for multiple products (returns { productId: price })
+async function getProductPrices(productIds, storeId) {
+  const prices = {};
+  if (storeId && productIds.length > 0) {
+    const placeholders = productIds.map((_, i) => `$${i + 2}`).join(',');
+    const rows = await query(
+      `SELECT product_id, price FROM store_inventory WHERE store_id = $1 AND product_id IN (${placeholders})`,
+      [storeId, ...productIds]);
+    for (const r of rows) { if (r.price != null) prices[r.product_id] = r.price; }
+  }
+  return prices;
+}
+
+// City → Store mapping for auto-detecting user location from WhatsApp messages
+let cityStoreMap = {};
+
+async function buildCityStoreMap() {
+  const stores = await query('SELECT id, city, state FROM stores WHERE active = 1');
+  cityStoreMap = {};
+  const norm = t => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  for (const s of stores) {
+    if (s.city) {
+      const key = norm(s.city);
+      if (!cityStoreMap[key]) cityStoreMap[key] = [];
+      cityStoreMap[key].push(s.id);
+    }
+    if (s.state) {
+      const key = norm(s.state);
+      if (!cityStoreMap[key]) cityStoreMap[key] = [];
+      cityStoreMap[key].push(s.id);
+    }
+  }
+  console.log(`🏙️ City store map: ${Object.keys(cityStoreMap).length} locations`);
+}
+
+function detectCityFromMessage(text) {
+  const norm = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const stopwords = new Set(['hola','de','en','el','la','los','las','un','una','que','por','para','con','del','al','es','se','no','si','mi','tu','su','yo','me','te','lo','le','da','va','ha','piso','pisos','quiero','busco','cuanto','cuesta','precio','tiene','como','dame','ver','mas','hay','eso','esto','ese','esta','son','muy']);
+  const words = norm.split(/[\s,\.]+/).filter(w => w.length >= 3 && !stopwords.has(w));
+  for (let len = 3; len >= 1; len--) {
+    for (let i = 0; i <= words.length - len; i++) {
+      const phrase = words.slice(i, i + len).join(' ');
+      if (cityStoreMap[phrase]) return { city: phrase, storeIds: cityStoreMap[phrase] };
+    }
+  }
+  return null;
+}
+
 // Clean Gemini output for WhatsApp: strip markdown, limit emojis, truncate
 function cleanBotResponse(text) {
   let r = text;
@@ -3195,12 +3257,24 @@ ${storeCity ? '- Ciudad conocida: ' + storeCity + ' — NO preguntes ciudad' : '
 - Solo falta m² para cotizar. Si da m², calcula: precio × m² × 1.1 (merma)`;
   }
 
-  // Smart catalog: only relevant products
+  // Smart catalog: only relevant products, enriched with store prices
   const useCases = extractRecommendations(text + ' ' + history.filter(h => h.role === 'user').slice(-3).map(h => h.message).join(' '));
   const products = await getSmartCatalog(text, useCases);
 
+  // Enrich with store-specific prices
+  const leadStoreId = lead?.store_id || null;
+  if (leadStoreId && products.length > 0) {
+    const storePrices = await getProductPrices(products.map(p => p.id), leadStoreId);
+    for (const p of products) {
+      if (storePrices[p.id] != null) p.effective_price = storePrices[p.id];
+      else p.effective_price = p.base_price;
+    }
+  } else {
+    for (const p of products) p.effective_price = p.base_price;
+  }
+
   const catalogText = products.map(p =>
-    `${p.name}|${p.sku||p.slug}|${p.category||''}|${p.format||''}|${p.finish||''}|PEI:${p.pei||''}|${p.usage||''}|$${p.base_price||'?'}/m²`
+    `${p.name}|${p.sku||p.slug}|${p.category||''}|${p.format||''}|${p.finish||''}|PEI:${p.pei||''}|${p.usage||''}|$${p.effective_price||'?'}/m²`
   ).join('\n');
 
   const useCaseTips = useCases.length > 0
@@ -3232,7 +3306,7 @@ REGLAS ESTRICTAS:
 - NUNCA pongas links de cesantoni.com.mx. Yo agrego los links automáticamente.
 - NUNCA pongas encabezados como "MI RECOMENDACIÓN" o "PRECIOS Y DISPONIBILIDAD". Solo habla natural.
 - Usa DATOS REALES del producto (formato, acabado, PEI). NO respuestas genéricas.
-- PRECIOS: Siempre di "precio estimado" o "precio aproximado". Los precios varían según la tienda y ciudad. Pregunta la ciudad si no la sabes.
+- PRECIOS: Usa los precios del catálogo (ya son los de la tienda del cliente si es posible). Siempre di "precio estimado". Si no hay precio, di "consulta en tienda". Si no sabes la ciudad, pregunta.
 - Si no saben qué quieren: "¿Para qué espacio lo necesitas?"
 - Si preguntan precio: precio real + ofrece cotización.
 - Para cotizar solo necesitas m² y ciudad.
@@ -3356,6 +3430,12 @@ Responde SOLO el texto del mensaje. Corto, conversacional, sin listas.`;
       }
       // Last fallback: first product from catalog
       if (!matchedProduct) matchedProduct = products[0];
+    }
+
+    // Ensure matched product has effective_price (for direct DB lookups that bypass catalog)
+    if (matchedProduct && matchedProduct.effective_price == null) {
+      const storePrice = leadStoreId ? await getProductPrice(matchedProduct.id, leadStoreId) : null;
+      matchedProduct.effective_price = storePrice || matchedProduct.base_price;
     }
 
     if (lead && lead.status === 'new') {
@@ -3591,7 +3671,8 @@ app.post('/webhook', async (req, res) => {
                             finishUpper.includes('LAPPATO') ? 'semi-brillo' :
                             finishUpper.includes('TEXTUR') || finishUpper.includes('ANTIDERRAPANTE') ? 'antiderrapante' : '';
 
-          let caption = `*${lProduct.name}*${lProduct.base_price ? ' · ~$' + lProduct.base_price + '/m² (precio estimado)' : ''}\n\n`;
+          const lEffPrice = await getProductPrice(lProduct.id, lStoreId);
+          let caption = `*${lProduct.name}*${lEffPrice ? ' · ~$' + lEffPrice + '/m² (precio estimado)' : ''}\n\n`;
           caption += `📐 ${lProduct.format || 'Gran formato'}\n`;
           caption += `✨ ${lProduct.finish || 'Premium'}${finishTip ? ' (' + finishTip + ')' : ''}\n`;
           if (lProduct.pei) caption += `💪 PEI ${lProduct.pei} — ${peiTip}\n`;
@@ -4011,25 +4092,27 @@ app.post('/webhook', async (req, res) => {
 
         if (catProducts.length > 0) {
           const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
-          // Send as interactive list + first product image
+          // Enrich with store prices
+          const catLead = await queryOne('SELECT store_id FROM leads WHERE phone = ?', [from]);
+          const catStorePrices = catLead?.store_id ? await getProductPrices(catProducts.map(p => p.id), catLead.store_id) : {};
+          for (const cp of catProducts) cp.effective_price = catStorePrices[cp.id] || cp.base_price;
+
           const listRows = catProducts.map(s => ({
             id: `cat_${s.sku || s.slug || s.id}`,
             title: s.name,
-            description: `~$${s.base_price || '?'}/m² est. · ${s.format || ''} · ${s.finish || ''}`
+            description: `~$${s.effective_price || '?'}/m² est. · ${s.format || ''} · ${s.finish || ''}`
           }));
           await sendWhatsAppList(from,
             `🏠 *Pisos estilo ${catSearch}* — ${catProducts.length} opciones.\nSelecciona los que te interesen:`,
             'Ver pisos',
             [{ title: `Estilo ${catSearch}`, rows: listRows }]
           );
-          // Save last catalog search for "ver más" button
           await run("DELETE FROM wa_conversations WHERE phone = ? AND role = 'system' AND message LIKE '[LAST_CATALOG]%'", [from]);
           await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)',
             [from, 'system', `[LAST_CATALOG] ${catSearch}`]);
-          // Also send first product image as preview
           if (catProducts[0]?.image_url) {
             await new Promise(r => setTimeout(r, 500));
-            await sendWhatsAppImage(from, catProducts[0].image_url, `${catProducts[0].name} — ~$${catProducts[0].base_price || '?'}/m² (precio estimado)`);
+            await sendWhatsAppImage(from, catProducts[0].image_url, `${catProducts[0].name} — ~$${catProducts[0].effective_price || '?'}/m² (precio estimado)`);
           }
           return;
         }
@@ -4080,15 +4163,16 @@ app.post('/webhook', async (req, res) => {
           const pei = parseInt(p.pei) || 0;
           const peiTip = pei >= 4 ? 'Alto tráfico' : pei >= 3 ? 'Toda la casa' : pei >= 2 ? 'Tráfico ligero' : '';
 
-          // Check store inventory if lead has a store
+          // Check store inventory + store price if lead has a store
           const leadForStock = await queryOne('SELECT store_id FROM leads WHERE phone = ?', [from]);
           let stockInfo = '';
+          const effectivePrice = await getProductPrice(p.id, leadForStock?.store_id);
           if (leadForStock?.store_id) {
             const inv = await queryOne('SELECT in_stock FROM store_inventory WHERE store_id = ? AND product_id = ?', [leadForStock.store_id, p.id]);
             if (inv) stockInfo = inv.in_stock ? '\n✅ Disponible en tu tienda' : '\n⚠️ No disponible en tu tienda — consulta opciones';
           }
 
-          let caption = `*${p.name}*${p.base_price ? ' · ~$' + p.base_price + '/m² (precio estimado)' : ''}\n\n`;
+          let caption = `*${p.name}*${effectivePrice ? ' · ~$' + effectivePrice + '/m² (precio estimado)' : ''}\n\n`;
           caption += `📐 ${p.format || 'Gran formato'}\n`;
           caption += `✨ ${p.finish || 'Premium'}\n`;
           if (p.pei) caption += `💪 PEI ${p.pei} — ${peiTip}\n`;
@@ -4134,10 +4218,19 @@ app.post('/webhook', async (req, res) => {
       }
 
       // Create lead if first message from this phone (WhatsApp bot lead)
-      const existingLead = await queryOne('SELECT id FROM leads WHERE phone = ?', [from]);
+      const existingLead = await queryOne('SELECT id, store_id FROM leads WHERE phone = ?', [from]);
       if (!existingLead) {
-        await run(`INSERT INTO leads (phone, name, source, status, notes) VALUES (?, ?, 'whatsapp_bot', 'new', ?)`,
-          [from, contactName || from, `Contacto directo por WhatsApp. Primer mensaje: ${text.substring(0, 100)}`]);
+        const detectedCity = detectCityFromMessage(text);
+        await run(`INSERT INTO leads (phone, name, source, status, store_id, notes) VALUES (?, ?, 'whatsapp_bot', 'new', ?, ?)`,
+          [from, contactName || from, detectedCity?.storeIds[0] || null, `Contacto directo por WhatsApp. Primer mensaje: ${text.substring(0, 100)}`]);
+        if (detectedCity) console.log(`🏙️ New lead ${from}: city "${detectedCity.city}" → store ${detectedCity.storeIds[0]}`);
+      } else if (!existingLead.store_id) {
+        // Auto-detect city if lead has no store yet
+        const detectedCity = detectCityFromMessage(text);
+        if (detectedCity) {
+          await run('UPDATE leads SET store_id = ?, updated_at = NOW() WHERE id = ?', [detectedCity.storeIds[0], existingLead.id]);
+          console.log(`🏙️ City "${detectedCity.city}" → store ${detectedCity.storeIds[0]} for lead ${existingLead.id}`);
+        }
       }
 
       const { reply, product } = await processWhatsAppMessage(from, text, contactName);
@@ -4146,7 +4239,7 @@ app.post('/webhook', async (req, res) => {
       if (product?.image_url) {
         // Send ONE image with recommendation + product info + landing link as caption
         const slug = product.sku || product.slug;
-        const caption = `${reply}\n\n*${product.name}*${product.base_price ? ' · ~$' + product.base_price + '/m² (precio estimado)' : ''}${product.format ? ' · ' + product.format : ''}\n\n${baseUrl}/p/${slug}\n\nVe todo nuestro catálogo: ${baseUrl}/catalogo`;
+        const caption = `${reply}\n\n*${product.name}*${(product.effective_price || product.base_price) ? ' · ~$' + (product.effective_price || product.base_price) + '/m² (precio estimado)' : ''}${product.format ? ' · ' + product.format : ''}\n\n${baseUrl}/p/${slug}\n\nVe todo nuestro catálogo: ${baseUrl}/catalogo`;
         await sendWhatsAppImage(from, product.image_url, caption);
       } else {
         await sendWhatsApp(from, reply);
@@ -4187,6 +4280,12 @@ app.post('/webhook', async (req, res) => {
           similares = await query('SELECT id, name, base_price, format, sku, slug, image_url, finish, pei, usage FROM products WHERE active = 1 ORDER BY RANDOM() LIMIT 3');
         }
         if (similares.length > 0) {
+          // Enrich with store prices
+          const simLead = lead || await queryOne('SELECT store_id FROM leads WHERE phone = ?', [from]);
+          if (simLead?.store_id) {
+            const simPrices = await getProductPrices(similares.map(s => s.id), simLead.store_id);
+            for (const s of similares) s.effective_price = simPrices[s.id] || s.base_price;
+          }
           await sendWhatsApp(from, `Pisos similares a *${prodName}*:`);
           await new Promise(r => setTimeout(r, 500));
 
@@ -4194,7 +4293,7 @@ app.post('/webhook', async (req, res) => {
             const link = `${baseUrl}/p/${s.sku || s.slug || s.name}`;
             const pei = parseInt(s.pei) || 0;
             const peiTip = pei >= 4 ? 'Alto tráfico' : pei >= 3 ? 'Toda la casa' : pei >= 2 ? 'Tráfico ligero' : '';
-            let caption = `*${s.name}* · ~$${s.base_price || '?'}/m² (estimado)\n`;
+            let caption = `*${s.name}* · ~$${s.effective_price || s.base_price || '?'}/m² (estimado)\n`;
             caption += `📐 ${s.format || ''} · ✨ ${s.finish || ''}\n`;
             if (s.pei) caption += `💪 PEI ${s.pei} — ${peiTip}\n`;
             caption += `\n🔗 ${link}`;
@@ -4697,10 +4796,15 @@ app.post('/webhook', async (req, res) => {
               [`%${catSearch}%`, `%${catSearch}%`, `%${catSearch}%`, `%${catSearch}%`]);
           }
           if (catProducts.length > 0) {
+            // Enrich with store prices
+            if (lead?.store_id) {
+              const cp2 = await getProductPrices(catProducts.map(p => p.id), lead.store_id);
+              for (const s of catProducts) s.effective_price = cp2[s.id] || s.base_price;
+            }
             const listRows = catProducts.map(s => ({
               id: `cat_${s.sku || s.slug || s.id}`,
               title: s.name,
-              description: `~$${s.base_price || '?'}/m² est. · ${s.format || ''} · ${s.finish || ''}`
+              description: `~$${s.effective_price || s.base_price || '?'}/m² est. · ${s.format || ''} · ${s.finish || ''}`
             }));
             await sendWhatsAppList(from,
               `🏠 *Más pisos estilo ${catSearch}* — ${catProducts.length} opciones.\nSelecciona los que te interesen:`,
@@ -4718,7 +4822,7 @@ app.post('/webhook', async (req, res) => {
         const { reply, product } = await processWhatsAppMessage(from, btnTitle, contactName);
         if (product?.image_url) {
           const slug = product.sku || product.slug;
-          const caption = `${reply}\n\n*${product.name}*${product.base_price ? ' · ~$' + product.base_price + '/m² (precio estimado)' : ''}\n\nhttps://cesantoni-experience-za74.onrender.com/p/${slug}`;
+          const caption = `${reply}\n\n*${product.name}*${(product.effective_price || product.base_price) ? ' · ~$' + (product.effective_price || product.base_price) + '/m² (precio estimado)' : ''}\n\nhttps://cesantoni-experience-za74.onrender.com/p/${slug}`;
           await sendWhatsAppImage(from, product.image_url, caption);
         } else {
           await sendWhatsApp(from, reply);
@@ -4741,7 +4845,7 @@ app.post('/webhook', async (req, res) => {
             const { reply, product } = await processWhatsAppMessage(from, transcription, contactName);
             if (product?.image_url) {
               const slug = product.sku || product.slug;
-              const caption = `${reply}\n\n*${product.name}*${product.base_price ? ' · ~$' + product.base_price + '/m² (precio estimado)' : ''}\n\nhttps://cesantoni-experience-za74.onrender.com/p/${slug}`;
+              const caption = `${reply}\n\n*${product.name}*${(product.effective_price || product.base_price) ? ' · ~$' + (product.effective_price || product.base_price) + '/m² (precio estimado)' : ''}\n\nhttps://cesantoni-experience-za74.onrender.com/p/${slug}`;
               await sendWhatsAppImage(from, product.image_url, caption);
             } else {
               await sendWhatsApp(from, reply);
@@ -4792,7 +4896,7 @@ app.post('/webhook', async (req, res) => {
 
             for (const s of matches) {
               const link = `${baseUrl}/p/${s.sku || s.slug}`;
-              let caption = `*${s.name}* · ~$${s.base_price || '?'}/m² (estimado)\n`;
+              let caption = `*${s.name}* · ~$${s.effective_price || s.base_price || '?'}/m² (estimado)\n`;
               caption += `📐 ${s.format || ''} · ✨ ${s.finish || ''}\n`;
               if (s.pei) caption += `💪 PEI ${s.pei}\n`;
               caption += `\n🔗 ${link}`;
@@ -5180,6 +5284,80 @@ app.put('/api/stores/:id/inventory', crmAuth, async (req, res) => {
 });
 
 // =====================================================
+// STORE PRICING
+// =====================================================
+
+// Get all product prices for a store (base + store-specific)
+app.get('/api/stores/:id/prices', async (req, res) => {
+  try {
+    const items = await query(`
+      SELECT p.id, p.sku, p.name, p.base_price, p.format, si.price as store_price, si.in_stock
+      FROM products p
+      LEFT JOIN store_inventory si ON si.product_id = p.id AND si.store_id = ?
+      WHERE p.active = 1
+      ORDER BY p.name`, [req.params.id]);
+    res.json(items);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Upload CSV of prices for a store
+app.post('/api/stores/:id/prices/upload', crmAuth, csvUpload.single('file'), async (req, res) => {
+  try {
+    const storeId = parseInt(req.params.id);
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+    const csv = fs.readFileSync(req.file.path, 'utf8').replace(/^\uFEFF/, ''); // strip BOM
+    const lines = csv.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+    // Skip header row
+    const header = lines[0].toLowerCase();
+    const dataLines = (header.includes('sku') || header.includes('precio')) ? lines.slice(1) : lines;
+
+    let updated = 0;
+    const errors = [];
+    for (const line of dataLines) {
+      const parts = line.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+      const [sku, priceStr] = parts;
+      if (!sku || !priceStr) continue;
+      const price = parseFloat(priceStr);
+      if (isNaN(price) || price <= 0) { errors.push(`${sku}: precio inválido`); continue; }
+
+      const product = await queryOne('SELECT id FROM products WHERE sku ILIKE ? OR name ILIKE ?', [sku, sku]);
+      if (!product) { errors.push(`${sku}: producto no encontrado`); continue; }
+
+      await run(`INSERT INTO store_inventory (store_id, product_id, price, in_stock, updated_at)
+        VALUES (?, ?, ?, true, NOW())
+        ON CONFLICT (store_id, product_id) DO UPDATE SET price = ?, updated_at = NOW()`,
+        [storeId, product.id, price, price]);
+      updated++;
+    }
+
+    // Clean up temp file
+    try { fs.unlinkSync(req.file.path); } catch(e) {}
+    res.json({ success: true, updated, errors, total: dataLines.length });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Download CSV template with all products + base prices
+app.get('/api/stores/:id/prices/template', async (req, res) => {
+  try {
+    const store = await queryOne('SELECT name FROM stores WHERE id = ?', [req.params.id]);
+    const products = await query(`
+      SELECT p.sku, p.name, p.base_price, si.price as store_price
+      FROM products p
+      LEFT JOIN store_inventory si ON si.product_id = p.id AND si.store_id = ?
+      WHERE p.active = 1 ORDER BY p.name`, [req.params.id]);
+
+    let csv = 'SKU,Precio\n';
+    for (const p of products) {
+      csv += `${p.sku},${p.store_price || p.base_price || ''}\n`;
+    }
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=precios-${(store?.name || 'tienda').replace(/\s+/g, '-')}.csv`);
+    res.send(csv);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// =====================================================
 // FUNNEL ANALYTICS
 // =====================================================
 
@@ -5403,6 +5581,7 @@ async function syncVideosFromGCS() {
 
 async function start() {
   await initDB();
+  await buildCityStoreMap();
   await syncVideosFromGCS();
 
   app.listen(PORT, () => {

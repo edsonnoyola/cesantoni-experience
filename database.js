@@ -231,6 +231,9 @@ async function initDB() {
     )
   `);
 
+  // Store-specific pricing
+  await pool.query(`ALTER TABLE store_inventory ADD COLUMN IF NOT EXISTS price REAL`);
+
   // CRM users
   await pool.query(`
     CREATE TABLE IF NOT EXISTS crm_users (

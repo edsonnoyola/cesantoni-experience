@@ -1416,7 +1416,11 @@
                     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
                         ${strs.map(s => `<div style="padding:8px;background:#f9f9f9;border-radius:6px;font-size:0.8rem">
                             <strong>${s.name}</strong><br>
-                            <span style="color:#888">${s.city || ''}, ${s.state || ''}</span>
+                            <span style="color:#888">${s.city || ''}, ${s.state || ''}</span><br>
+                            <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">
+                                <button class="btn btn-sm" style="font-size:0.7rem;padding:2px 6px" onclick="showStorePrices(${s.id},'${s.name.replace(/'/g,"\\'")}')">💰 Precios</button>
+                                <a href="/api/stores/${s.id}/prices/template" class="btn btn-sm" style="font-size:0.7rem;padding:2px 6px;text-decoration:none">📥 CSV</a>
+                            </div>
                         </div>`).join('')}
                     </div>
                 </div>
@@ -2834,8 +2838,78 @@
             } catch(e) {}
         }, 30000); // Every 30 seconds
 
+        // ==================== STORE PRICES ====================
+        let currentStorePriceId = null;
+
+        async function showStorePrices(storeId, storeName) {
+            currentStorePriceId = storeId;
+            document.getElementById('sp-title').textContent = 'Precios: ' + storeName;
+            document.getElementById('sp-modal').style.display = 'block';
+            document.getElementById('sp-list').innerHTML = '<div style="padding:20px;text-align:center">Cargando...</div>';
+            document.getElementById('sp-upload-status').textContent = '';
+            document.getElementById('sp-file').value = '';
+
+            try {
+                const res = await fetch('/api/stores/' + storeId + '/prices', { headers: authHeaders() });
+                const items = await res.json();
+                const withPrice = items.filter(i => i.store_price != null);
+                let html = '<div style="margin-bottom:8px;font-size:0.85rem;color:#666">' + withPrice.length + ' con precio tienda, ' + (items.length - withPrice.length) + ' usan precio base</div>';
+                html += '<table style="width:100%;font-size:0.75rem;border-collapse:collapse">';
+                html += '<tr style="background:#f5f5f5"><th style="text-align:left;padding:4px">SKU</th><th style="text-align:left;padding:4px">Producto</th><th style="text-align:right;padding:4px">Base</th><th style="text-align:right;padding:4px">Tienda</th></tr>';
+                for (const i of items) {
+                    const hl = i.store_price != null ? 'background:#e8f5e9' : '';
+                    html += '<tr style="' + hl + '"><td style="padding:3px 4px">' + i.sku + '</td><td style="padding:3px 4px">' + i.name + '</td><td style="text-align:right;padding:3px 4px">$' + (i.base_price || '-') + '</td><td style="text-align:right;padding:3px 4px;font-weight:600">' + (i.store_price != null ? '$' + i.store_price : '-') + '</td></tr>';
+                }
+                html += '</table>';
+                document.getElementById('sp-list').innerHTML = html;
+            } catch(e) { document.getElementById('sp-list').innerHTML = 'Error: ' + e.message; }
+        }
+
+        async function uploadStorePrices() {
+            const file = document.getElementById('sp-file').files[0];
+            if (!file) return alert('Selecciona un archivo CSV');
+            const formData = new FormData();
+            formData.append('file', file);
+            document.getElementById('sp-upload-status').textContent = 'Subiendo...';
+            try {
+                const res = await fetch('/api/stores/' + currentStorePriceId + '/prices/upload', {
+                    method: 'POST',
+                    headers: { 'x-auth-token': authToken },
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('sp-upload-status').innerHTML = '<span style="color:green">' + data.updated + ' precios actualizados</span>' + (data.errors.length > 0 ? '<br><span style="color:red">Errores: ' + data.errors.join(', ') + '</span>' : '');
+                    showStorePrices(currentStorePriceId, document.getElementById('sp-title').textContent.replace('Precios: ', ''));
+                } else {
+                    document.getElementById('sp-upload-status').innerHTML = '<span style="color:red">Error: ' + data.error + '</span>';
+                }
+            } catch(e) { document.getElementById('sp-upload-status').innerHTML = '<span style="color:red">' + e.message + '</span>'; }
+        }
+
         // ==================== INIT ====================
         loadAllData().then(() => { loadDashboard(); loadFunnel(); loadLeads(); loadWALeads(); });
     </script>
+
+    <!-- Store Prices Modal -->
+    <div id="sp-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;overflow-y:auto" onclick="if(event.target===this)this.style.display='none'">
+        <div style="max-width:650px;margin:40px auto;background:#fff;border-radius:12px;padding:24px;max-height:80vh;display:flex;flex-direction:column">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h2 id="sp-title" style="margin:0;font-size:1.1rem"></h2>
+                <button onclick="document.getElementById('sp-modal').style.display='none'" style="background:none;border:none;font-size:1.5rem;cursor:pointer">&times;</button>
+            </div>
+            <div style="margin-bottom:12px;padding:12px;background:#f5f5f5;border-radius:8px">
+                <div style="font-weight:600;margin-bottom:6px;font-size:0.85rem">Subir CSV de precios</div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <input type="file" id="sp-file" accept=".csv" style="font-size:0.8rem">
+                    <button class="btn btn-primary btn-sm" onclick="uploadStorePrices()">Subir</button>
+                    <a href="#" id="sp-template-link" onclick="window.open('/api/stores/'+currentStorePriceId+'/prices/template');return false" style="font-size:0.75rem">Descargar plantilla</a>
+                </div>
+                <div id="sp-upload-status" style="margin-top:6px;font-size:0.8rem"></div>
+                <div style="margin-top:4px;font-size:0.7rem;color:#999">Formato CSV: SKU,Precio (una fila por producto)</div>
+            </div>
+            <div id="sp-list" style="overflow-y:auto;flex:1"></div>
+        </div>
+    </div>
 </body>
 </html>
