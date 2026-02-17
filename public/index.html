@@ -790,6 +790,9 @@
                 <button onclick="loadLeadsPage(null,'new')" class="lp-filter" style="font-size:0.75rem;padding:6px 14px;border:1px solid #27ae60;color:#27ae60;background:#fff;border-radius:20px;cursor:pointer">Nuevos</button>
                 <button onclick="loadLeadsPage(null,'contacted')" class="lp-filter" style="font-size:0.75rem;padding:6px 14px;border:1px solid #f39c12;color:#f39c12;background:#fff;border-radius:20px;cursor:pointer">Contactados</button>
                 <button onclick="loadLeadsPage(null,'converted')" class="lp-filter" style="font-size:0.75rem;padding:6px 14px;border:1px solid #3498db;color:#3498db;background:#fff;border-radius:20px;cursor:pointer">Convertidos</button>
+                <span style="width:1px;height:20px;background:#ddd;margin:0 4px"></span>
+                <button onclick="loadLeadsPage(null,null,'hot')" class="lp-filter" style="font-size:0.75rem;padding:6px 14px;border:1px solid #e74c3c;color:#fff;background:#e74c3c;border-radius:20px;cursor:pointer;font-weight:700">🔥 Hot</button>
+                <button onclick="loadLeadsPage(null,null,'score')" class="lp-filter" style="font-size:0.75rem;padding:6px 14px;border:1px solid #C9A962;color:#C9A962;background:#fff;border-radius:20px;cursor:pointer">↓ Score</button>
             </div>
             <div style="display:grid;grid-template-columns:380px 1fr;gap:16px">
                 <div class="card" style="margin:0">
@@ -2479,11 +2482,12 @@
         }
 
         // ==================== LEADS PAGE ====================
-        async function loadLeadsPage(sourceFilter, statusFilter) {
+        async function loadLeadsPage(sourceFilter, statusFilter, sortBy) {
             try {
                 let url = '/api/leads?days=365';
                 if (sourceFilter) url += `&source=${sourceFilter}`;
                 if (statusFilter) url += `&status=${statusFilter}`;
+                if (sortBy) url += `&sort=${sortBy}`;
                 const res = await fetch(url);
                 const leads = await res.json();
 
@@ -2620,6 +2624,49 @@
                     html += `</div>`;
                 }
 
+                // Score breakdown
+                if (l.score > 0) {
+                    const scoreLabel = l.score >= 80 ? 'MUY CALIENTE' : l.score >= 50 ? 'CALIENTE' : l.score >= 20 ? 'TIBIO' : 'FRIO';
+                    const scoreBg = l.score >= 80 ? '#C41E3A' : l.score >= 50 ? '#e74c3c' : l.score >= 20 ? '#f39c12' : '#95a5a6';
+                    html += `<div style="margin-bottom:16px;padding:12px 16px;background:#f8f9fa;border-radius:8px;border-left:3px solid ${scoreBg}">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                            <span style="font-size:0.65rem;color:#888;text-transform:uppercase;letter-spacing:0.5px">Lead Score</span>
+                            <span style="font-size:1.2rem;font-weight:800;color:${scoreBg}">${l.score} pts</span>
+                            <span style="font-size:0.6rem;padding:2px 8px;border-radius:8px;background:${scoreBg};color:#fff;font-weight:700">${scoreLabel}</span>
+                        </div>
+                    </div>`;
+                }
+
+                // Quotes
+                if (l.quotes && l.quotes.length > 0) {
+                    html += `<div style="margin-bottom:16px">
+                        <div style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Cotizaciones</div>`;
+                    html += l.quotes.map(q => {
+                        const qDate = q.created_at ? mxDate(q.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'short'}) : '';
+                        const amt = q.grand_total || q.total || 0;
+                        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f8f9fa;border-radius:8px;margin-bottom:6px">
+                            <span style="font-weight:700;color:#C9A962;font-size:0.85rem">${q.folio || '#' + q.id}</span>
+                            <span style="font-size:0.8rem">$${Math.round(amt).toLocaleString()}</span>
+                            <span style="font-size:0.6rem;padding:2px 6px;border-radius:6px;background:${q.status==='sent'?'#27ae60':q.status==='viewed'?'#3498db':'#888'};color:#fff">${q.status}</span>
+                            <span style="font-size:0.7rem;color:#888;margin-left:auto">${qDate}</span>
+                            ${q.folio ? `<a href="/cotizacion/${q.folio}" target="_blank" style="font-size:0.65rem;padding:4px 10px;background:#C41E3A;color:#fff;border-radius:6px;text-decoration:none">Ver</a>` : ''}
+                        </div>`;
+                    }).join('');
+                    html += `</div>`;
+                }
+
+                // Quick message
+                if (phone) {
+                    html += `<div style="margin-bottom:16px">
+                        <div style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Mensaje rápido</div>
+                        <div style="display:flex;gap:8px;align-items:center">
+                            <input type="text" id="quick-msg-${l.id}" placeholder="Escribe un mensaje o envia template..." style="flex:1;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:0.8rem;outline:none">
+                            <button onclick="sendQuickMessage(${l.id})" style="padding:10px 18px;background:#25D366;color:#fff;border:none;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer;white-space:nowrap">Enviar</button>
+                        </div>
+                        <div style="font-size:0.6rem;color:#aaa;margin-top:4px">Si la ventana de 24hrs esta cerrada, se envia como template automaticamente</div>
+                    </div>`;
+                }
+
                 // Notas
                 if (l.notes) {
                     html += `<div style="padding:12px 16px;background:#fff9e6;border-radius:8px;border-left:3px solid #f39c12;margin-bottom:16px">
@@ -2661,6 +2708,37 @@
                 await authFetch(`/api/leads/${leadId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ advisor_name: advisorName }) });
                 showLeadPage(leadId);
             } catch (e) { console.error(e); }
+        }
+
+        async function sendQuickMessage(leadId) {
+            const input = document.getElementById(`quick-msg-${leadId}`);
+            const message = input.value.trim();
+            const btn = input.nextElementSibling;
+            btn.textContent = 'Enviando...';
+            btn.disabled = true;
+            try {
+                const res = await authFetch(`/api/leads/${leadId}/send-message`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message || null })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    input.value = '';
+                    btn.textContent = data.withinWindow ? 'Enviado (libre)' : 'Enviado (template)';
+                    btn.style.background = '#27ae60';
+                    setTimeout(() => { btn.textContent = 'Enviar'; btn.style.background = '#25D366'; btn.disabled = false; showLeadPage(leadId); }, 2000);
+                } else {
+                    btn.textContent = 'Error';
+                    btn.style.background = '#e74c3c';
+                    setTimeout(() => { btn.textContent = 'Enviar'; btn.style.background = '#25D366'; btn.disabled = false; }, 3000);
+                    console.error('Send error:', data.error);
+                }
+            } catch (e) {
+                btn.textContent = 'Error';
+                btn.style.background = '#e74c3c';
+                setTimeout(() => { btn.textContent = 'Enviar'; btn.style.background = '#25D366'; btn.disabled = false; }, 3000);
+                console.error(e);
+            }
         }
 
         // ==================== ANALYTICS ====================
@@ -2726,7 +2804,10 @@
             } catch (e) { console.error('Analytics error:', e); }
         }
 
-        // ==================== LEAD NOTIFICATIONS (polling) ====================
+        // ==================== LEAD NOTIFICATIONS (polling + browser) ====================
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
         let lastNotifCheck = new Date().toISOString();
         setInterval(async () => {
             try {
@@ -2734,8 +2815,19 @@
                 const data = await res.json();
                 const badge = document.getElementById('lp-notif-badge');
                 if (data.count > 0) {
-                    badge.textContent = data.count + ' nuevo' + (data.count > 1 ? 's' : '');
+                    const hotCount = data.recent.filter(r => (r.score || 0) >= 50).length;
+                    if (hotCount > 0) {
+                        badge.textContent = `🔥 ${hotCount} hot + ${data.count - hotCount} nuevo${data.count - hotCount !== 1 ? 's' : ''}`;
+                    } else {
+                        badge.textContent = data.count + ' nuevo' + (data.count > 1 ? 's' : '');
+                    }
                     badge.style.display = 'inline-block';
+                    // Browser notification
+                    if (Notification.permission === 'granted') {
+                        new Notification('Cesantoni CRM', {
+                            body: `${data.count} nuevo${data.count > 1 ? 's' : ''} lead${data.count > 1 ? 's' : ''}${hotCount ? ' (🔥' + hotCount + ' hot)' : ''}`,
+                        });
+                    }
                 } else {
                     badge.style.display = 'none';
                 }

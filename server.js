@@ -46,7 +46,7 @@ app.post('/api/login', async (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', async (req, res) => res.json({ version: 'v9.2.0', commit: 'gemini-ia-catalogo-funnel' }));
+app.get('/api/health', async (req, res) => res.json({ version: 'v9.3.0', commit: 'bot-cleanup-scoring-og' }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
@@ -812,12 +812,46 @@ app.get('/api/promotions', async (req, res) => {
 // LANDING PAGE DINÁMICO
 // =====================================================
 
+// Landing page with server-side OG meta tags for WhatsApp/social previews
 app.get('/p/:sku', async (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+  try {
+    const product = await queryOne(
+      'SELECT name, description, image_url, category, format, base_price, sku, slug FROM products WHERE sku ILIKE ? OR slug ILIKE ?',
+      [req.params.sku, req.params.sku]
+    );
+    if (!product) return res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+
+    let html = fs.readFileSync(path.join(__dirname, 'public', 'landing.html'), 'utf8');
+    const title = `${product.name} | Cesantoni Premium`;
+    const desc = (product.description || `Piso ${product.category || 'premium'} ${product.format || ''} de alta calidad`).substring(0, 160);
+    const img = product.image_url || '';
+    const url = `${BASE_URL}/p/${product.sku || product.slug}`;
+
+    html = html.replace('<title id="page-title">Cesantoni Premium</title>',
+      `<title id="page-title">${title}</title>`);
+    html = html.replace('<meta name="description" id="meta-description" content="Descubre pisos premium de la más alta calidad.">',
+      `<meta name="description" id="meta-description" content="${desc.replace(/"/g, '&quot;')}">`);
+    html = html.replace('<meta property="og:title" id="og-title" content="Cesantoni Premium">',
+      `<meta property="og:title" id="og-title" content="${title.replace(/"/g, '&quot;')}">`);
+    html = html.replace('<meta property="og:image" id="og-image" content="">',
+      `<meta property="og:image" id="og-image" content="${img}">`);
+    html = html.replace('</head>',
+      `<meta property="og:description" content="${desc.replace(/"/g, '&quot;')}">
+      <meta property="og:url" content="${url}">
+      <meta property="og:type" content="product">
+      <meta property="og:site_name" content="Cesantoni Porcelanato Premium">
+      ${product.base_price ? `<meta property="product:price:amount" content="${product.base_price}"><meta property="product:price:currency" content="MXN">` : ''}
+      </head>`);
+
+    res.send(html);
+  } catch (err) {
+    console.error('OG landing error:', err.message);
+    res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+  }
 });
 
 app.get('/landing/:slug', async (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+  res.redirect(301, `/p/${req.params.slug}`);
 });
 
 // Public quote page
@@ -1172,7 +1206,13 @@ app.get('/catalogo', async (req, res) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Catálogo de Pisos - Cesantoni</title>
+<title>Catálogo de Pisos Premium - Cesantoni</title>
+<meta name="description" content="Explora más de ${products.length} pisos premium: mármol, madera, piedra y más. Porcelanato de la más alta calidad.">
+<meta property="og:title" content="Catálogo de Pisos Premium - Cesantoni">
+<meta property="og:description" content="Explora más de ${products.length} pisos premium: mármol, madera, piedra y más.">
+<meta property="og:url" content="${BASE_URL}/catalogo">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Cesantoni Porcelanato Premium">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Source+Sans+3:wght@300;400;600;700&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -2786,6 +2826,44 @@ async function addLeadScore(phone, points, action) {
   } catch(e) { /* ignore if no lead */ }
 }
 
+// Clean Gemini output for WhatsApp: strip markdown, limit emojis, truncate
+function cleanBotResponse(text) {
+  let r = text;
+  // Strip cesantoni.com.mx links (keep our own links)
+  r = r.replace(/https?:\/\/(www\.)?cesantoni\.com\.mx\S*/gi, '');
+  // Convert **bold** to *bold* (WhatsApp native bold)
+  r = r.replace(/\*\*([^*]+)\*\*/g, '*$1*');
+  // Strip markdown headers
+  r = r.replace(/^#{1,4}\s+/gm, '');
+  // Strip horizontal rules and section separators
+  r = r.replace(/^[-=─━]{3,}[^─━]*[-─━]*$/gm, '');
+  // Strip all bullet/list patterns
+  r = r.replace(/^[•●▪▸►]\s+/gm, '');
+  r = r.replace(/^[-+*]\s+/gm, '');
+  r = r.replace(/^\d+[.)]\s+/gm, '');
+  r = r.replace(/^[a-z][.)]\s+/gm, '');
+  // Strip backtick code blocks and inline code
+  r = r.replace(/```[\s\S]*?```/g, '');
+  r = r.replace(/`([^`]+)`/g, '$1');
+  // Strip emoji headers like "🏆 TOP RECOMENDACIONES:"
+  r = r.replace(/^[\p{Emoji}\p{Emoji_Presentation}\uFE0F]+\s*(TOP|MIS|MEJORES|RECOMENDACIONES|OPCIONES|SUGERENCIAS)[^\n]*\n?/gmu, '');
+  // Limit emojis: keep at most 2
+  let emojiCount = 0;
+  r = r.replace(/[\p{Emoji_Presentation}]/gu, (match) => {
+    emojiCount++;
+    return emojiCount <= 2 ? match : '';
+  });
+  // Clean excessive whitespace
+  r = r.replace(/\n{3,}/g, '\n\n').replace(/  +/g, ' ').trim();
+  // Truncate to ~400 chars, cut at last sentence boundary
+  if (r.length > 400) {
+    const cut = r.substring(0, 400);
+    const lastSentence = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+    r = lastSentence > 100 ? cut.substring(0, lastSentence + 1) : cut.substring(0, 400).trim();
+  }
+  return r;
+}
+
 // Generate sequential quote folio: COT-26-0001
 async function generateQuoteFolio() {
   const year = new Date().getFullYear().toString().slice(-2);
@@ -3234,21 +3312,8 @@ Responde SOLO el texto del mensaje. Corto, conversacional, sin listas.`;
 
     if (!reply) reply = 'Disculpa, tuve un problema. ¿Puedes repetir tu mensaje?';
 
-    // Post-process: clean up Gemini output for WhatsApp
-    // 1. Strip cesantoni.com.mx links
-    reply = reply.replace(/https?:\/\/(www\.)?cesantoni\.com\.mx\S*/gi, '');
-    // 2. Strip markdown: bold, headers, horizontal rules, bullet lists
-    reply = reply.replace(/\*\*/g, '').replace(/^#{1,3}\s+/gm, '').replace(/^-{3,}/gm, '').replace(/^[•\-\*]\s+/gm, '').replace(/^\d+\.\s+/gm, '');
-    // 3. Strip emoji headers like "🏆 TOP RECOMENDACIONES:"
-    reply = reply.replace(/^[\p{Emoji}\p{Emoji_Presentation}\uFE0F]+\s*(TOP|MIS|MEJORES|RECOMENDACIONES)[^\n]*\n?/gmu, '');
-    // 4. Clean excessive whitespace
-    reply = reply.replace(/\n{3,}/g, '\n\n').trim();
-    // 5. Truncate to ~400 chars max (WhatsApp friendly) — cut at last sentence
-    if (reply.length > 400) {
-      const cut = reply.substring(0, 400);
-      const lastPeriod = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
-      reply = lastPeriod > 100 ? cut.substring(0, lastPeriod + 1) : cut.substring(0, 400).trim();
-    }
+    // Clean Gemini output for WhatsApp
+    reply = cleanBotResponse(reply);
 
     // Find the best matching product from smart catalog
     let matchedProduct = null;
@@ -4036,7 +4101,7 @@ app.post('/webhook', async (req, res) => {
       if (product?.image_url) {
         // Send ONE image with recommendation + product info + landing link as caption
         const slug = product.sku || product.slug;
-        const caption = `${reply}\n\n*${product.name}*${product.base_price ? ' · $' + product.base_price + '/m²' : ''}${product.format ? ' · ' + product.format : ''}\n\n${baseUrl}/p/${slug}`;
+        const caption = `${reply}\n\n*${product.name}*${product.base_price ? ' · $' + product.base_price + '/m²' : ''}${product.format ? ' · ' + product.format : ''}\n\n${baseUrl}/p/${slug}\n\nVe todo nuestro catálogo: ${baseUrl}/catalogo`;
         await sendWhatsAppImage(from, product.image_url, caption);
       } else {
         await sendWhatsApp(from, reply);
@@ -4781,7 +4846,7 @@ app.get('/api/wa/conversation/:phone', async (req, res) => {
 
 app.get('/api/leads', async (req, res) => {
   try {
-    const { status, source, days } = req.query;
+    const { status, source, days, sort } = req.query;
     const d = parseInt(days) || 90;
     let sql = `SELECT l.*,
       s.name as store_full_name, s.city as store_city, s.state as store_state, s.address as store_address,
@@ -4794,7 +4859,12 @@ app.get('/api/leads', async (req, res) => {
     const params = [];
     if (status) { sql += ' AND l.status = ?'; params.push(status); }
     if (source) { sql += ' AND l.source = ?'; params.push(source); }
-    sql += ' ORDER BY l.created_at DESC LIMIT 200';
+    if (sort === 'hot') { sql += ' AND COALESCE(l.score, 0) >= 50'; }
+    if (sort === 'score') {
+      sql += ' ORDER BY COALESCE(l.score, 0) DESC, l.created_at DESC LIMIT 200';
+    } else {
+      sql += ' ORDER BY l.created_at DESC LIMIT 200';
+    }
     res.json(await query(sql, params));
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -4828,7 +4898,14 @@ app.get('/api/leads/:id', async (req, res) => {
     if (lead.phone) {
       conversation = await query('SELECT role, message, created_at FROM wa_conversations WHERE phone = ? ORDER BY created_at ASC', [lead.phone]);
     }
-    res.json({ ...lead, products_detail, conversation });
+
+    // Quotes for this lead
+    let quotes = [];
+    if (lead.phone) {
+      quotes = await query('SELECT folio, grand_total, total, status, created_at FROM quotes WHERE customer_phone = ? OR lead_id = ? ORDER BY created_at DESC LIMIT 10', [lead.phone, lead.id]);
+    }
+
+    res.json({ ...lead, products_detail, conversation, quotes });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -4843,6 +4920,48 @@ app.put('/api/leads/:id', crmAuth, async (req, res) => {
     if (notes) await run('UPDATE leads SET notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [notes, req.params.id]);
     if (advisor_name !== undefined) await run('UPDATE leads SET advisor_name = ?, assigned_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [advisor_name || null, req.params.id]);
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Send message to lead from CRM (handles 24h window)
+app.post('/api/leads/:id/send-message', crmAuth, async (req, res) => {
+  try {
+    const lead = await queryOne('SELECT * FROM leads WHERE id = ?', [req.params.id]);
+    if (!lead || !lead.phone) return res.status(400).json({ error: 'Lead sin telefono' });
+
+    const { message } = req.body;
+
+    // Check 24h window
+    const lastMsg = await queryOne(
+      "SELECT created_at FROM wa_conversations WHERE phone = ? AND role = 'user' ORDER BY created_at DESC LIMIT 1",
+      [lead.phone]
+    );
+    const withinWindow = lastMsg && (Date.now() - new Date(lastMsg.created_at).getTime()) < 24 * 60 * 60 * 1000;
+
+    let result;
+    if (withinWindow && message) {
+      result = await sendWhatsApp(lead.phone, message);
+    } else {
+      // Outside 24h: use template
+      const params = [
+        lead.name || 'Cliente',
+        lead.phone,
+        lead.store_name || 'Cesantoni',
+        message || 'Un asesor de Cesantoni quiere ayudarte con tu proyecto de pisos.'
+      ];
+      result = await sendWhatsAppTemplate(lead.phone, 'lead_nuevo', params);
+    }
+
+    if (result?.error) {
+      return res.status(400).json({ error: result.error.message || 'Error enviando mensaje' });
+    }
+
+    // Update status if new
+    await run("UPDATE leads SET status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [lead.id]);
+
+    res.json({ success: true, withinWindow, method: withinWindow && message ? 'freeform' : 'template' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -4946,7 +5065,7 @@ app.get('/api/leads/new/count', async (req, res) => {
   try {
     const since = req.query.since || new Date(Date.now() - 60*60*1000).toISOString();
     const result = await queryOne("SELECT COUNT(*) as c FROM leads WHERE created_at > ?", [since]);
-    const recent = await query("SELECT id, name, phone, source, created_at FROM leads WHERE created_at > ? ORDER BY created_at DESC LIMIT 5", [since]);
+    const recent = await query("SELECT id, name, phone, source, COALESCE(score, 0) as score, created_at FROM leads WHERE created_at > ? ORDER BY created_at DESC LIMIT 5", [since]);
     res.json({ count: parseInt(result?.c || 0), recent });
   } catch (err) {
     res.status(500).json({ error: err.message });
