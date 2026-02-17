@@ -3329,13 +3329,30 @@ Responde SOLO el texto del mensaje. Corto, conversacional, sin listas.`;
       if (!matchedProduct) {
         matchedProduct = products.find(p => textLower.includes(p.name.toLowerCase()));
       }
-      // Third: direct DB lookup if user mentioned a product name not in smart catalog
+      // Third: extract product name from Gemini reply and look up in DB
       if (!matchedProduct) {
-        const directMatch = await queryOne(
-          'SELECT id, name, sku, slug, category, format, finish, base_price, image_url FROM products WHERE active = 1 AND (name ILIKE ? OR sku ILIKE ?)',
-          [`%${text.replace(/[^a-zA-Z0-9 ]/g, '').trim()}%`, `%${text.replace(/[^a-zA-Z0-9 ]/g, '').trim()}%`]
-        );
-        if (directMatch) matchedProduct = directMatch;
+        // Gemini often says "El piso NEKK" or "ALABAMA es..." — find capitalized product names
+        const nameFromReply = reply.match(/piso\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]{3,})/i)?.[1]
+          || reply.match(/\b([A-Z]{3,})\b/)?.[1];
+        if (nameFromReply) {
+          const directMatch = await queryOne(
+            'SELECT id, name, sku, slug, category, format, finish, base_price, image_url FROM products WHERE active = 1 AND (name ILIKE ? OR sku ILIKE ?)',
+            [`%${nameFromReply}%`, `%${nameFromReply}%`]
+          );
+          if (directMatch) matchedProduct = directMatch;
+        }
+      }
+      // Fourth: try individual words from user text against product names
+      if (!matchedProduct) {
+        const words = text.replace(/[^a-zA-ZáéíóúñÁÉÍÓÚÑ ]/g, '').trim().split(/\s+/).filter(w => w.length >= 3);
+        for (const word of words) {
+          if (/^(cuanto|cuesta|quiero|para|piso|como|tiene|precio|busco|dame|ver)$/i.test(word)) continue;
+          const directMatch = await queryOne(
+            'SELECT id, name, sku, slug, category, format, finish, base_price, image_url FROM products WHERE active = 1 AND (name ILIKE ? OR sku ILIKE ?)',
+            [`%${word}%`, `%${word}%`]
+          );
+          if (directMatch) { matchedProduct = directMatch; break; }
+        }
       }
       // Last fallback: first product from catalog
       if (!matchedProduct) matchedProduct = products[0];
@@ -3415,6 +3432,16 @@ app.post('/webhook', async (req, res) => {
     const contactName = value.contacts?.[0]?.profile?.name || '';
 
     console.log(`📱 WA from ${contactName} (${from}): ${message.type}`);
+
+    // Deduplicate: Meta sometimes sends the same webhook event twice
+    if (!global._processedMsgIds) global._processedMsgIds = new Set();
+    if (global._processedMsgIds.has(message.id)) {
+      console.log(`⚠️ Duplicate webhook for ${message.id}, skipping`);
+      return;
+    }
+    global._processedMsgIds.add(message.id);
+    // Clean old IDs after 5 min to avoid memory leak
+    setTimeout(() => global._processedMsgIds.delete(message.id), 300000);
 
     // Mark as read
     markAsRead(message.id);
