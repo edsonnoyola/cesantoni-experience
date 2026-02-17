@@ -2845,8 +2845,9 @@ function cleanBotResponse(text) {
   // Strip backtick code blocks and inline code
   r = r.replace(/```[\s\S]*?```/g, '');
   r = r.replace(/`([^`]+)`/g, '$1');
-  // Strip emoji headers like "🏆 TOP RECOMENDACIONES:"
-  r = r.replace(/^[\p{Emoji}\p{Emoji_Presentation}\uFE0F]+\s*(TOP|MIS|MEJORES|RECOMENDACIONES|OPCIONES|SUGERENCIAS)[^\n]*\n?/gmu, '');
+  // Strip emoji headers like "🏆 TOP RECOMENDACIONES:", "💰 PRECIOS Y DISPONIBILIDAD:", "MI RECOMENDACIÓN #1"
+  r = r.replace(/^[\p{Emoji}\p{Emoji_Presentation}\uFE0F]+\s*(TOP|MIS?|MEJORES|RECOMENDACIONES?|OPCIONES|SUGERENCIAS|PRECIOS?|DISPONIBILIDAD|CARACTERÍSTICAS|VENTAJAS|DETALLES)[^\n]*\n?/gmu, '');
+  r = r.replace(/^(MI|MIS)\s+(RECOMENDACI[ÓO]N|SELECCI[ÓO]N|TOP|MEJORES)[^\n]*\n?/gmu, '');
   // Limit emojis: keep at most 2
   let emojiCount = 0;
   r = r.replace(/[\p{Emoji_Presentation}]/gu, (match) => {
@@ -3227,9 +3228,11 @@ REGLAS ESTRICTAS:
 - MÁXIMO 3 oraciones + 1 pregunta. Esto es WhatsApp, NO un email.
 - Recomienda MÁXIMO 1 producto. Si quieren más opciones, las das después.
 - SIEMPRE en español mexicano. NUNCA en inglés.
-- NUNCA uses listas con viñetas (•, -, *). NUNCA uses markdown. Solo texto plano conversacional.
+- NUNCA uses listas con viñetas (•, -, *). NUNCA uses markdown (**, ##, ---). NUNCA uses separadores. Solo texto plano conversacional.
 - NUNCA pongas links de cesantoni.com.mx. Yo agrego los links automáticamente.
+- NUNCA pongas encabezados como "MI RECOMENDACIÓN" o "PRECIOS Y DISPONIBILIDAD". Solo habla natural.
 - Usa DATOS REALES del producto (formato, acabado, PEI). NO respuestas genéricas.
+- PRECIOS: Siempre di "precio estimado" o "precio aproximado". Los precios varían según la tienda y ciudad. Pregunta la ciudad si no la sabes.
 - Si no saben qué quieren: "¿Para qué espacio lo necesitas?"
 - Si preguntan precio: precio real + ofrece cotización.
 - Para cotizar solo necesitas m² y ciudad.
@@ -3315,12 +3318,26 @@ Responde SOLO el texto del mensaje. Corto, conversacional, sin listas.`;
     // Clean Gemini output for WhatsApp
     reply = cleanBotResponse(reply);
 
-    // Find the best matching product from smart catalog
+    // Find the best matching product — check reply text AND user's original message
     let matchedProduct = null;
     if (products.length > 0) {
       const replyLower = reply.toLowerCase();
+      const textLower = text.toLowerCase();
+      // First: match product name mentioned in reply
       matchedProduct = products.find(p => replyLower.includes(p.name.toLowerCase()));
-      // Fallback: first product from catalog if Gemini didn't mention one by name
+      // Second: match product name mentioned by user
+      if (!matchedProduct) {
+        matchedProduct = products.find(p => textLower.includes(p.name.toLowerCase()));
+      }
+      // Third: direct DB lookup if user mentioned a product name not in smart catalog
+      if (!matchedProduct) {
+        const directMatch = await queryOne(
+          'SELECT id, name, sku, slug, category, format, finish, base_price, image_url FROM products WHERE active = 1 AND (name ILIKE ? OR sku ILIKE ?)',
+          [`%${text.replace(/[^a-zA-Z0-9 ]/g, '').trim()}%`, `%${text.replace(/[^a-zA-Z0-9 ]/g, '').trim()}%`]
+        );
+        if (directMatch) matchedProduct = directMatch;
+      }
+      // Last fallback: first product from catalog
       if (!matchedProduct) matchedProduct = products[0];
     }
 
@@ -3546,7 +3563,7 @@ app.post('/webhook', async (req, res) => {
                             finishUpper.includes('LAPPATO') ? 'semi-brillo' :
                             finishUpper.includes('TEXTUR') || finishUpper.includes('ANTIDERRAPANTE') ? 'antiderrapante' : '';
 
-          let caption = `*${lProduct.name}*${lProduct.base_price ? ' · $' + lProduct.base_price + '/m²' : ''}\n\n`;
+          let caption = `*${lProduct.name}*${lProduct.base_price ? ' · ~$' + lProduct.base_price + '/m² (precio estimado)' : ''}\n\n`;
           caption += `📐 ${lProduct.format || 'Gran formato'}\n`;
           caption += `✨ ${lProduct.finish || 'Premium'}${finishTip ? ' (' + finishTip + ')' : ''}\n`;
           if (lProduct.pei) caption += `💪 PEI ${lProduct.pei} — ${peiTip}\n`;
@@ -3970,7 +3987,7 @@ app.post('/webhook', async (req, res) => {
           const listRows = catProducts.map(s => ({
             id: `cat_${s.sku || s.slug || s.id}`,
             title: s.name,
-            description: `$${s.base_price || '?'}/m² · ${s.format || ''} · ${s.finish || ''}`
+            description: `~$${s.base_price || '?'}/m² est. · ${s.format || ''} · ${s.finish || ''}`
           }));
           await sendWhatsAppList(from,
             `🏠 *Pisos estilo ${catSearch}* — ${catProducts.length} opciones.\nSelecciona los que te interesen:`,
@@ -3984,7 +4001,7 @@ app.post('/webhook', async (req, res) => {
           // Also send first product image as preview
           if (catProducts[0]?.image_url) {
             await new Promise(r => setTimeout(r, 500));
-            await sendWhatsAppImage(from, catProducts[0].image_url, `${catProducts[0].name} — $${catProducts[0].base_price || '?'}/m²`);
+            await sendWhatsAppImage(from, catProducts[0].image_url, `${catProducts[0].name} — ~$${catProducts[0].base_price || '?'}/m² (precio estimado)`);
           }
           return;
         }
@@ -4024,7 +4041,7 @@ app.post('/webhook', async (req, res) => {
 
       // --- Product search: detect if user types a product name ---
       const cleanText = text.trim().toLowerCase();
-      if (cleanText.length >= 3 && cleanText.length <= 30 && !/\s{2,}/.test(cleanText)) {
+      if (cleanText.length >= 3 && cleanText.length <= 50 && !/\s{2,}/.test(cleanText)) {
         const matchedProduct = await queryOne(
           'SELECT * FROM products WHERE active = 1 AND (name ILIKE ? OR sku ILIKE ? OR slug ILIKE ?)',
           [`%${cleanText}%`, `%${cleanText}%`, `%${cleanText}%`]
@@ -4043,7 +4060,7 @@ app.post('/webhook', async (req, res) => {
             if (inv) stockInfo = inv.in_stock ? '\n✅ Disponible en tu tienda' : '\n⚠️ No disponible en tu tienda — consulta opciones';
           }
 
-          let caption = `*${p.name}*${p.base_price ? ' · $' + p.base_price + '/m²' : ''}\n\n`;
+          let caption = `*${p.name}*${p.base_price ? ' · ~$' + p.base_price + '/m² (precio estimado)' : ''}\n\n`;
           caption += `📐 ${p.format || 'Gran formato'}\n`;
           caption += `✨ ${p.finish || 'Premium'}\n`;
           if (p.pei) caption += `💪 PEI ${p.pei} — ${peiTip}\n`;
@@ -4101,7 +4118,7 @@ app.post('/webhook', async (req, res) => {
       if (product?.image_url) {
         // Send ONE image with recommendation + product info + landing link as caption
         const slug = product.sku || product.slug;
-        const caption = `${reply}\n\n*${product.name}*${product.base_price ? ' · $' + product.base_price + '/m²' : ''}${product.format ? ' · ' + product.format : ''}\n\n${baseUrl}/p/${slug}\n\nVe todo nuestro catálogo: ${baseUrl}/catalogo`;
+        const caption = `${reply}\n\n*${product.name}*${product.base_price ? ' · ~$' + product.base_price + '/m² (precio estimado)' : ''}${product.format ? ' · ' + product.format : ''}\n\n${baseUrl}/p/${slug}\n\nVe todo nuestro catálogo: ${baseUrl}/catalogo`;
         await sendWhatsAppImage(from, product.image_url, caption);
       } else {
         await sendWhatsApp(from, reply);
@@ -4149,7 +4166,7 @@ app.post('/webhook', async (req, res) => {
             const link = `${baseUrl}/p/${s.sku || s.slug || s.name}`;
             const pei = parseInt(s.pei) || 0;
             const peiTip = pei >= 4 ? 'Alto tráfico' : pei >= 3 ? 'Toda la casa' : pei >= 2 ? 'Tráfico ligero' : '';
-            let caption = `*${s.name}* · $${s.base_price || '?'}/m²\n`;
+            let caption = `*${s.name}* · ~$${s.base_price || '?'}/m² (estimado)\n`;
             caption += `📐 ${s.format || ''} · ✨ ${s.finish || ''}\n`;
             if (s.pei) caption += `💪 PEI ${s.pei} — ${peiTip}\n`;
             caption += `\n🔗 ${link}`;
@@ -4655,7 +4672,7 @@ app.post('/webhook', async (req, res) => {
             const listRows = catProducts.map(s => ({
               id: `cat_${s.sku || s.slug || s.id}`,
               title: s.name,
-              description: `$${s.base_price || '?'}/m² · ${s.format || ''} · ${s.finish || ''}`
+              description: `~$${s.base_price || '?'}/m² est. · ${s.format || ''} · ${s.finish || ''}`
             }));
             await sendWhatsAppList(from,
               `🏠 *Más pisos estilo ${catSearch}* — ${catProducts.length} opciones.\nSelecciona los que te interesen:`,
@@ -4673,7 +4690,7 @@ app.post('/webhook', async (req, res) => {
         const { reply, product } = await processWhatsAppMessage(from, btnTitle, contactName);
         if (product?.image_url) {
           const slug = product.sku || product.slug;
-          const caption = `${reply}\n\n*${product.name}*${product.base_price ? ' · $' + product.base_price + '/m²' : ''}\n\nhttps://cesantoni-experience-za74.onrender.com/p/${slug}`;
+          const caption = `${reply}\n\n*${product.name}*${product.base_price ? ' · ~$' + product.base_price + '/m² (precio estimado)' : ''}\n\nhttps://cesantoni-experience-za74.onrender.com/p/${slug}`;
           await sendWhatsAppImage(from, product.image_url, caption);
         } else {
           await sendWhatsApp(from, reply);
@@ -4696,7 +4713,7 @@ app.post('/webhook', async (req, res) => {
             const { reply, product } = await processWhatsAppMessage(from, transcription, contactName);
             if (product?.image_url) {
               const slug = product.sku || product.slug;
-              const caption = `${reply}\n\n*${product.name}*${product.base_price ? ' · $' + product.base_price + '/m²' : ''}\n\nhttps://cesantoni-experience-za74.onrender.com/p/${slug}`;
+              const caption = `${reply}\n\n*${product.name}*${product.base_price ? ' · ~$' + product.base_price + '/m² (precio estimado)' : ''}\n\nhttps://cesantoni-experience-za74.onrender.com/p/${slug}`;
               await sendWhatsAppImage(from, product.image_url, caption);
             } else {
               await sendWhatsApp(from, reply);
@@ -4747,7 +4764,7 @@ app.post('/webhook', async (req, res) => {
 
             for (const s of matches) {
               const link = `${baseUrl}/p/${s.sku || s.slug}`;
-              let caption = `*${s.name}* · $${s.base_price || '?'}/m²\n`;
+              let caption = `*${s.name}* · ~$${s.base_price || '?'}/m² (estimado)\n`;
               caption += `📐 ${s.format || ''} · ✨ ${s.finish || ''}\n`;
               if (s.pei) caption += `💪 PEI ${s.pei}\n`;
               caption += `\n🔗 ${link}`;
