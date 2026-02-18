@@ -5552,6 +5552,14 @@ app.post('/api/whatsapp/templates/setup', crmAuth, async (req, res) => {
   res.json({ ok: true, templates: templates.map(t => ({ name: t.name, status: t.status })) });
 });
 
+// Send test template to a phone number
+app.post('/api/whatsapp/templates/test', crmAuth, async (req, res) => {
+  const { phone, template, params } = req.body;
+  if (!phone || !template) return res.status(400).json({ error: 'phone and template required' });
+  const result = await sendWhatsAppTemplate(phone, template, params || []);
+  res.json({ ok: !result?.error, result });
+});
+
 // =====================================================
 // FUNNEL ANALYTICS
 // =====================================================
