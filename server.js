@@ -5062,12 +5062,13 @@ app.get('/api/leads/:id', async (req, res) => {
 
 app.put('/api/leads/:id', crmAuth, async (req, res) => {
   try {
-    const { status, notes, advisor_name } = req.body;
+    const { status, notes, advisor_name, store_id } = req.body;
     const lead = await queryOne('SELECT id FROM leads WHERE id = ?', [req.params.id]);
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
     if (status) await run('UPDATE leads SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [status, req.params.id]);
     if (notes) await run('UPDATE leads SET notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [notes, req.params.id]);
     if (advisor_name !== undefined) await run('UPDATE leads SET advisor_name = ?, assigned_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [advisor_name || null, req.params.id]);
+    if (store_id !== undefined) await run('UPDATE leads SET store_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [store_id || null, req.params.id]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
