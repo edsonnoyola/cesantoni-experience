@@ -5560,6 +5560,35 @@ app.post('/api/whatsapp/templates/test', crmAuth, async (req, res) => {
   res.json({ ok: !result?.error, result });
 });
 
+// Simulate 24h window expired: process message with AI, then send template fallback
+app.post('/api/whatsapp/test-fallback', crmAuth, async (req, res) => {
+  const { phone, text } = req.body;
+  if (!phone || !text) return res.status(400).json({ error: 'phone and text required' });
+  try {
+    const lead = await queryOne('SELECT * FROM leads WHERE phone = ?', [phone]);
+    const contactName = lead?.name || 'Cliente';
+    const { reply, product } = await processWhatsAppMessage(phone, text, contactName);
+
+    // Build template message (same logic as sendBotResponseWithFallback)
+    let shortMsg = reply.substring(0, 400);
+    if (product) {
+      const price = product.effective_price || product.base_price;
+      shortMsg = `Te intereso ${product.name}${price ? ' (~$' + price + '/m2)' : ''}. Respondeme y te ayudo!`;
+    }
+
+    // Try respuesta_consulta first, then lead_nuevo
+    let tplResult = await sendWhatsAppTemplate(phone, 'respuesta_consulta', [contactName, shortMsg]);
+    let usedTemplate = 'respuesta_consulta';
+    if (tplResult?.error) {
+      usedTemplate = 'lead_nuevo';
+      tplResult = await sendWhatsAppTemplate(phone, 'lead_nuevo', [contactName, phone, 'Cesantoni', shortMsg]);
+    }
+    res.json({ ok: !tplResult?.error, template_used: usedTemplate, ai_reply: reply, product: product?.name, result: tplResult });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // =====================================================
 // FUNNEL ANALYTICS
 // =====================================================
