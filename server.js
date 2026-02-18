@@ -48,7 +48,7 @@ app.post('/api/login', async (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version/health check
-app.get('/api/health', async (req, res) => res.json({ version: 'v9.4.0', commit: 'store-pricing-city-detection' }));
+app.get('/api/health', async (req, res) => res.json({ version: 'v9.4.2', commit: 'whatsapp-template-fallback' }));
 
 // Ensure directories exist
 ['uploads', 'public/videos', 'public/landings'].forEach(dir => {
@@ -2719,6 +2719,17 @@ const WA_PHONE_ID = process.env.WHATSAPP_PHONE_ID || '663552990169738';
 const WA_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'cesantoni2026';
 const WA_FORWARD_URL = process.env.WA_FORWARD_URL || '';
 
+// Detect if WA API error is a 24h window expiry
+function is24hWindowError(data) {
+  if (!data?.error) return false;
+  const code = data.error.code;
+  const msg = (data.error.message || '').toLowerCase();
+  const details = (data.error.error_data?.details || '').toLowerCase();
+  return code === 131047 || code === 131026 ||
+    msg.includes('re-engagement') || msg.includes('24') ||
+    details.includes('re-engagement') || details.includes('24');
+}
+
 // Send WhatsApp text message
 async function sendWhatsApp(to, text) {
   if (!WA_TOKEN) { console.log('⚠️ WA_TOKEN not set'); return null; }
@@ -2729,8 +2740,15 @@ async function sendWhatsApp(to, text) {
       body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: text } })
     });
     const data = await res.json();
-    if (data.error) console.error('WA send error:', data.error);
-    else try { await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [to, 'assistant', text]); } catch(e) {}
+    if (data.error) {
+      console.error('WA send error:', data.error);
+      if (is24hWindowError(data)) {
+        console.log('⏰ 24h window expired — will need template fallback');
+        data._windowExpired = true;
+      }
+    } else {
+      try { await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [to, 'assistant', text]); } catch(e) {}
+    }
     return data;
   } catch (err) {
     console.error('WA send error:', err.message);
@@ -2748,7 +2766,15 @@ async function sendWhatsAppImage(to, imageUrl, caption) {
       body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'image', image: { link: imageUrl, caption } })
     });
     const data = await res.json();
-    if (!data.error) try { await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [to, 'assistant', `[Imagen] ${caption || ''}`]); } catch(e) {}
+    if (data.error) {
+      console.error('WA image error:', data.error);
+      if (is24hWindowError(data)) {
+        console.log('⏰ 24h window expired for image — will need template fallback');
+        data._windowExpired = true;
+      }
+    } else {
+      try { await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [to, 'assistant', `[Imagen] ${caption || ''}`]); } catch(e) {}
+    }
     return data;
   } catch (err) {
     console.error('WA image error:', err.message);
@@ -2972,6 +2998,145 @@ async function sendWhatsAppTemplate(to, templateName, params = []) {
     console.error('WA template error:', err.message);
     return null;
   }
+}
+
+// Get WABA ID (needed for template management)
+async function getWabaId() {
+  if (global.lastWabaId) return global.lastWabaId;
+  if (!WA_TOKEN || !WA_PHONE_ID) return null;
+  try {
+    const res = await fetch(`https://graph.facebook.com/v21.0/${WA_PHONE_ID}`, {
+      headers: { 'Authorization': `Bearer ${WA_TOKEN}` }
+    });
+    const data = await res.json();
+    if (data.id) {
+      // Phone number response — need to get WABA from business profile
+      // The WABA ID comes from webhook entries, so let's try a different approach
+      // List phone numbers to find WABA
+    }
+    return null;
+  } catch { return null; }
+}
+
+// Create WhatsApp message template via API
+async function createWhatsAppTemplate(wabaId, name, bodyText, exampleParams) {
+  if (!WA_TOKEN || !wabaId) return null;
+  try {
+    const res = await fetch(`https://graph.facebook.com/v21.0/${wabaId}/message_templates`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        language: 'es_MX',
+        category: 'UTILITY',
+        components: [{
+          type: 'BODY',
+          text: bodyText,
+          example: { body_text: [exampleParams] }
+        }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) {
+      // If template already exists, that's OK
+      if (data.error.code === 2388093 || (data.error.message || '').includes('already exists')) {
+        console.log(`📋 Template "${name}" already exists`);
+        return { exists: true };
+      }
+      console.error(`Template create error for "${name}":`, JSON.stringify(data.error));
+      return { error: data.error };
+    }
+    console.log(`✅ Template "${name}" created (ID: ${data.id}), pending approval`);
+    return data;
+  } catch (err) {
+    console.error('Template create error:', err.message);
+    return null;
+  }
+}
+
+// List existing templates
+async function listWhatsAppTemplates(wabaId) {
+  if (!WA_TOKEN || !wabaId) return [];
+  try {
+    const res = await fetch(`https://graph.facebook.com/v21.0/${wabaId}/message_templates?limit=100`, {
+      headers: { 'Authorization': `Bearer ${WA_TOKEN}` }
+    });
+    const data = await res.json();
+    return data.data || [];
+  } catch { return []; }
+}
+
+// Ensure required templates exist
+async function ensureWhatsAppTemplates() {
+  const wabaId = global.lastWabaId;
+  if (!wabaId || !WA_TOKEN) {
+    console.log('⚠️ WABA_ID not available yet — templates will be checked after first webhook');
+    return;
+  }
+
+  console.log('📋 Checking WhatsApp templates...');
+  const templates = await listWhatsAppTemplates(wabaId);
+  const templateNames = templates.map(t => t.name);
+  console.log(`   Found ${templates.length} templates: ${templateNames.join(', ')}`);
+
+  // Check for our response template
+  const hasInfoProducto = templates.find(t => t.name === 'respuesta_consulta');
+  if (hasInfoProducto) {
+    console.log(`   ✅ respuesta_consulta: ${hasInfoProducto.status}`);
+  } else {
+    console.log('   Creating "respuesta_consulta" template...');
+    await createWhatsAppTemplate(wabaId, 'respuesta_consulta',
+      'Hola {{1}}! 🏠\n\n{{2}}\n\nVe nuestro catálogo completo en: https://cesantoni-experience-za74.onrender.com/catalogo',
+      ['Juan', 'El piso Alabama tiene un precio estimado de $520/m². Formato 20x90cm, acabado mate.']
+    );
+  }
+}
+
+// Send bot response with template fallback if 24h window expired
+async function sendBotResponseWithFallback(to, text, product, contactName) {
+  const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
+  let result;
+
+  if (product?.image_url) {
+    const slug = product.sku || product.slug;
+    const caption = `${text}\n\n*${product.name}*${(product.effective_price || product.base_price) ? ' · ~$' + (product.effective_price || product.base_price) + '/m² (precio estimado)' : ''}${product.format ? ' · ' + product.format : ''}\n\n${baseUrl}/p/${slug}\n\nVe todo nuestro catálogo: ${baseUrl}/catalogo`;
+    result = await sendWhatsAppImage(to, product.image_url, caption);
+  } else {
+    result = await sendWhatsApp(to, text);
+  }
+
+  // If 24h window expired, fall back to template
+  if (result?._windowExpired) {
+    console.log('📋 24h window expired — falling back to template...');
+    const name = contactName || 'Cliente';
+
+    // Build short message for template param (max ~1024 chars)
+    let shortMsg = text.substring(0, 400);
+    if (product) {
+      const price = product.effective_price || product.base_price;
+      shortMsg = `Te interesó ${product.name}${price ? ' (~$' + price + '/m²)' : ''}. Respóndeme y te ayudo!`;
+    }
+
+    // Try respuesta_consulta first (custom template, 2 params)
+    let tplResult = await sendWhatsAppTemplate(to, 'respuesta_consulta', [name, shortMsg]);
+    if (tplResult?.error) {
+      console.log('⚠️ respuesta_consulta not available, trying lead_nuevo...');
+      // lead_nuevo is already approved — 4 params: name, phone, location, message
+      tplResult = await sendWhatsAppTemplate(to, 'lead_nuevo', [name, to, 'Cesantoni', shortMsg]);
+      if (tplResult?.error) {
+        console.log('⚠️ lead_nuevo also failed, trying hello_world...');
+        tplResult = await sendWhatsAppTemplate(to, 'hello_world', []);
+        if (tplResult?.error) {
+          console.error('❌ All template attempts failed. Cannot reach user.');
+          console.error('   → Approve "respuesta_consulta" in Meta Business Suite');
+          console.error('   → Or ask user to send a message to open 24h window');
+        }
+      }
+    }
+    return tplResult;
+  }
+
+  return result;
 }
 
 // Download media from WhatsApp (audio, image)
@@ -3473,7 +3638,13 @@ app.post('/webhook', async (req, res) => {
 
   try {
     const entry = req.body?.entry?.[0];
-    if (entry?.id) global.lastWabaId = entry.id;
+    if (entry?.id && !global.lastWabaId) {
+      global.lastWabaId = entry.id;
+      // First webhook — now we have WABA ID, check templates
+      ensureWhatsAppTemplates().catch(e => console.error('Template check error:', e.message));
+    } else if (entry?.id) {
+      global.lastWabaId = entry.id;
+    }
     const changes = entry?.changes?.[0];
     const value = changes?.value;
 
@@ -4183,9 +4354,20 @@ app.post('/webhook', async (req, res) => {
           await run('INSERT INTO wa_conversations (phone, role, message) VALUES (?, ?, ?)', [from, 'user', text]);
 
           if (p.image_url) {
-            await sendWhatsAppImage(from, p.image_url, caption);
+            const imgResult = await sendWhatsAppImage(from, p.image_url, caption);
+            if (imgResult?._windowExpired) {
+              console.log('📋 24h expired on product card, sending template...');
+              const shortInfo = `Te interesó ${p.name}${effectivePrice ? ' (~$' + effectivePrice + '/m²)' : ''}. Respóndeme y te ayudo!`;
+              let tpl = await sendWhatsAppTemplate(from, 'respuesta_consulta', [contactName || 'Cliente', shortInfo]);
+              if (tpl?.error) await sendWhatsAppTemplate(from, 'lead_nuevo', [contactName || 'Cliente', from, 'Cesantoni', shortInfo]);
+            }
           } else {
-            await sendWhatsApp(from, caption);
+            const txtResult = await sendWhatsApp(from, caption);
+            if (txtResult?._windowExpired) {
+              const shortInfo = `Te interesó ${p.name}${effectivePrice ? ' (~$' + effectivePrice + '/m²)' : ''}. Respóndeme y te ayudo!`;
+              let tpl = await sendWhatsAppTemplate(from, 'respuesta_consulta', [contactName || 'Cliente', shortInfo]);
+              if (tpl?.error) await sendWhatsAppTemplate(from, 'lead_nuevo', [contactName || 'Cliente', from, 'Cesantoni', shortInfo]);
+            }
           }
 
           // Update lead with this product
@@ -4234,16 +4416,7 @@ app.post('/webhook', async (req, res) => {
       }
 
       const { reply, product } = await processWhatsAppMessage(from, text, contactName);
-      const baseUrl = 'https://cesantoni-experience-za74.onrender.com';
-
-      if (product?.image_url) {
-        // Send ONE image with recommendation + product info + landing link as caption
-        const slug = product.sku || product.slug;
-        const caption = `${reply}\n\n*${product.name}*${(product.effective_price || product.base_price) ? ' · ~$' + (product.effective_price || product.base_price) + '/m² (precio estimado)' : ''}${product.format ? ' · ' + product.format : ''}\n\n${baseUrl}/p/${slug}\n\nVe todo nuestro catálogo: ${baseUrl}/catalogo`;
-        await sendWhatsAppImage(from, product.image_url, caption);
-      } else {
-        await sendWhatsApp(from, reply);
-      }
+      await sendBotResponseWithFallback(from, reply, product, contactName);
     } else if (message.type === 'interactive') {
       // Handle button replies AND list replies
       const btnId = message.interactive?.button_reply?.id || message.interactive?.list_reply?.id || '';
@@ -5356,6 +5529,27 @@ app.get('/api/stores/:id/prices/template', async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=precios-${(store?.name || 'tienda').replace(/\s+/g, '-')}.csv`);
     res.send(csv);
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// =====================================================
+// WHATSAPP TEMPLATE MANAGEMENT
+// =====================================================
+
+// List all templates
+app.get('/api/whatsapp/templates', crmAuth, async (req, res) => {
+  const wabaId = global.lastWabaId;
+  if (!wabaId) return res.json({ error: 'WABA ID not available — send a WhatsApp message first', templates: [] });
+  const templates = await listWhatsAppTemplates(wabaId);
+  res.json({ templates: templates.map(t => ({ name: t.name, status: t.status, language: t.language, category: t.category })) });
+});
+
+// Create/ensure templates exist
+app.post('/api/whatsapp/templates/setup', crmAuth, async (req, res) => {
+  const wabaId = global.lastWabaId;
+  if (!wabaId) return res.status(400).json({ error: 'WABA ID not available — send a WhatsApp message first' });
+  await ensureWhatsAppTemplates();
+  const templates = await listWhatsAppTemplates(wabaId);
+  res.json({ ok: true, templates: templates.map(t => ({ name: t.name, status: t.status })) });
 });
 
 // =====================================================
